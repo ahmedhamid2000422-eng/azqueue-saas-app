@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+    <!-- Primary SEO -->
+    <title>AzQueue — Queue & Booking Management for Service Businesses</title>
+    <meta name="description" content="Walk-ins and bookings in one smart queue. Real-time display, WhatsApp alerts, prayer-aware scheduling. Built for salons, clinics, restaurants & more. Free 14-day trial." />
+    <meta name="keywords" content="queue management system, booking system Malaysia, salon queue app, clinic queue system, walk-in queue, WhatsApp queue alerts, Islamic prayer queue, AzQueue" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://azqueue.io/" />
+
+    <!-- Open Graph — controls how the link looks on WhatsApp, Facebook, LinkedIn -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://azqueue.io/" />
+    <meta property="og:title" content="AzQueue — Queue & Booking Management for Service Businesses" />
+    <meta property="og:description" content="Walk-ins and bookings in one smart queue. Real-time display, WhatsApp alerts, prayer-aware scheduling. Free 14-day trial." />
+    <meta property="og:image" content="https://azqueue.io/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content="AzQueue" />
+    <meta property="og:locale" content="en_MY" />
+
+    <!-- Twitter / X Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="AzQueue — Queue & Booking Management for Service Businesses" />
+    <meta name="twitter:description" content="Walk-ins and bookings in one smart queue. WhatsApp alerts, real-time display, Islamic mode. Free 14-day trial." />
+    <meta name="twitter:image" content="https://azqueue.io/og-image.png" />
+
+    <!-- JSON-LD structured data — helps Google understand what AzQueue is -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "AzQueue",
+      "url": "https://azqueue.io",
+      "description": "Queue and booking management system for service businesses. Walk-ins and bookings in one intelligent queue with WhatsApp notifications and real-time display.",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web, iOS, Android",
+      "offers": {
+        "@type": "Offer",
+        "price": "29",
+        "priceCurrency": "MYR",
+        "priceSpecification": {
+          "@type": "UnitPriceSpecification",
+          "price": "29",
+          "priceCurrency": "MYR",
+          "unitText": "MONTH"
+        }
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "reviewCount": "12"
+      }
+    }
+    </script>
+
+    <!-- PWA / iOS install metadata -->
+    <meta name="theme-color" content="#c9a86a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="AzQueue" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.svg" />
+
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+    <!-- Google Analytics 4 — replace G-XXXXXXXXXX with your Measurement ID -->
+    <!-- Get your ID: analytics.google.com → Admin → Data Streams → your stream → Measurement ID -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-XXXXXXXXXX', {
+        page_path: window.location.pathname,
+      });
+    </script>
+  </head>
+  <body class="bg-bg text-ink antialiased">
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

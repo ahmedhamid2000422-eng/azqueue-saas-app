@@ -1,0 +1,89 @@
+import { Routes, Route, Navigate } from "react-router-dom";
+import Landing from "./pages/Landing";
+import ModeSelect from "./pages/ModeSelect";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import Product from "./pages/Product";
+import Resources from "./pages/Resources";
+import Support from "./pages/Support";
+import Company from "./pages/Company";
+import Industries from "./pages/Industries";
+import PersonalFlow from "./pages/PersonalFlow";
+import IslamicMode from "./pages/IslamicMode";
+import ManagerMode from "./pages/ManagerMode";
+import CustomerCheckIn from "./pages/CustomerCheckIn";
+import CustomerTicket from "./pages/CustomerTicket";
+import TvDisplay from "./pages/TvDisplay";
+import BookingPage from "./pages/BookingPage";
+import AdminDashboard from "./pages/AdminDashboard";
+import Legal from "./pages/Legal";
+import BusinessDashboard from "./modes/business/Dashboard";
+import PersonalDashboard from "./modes/personal/Dashboard";
+import StaffDashboard from "./modes/staff/Dashboard";
+import ProtectedRoute from "./components/ProtectedRoute";
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/"        element={<Landing />} />
+      <Route path="/login"   element={<Login />} />
+      <Route path="/signup"  element={<Signup />} />
+      <Route path="/select"  element={<ModeSelect />} />
+      <Route path="/product" element={<Product />} />
+      <Route path="/resources" element={<Resources />} />
+      <Route path="/support" element={<Support />} />
+      <Route path="/company" element={<Company />} />
+      <Route path="/industries" element={<Industries />} />
+      <Route path="/personal-flow" element={<PersonalFlow />} />
+      <Route path="/islamic-mode" element={<IslamicMode />} />
+      <Route path="/manager-mode" element={<ManagerMode />} />
+
+      {/* Public customer-side flow — no auth */}
+      <Route path="/q/:slug"      element={<CustomerCheckIn />} />
+      <Route path="/t/:ticketId"  element={<CustomerTicket />} />
+      <Route path="/display/:slug" element={<TvDisplay />} />
+      <Route path="/b/:slug"       element={<BookingPage />} />
+      <Route path="/legal/:doc"    element={<Legal />} />
+      <Route path="/legal"         element={<Legal />} />
+
+      {/* Platform admin (your operator dashboard) */}
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute>
+            <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/business/*"
+        element={
+          <ProtectedRoute>
+            <BusinessDashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/personal/*"
+        element={
+          <ProtectedRoute>
+            <PersonalDashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/staff/*"
+        element={
+          <ProtectedRoute>
+            <StaffDashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}

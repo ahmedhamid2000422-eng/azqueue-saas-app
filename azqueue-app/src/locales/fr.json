@@ -1,0 +1,82 @@
+{
+  "common": {
+    "language": "Langue",
+    "back": "Retour",
+    "cancel": "Annuler",
+    "loading": "Chargement…",
+    "error": "Une erreur s'est produite. Veuillez réessayer.",
+    "powered_by": "Propulsé par AzQueue"
+  },
+  "checkin": {
+    "title": "Enregistrement",
+    "service_label": "Service",
+    "name_label": "Votre nom",
+    "name_placeholder": "Votre nom",
+    "phone_label": "Téléphone",
+    "phone_placeholder": "+60 12 345 6789",
+    "submit": "Obtenir mon ticket",
+    "submitting": "Enregistrement…",
+    "footer": "Nous vous enverrons un WhatsApp à votre tour. Aucune appli nécessaire.",
+    "no_services": "Aucun service configuré pour cette agence.",
+    "invalid": "Ce lien n'est pas valide ou n'est plus actif.",
+    "errors": {
+      "pick_service": "Veuillez choisir un service.",
+      "enter_name": "Veuillez saisir votre nom.",
+      "valid_phone": "Veuillez saisir un numéro de téléphone valide.",
+      "could_not_token": "Impossible d'obtenir un numéro. Réessayez.",
+      "could_not_checkin": "Impossible de vous enregistrer. Réessayez."
+    }
+  },
+  "ticket": {
+    "your_ticket": "Votre ticket",
+    "live": "En direct",
+    "ahead": "Devant vous",
+    "eta": "Attente estimée",
+    "service": "Service",
+    "issued": "Émis",
+    "youre_up": "C'est à vous",
+    "walk_in_now": "Entrez — l'équipe vous attend.",
+    "thank_you": "Merci",
+    "service_complete": "Service terminé.",
+    "thanks_visit": "Nous espérons que votre visite à {{branchName}} vous a plu.",
+    "checkin_again": "S'enregistrer à nouveau",
+    "no_show": "Absence notée",
+    "no_show_body": "Ce ticket a été clôturé car nous n'avons pas pu vous joindre.",
+    "cancelled": "Annulé",
+    "cancelled_body": "Ce ticket a été annulé.",
+    "keep_open": "Gardez cette page ouverte — elle se met à jour dès votre appel.",
+    "ticket_not_found": "Ticket introuvable.",
+    "share_location_title": "Partager votre position en direct ?",
+    "share_location_body": "Nous saurons quand vous approchez et synchroniserons votre appel. Le suivi s'arrête après le service.",
+    "share_location_button": "Partager ma position",
+    "location_optional": "Facultatif",
+    "location_denied": "Partage refusé — pas de souci. Suivez la page.",
+    "location_unsupported": "Votre navigateur ne prend pas en charge le partage de position.",
+    "youre_here": "Vous êtes là",
+    "at_the_door": "À la porte",
+    "on_the_way": "En route",
+    "distance": "Distance",
+    "tracking_stops": "Le suivi s'arrête après le service. Aucune donnée conservée ensuite."
+  },
+  "booking": {
+    "title": "Réserver à l'avance",
+    "subtitle": "Choisissez un service et une heure. Confirmation par WhatsApp.",
+    "pick_service": "Choisir un service",
+    "pick_time": "Choisir l'heure",
+    "no_slots": "Aucun créneau disponible ce jour-là.",
+    "submit": "Confirmer la réservation",
+    "submitting": "Réservation…",
+    "confirmed": "Réservation confirmée",
+    "confirmed_body": "Un rappel sera envoyé par WhatsApp à {{phone}}.",
+    "view_ticket": "Voir le ticket"
+  },
+  "display": {
+    "now_serving": "En cours",
+    "up_next": "À suivre",
+    "live": "En direct",
+    "paused": "Pause pour {{prayer}}",
+    "auto_resume": "reprise à {{time}}",
+    "branch_offline": "Agence fermée",
+    "no_one_serving": "Prêts pour le prochain client"
+  }
+}

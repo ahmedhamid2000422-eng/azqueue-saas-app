@@ -1,0 +1,82 @@
+{
+  "common": {
+    "language": "Bahasa",
+    "back": "Kembali",
+    "cancel": "Batal",
+    "loading": "Memuatkan…",
+    "error": "Sesuatu tidak kena. Sila cuba lagi.",
+    "powered_by": "Dikuasakan oleh AzQueue"
+  },
+  "checkin": {
+    "title": "Daftar masuk",
+    "service_label": "Perkhidmatan",
+    "name_label": "Nama anda",
+    "name_placeholder": "Nama anda",
+    "phone_label": "Telefon",
+    "phone_placeholder": "+60 12 345 6789",
+    "submit": "Dapatkan tiket",
+    "submitting": "Mendaftar masuk…",
+    "footer": "Kami akan WhatsApp anda apabila giliran tiba. Tiada aplikasi diperlukan.",
+    "no_services": "Belum ada perkhidmatan ditetapkan untuk cawangan ini.",
+    "invalid": "Pautan ini tidak sah atau telah ditutup.",
+    "errors": {
+      "pick_service": "Sila pilih perkhidmatan.",
+      "enter_name": "Sila masukkan nama anda.",
+      "valid_phone": "Sila masukkan nombor telefon yang sah.",
+      "could_not_token": "Tidak dapat menjana nombor tiket. Sila cuba lagi.",
+      "could_not_checkin": "Tidak dapat mendaftarkan anda. Sila cuba lagi."
+    }
+  },
+  "ticket": {
+    "your_ticket": "Tiket anda",
+    "live": "Langsung",
+    "ahead": "Di hadapan anda",
+    "eta": "Anggaran tunggu",
+    "service": "Perkhidmatan",
+    "issued": "Dikeluarkan",
+    "youre_up": "Giliran anda kini",
+    "walk_in_now": "Sila masuk — kakitangan sudah bersedia.",
+    "thank_you": "Terima kasih",
+    "service_complete": "Perkhidmatan selesai.",
+    "thanks_visit": "Kami harap anda berpuas hati dengan {{branchName}}.",
+    "checkin_again": "Daftar masuk semula",
+    "no_show": "Tidak hadir",
+    "no_show_body": "Tiket ini telah ditutup kerana kami tidak dapat menghubungi anda.",
+    "cancelled": "Dibatalkan",
+    "cancelled_body": "Tiket ini telah dibatalkan.",
+    "keep_open": "Biarkan halaman ini terbuka — ia akan kemaskini sebaik anda dipanggil.",
+    "ticket_not_found": "Tiket tidak ditemui.",
+    "share_location_title": "Kongsi lokasi langsung anda?",
+    "share_location_body": "Kami akan tahu bila anda hampir sampai dan menyesuaikan giliran. Penjejakan berhenti sebaik perkhidmatan tamat.",
+    "share_location_button": "Kongsi lokasi langsung",
+    "location_optional": "Pilihan",
+    "location_denied": "Perkongsian lokasi ditolak — tiada masalah. Pantau halaman ini.",
+    "location_unsupported": "Pelayar anda tidak menyokong perkongsian lokasi.",
+    "youre_here": "Anda sudah sampai",
+    "at_the_door": "Di pintu masuk",
+    "on_the_way": "Dalam perjalanan",
+    "distance": "Jarak",
+    "tracking_stops": "Penjejakan berhenti automatik selepas perkhidmatan. Kami tidak menyimpan data selepas itu."
+  },
+  "booking": {
+    "title": "Tempah awal",
+    "subtitle": "Pilih perkhidmatan dan masa. Anda akan dapat pengesahan WhatsApp.",
+    "pick_service": "Pilih perkhidmatan",
+    "pick_time": "Pilih masa",
+    "no_slots": "Tiada slot tersedia untuk hari itu.",
+    "submit": "Sahkan tempahan",
+    "submitting": "Menempah…",
+    "confirmed": "Tempahan disahkan",
+    "confirmed_body": "Kami akan WhatsApp {{phone}} sebelum slot anda.",
+    "view_ticket": "Lihat tiket"
+  },
+  "display": {
+    "now_serving": "Kini Dilayan",
+    "up_next": "Seterusnya",
+    "live": "Langsung",
+    "paused": "Berhenti untuk {{prayer}}",
+    "auto_resume": "barisan disambung pada {{time}}",
+    "branch_offline": "Cawangan ditutup",
+    "no_one_serving": "Sedia untuk pelanggan seterusnya"
+  }
+}

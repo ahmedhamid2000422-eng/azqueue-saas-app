@@ -1,0 +1,180 @@
+-- =====================================================================
+-- AzQueue · 0011 — Customer Identity + Unified Timeline
+-- Additive only. Zero changes to existing tables except one nullable FK.
+-- Requires: 0001_init.sql (tickets, branches, staff)
+-- =====================================================================
+--
+-- PURPOSE:
+--   Every touchpoint a customer has — queue visit, Facebook message,
+--   WhatsApp chat, Freshworks ticket — is normalized into one
+--   customer_events timeline. AzQueue matches them to a single customer
+--   profile by email, phone, or social ID. Staff see one thread.
+--   AI reads that thread and writes a 3-line summary.
+--
+-- CHANNELS SUPPORTED NOW:   queue, manual
+-- CHANNELS PLUGGING IN LATER: facebook, instagram, whatsapp, email, freshdesk
+--   (Each just INSERTs into customer_events — schema is ready today)
+
+-- ── 1. Customers ──────────────────────────────────────────────────────
+-- Unified identity record. One row = one real person.
+-- Identity resolution: match on email OR phone OR social ID.
+-- display_name is the best name we have — updated as better data arrives.
+create table if not exists public.customers (
+  id              uuid primary key default uuid_generate_v4(),
+  branch_id       uuid not null references public.branches(id) on delete cascade,
+  display_name    text,
+  email           text,
+  phone           text,
+  facebook_id     text,    -- FB-scoped user ID from Messenger webhook
+  instagram_id    text,    -- IG-scoped user ID from IG webhook
+  whatsapp_id     text,    -- WhatsApp phone number (normalized E.164)
+  freshdesk_id    text,    -- Freshworks contact ID — used for deep-link
+  avatar_url      text,
+  tags            text[]   not null default '{}',
+  vip             boolean  not null default false,
+  created_at      timestamptz not null default now(),
+  last_seen_at    timestamptz
+);
+
+-- Deduplicate by email and phone within a branch
+create unique index if not exists customers_branch_email_idx
+  on public.customers(branch_id, lower(email))
+  where email is not null;
+
+create unique index if not exists customers_branch_phone_idx
+  on public.customers(branch_id, phone)
+  where phone is not null;
+
+create index if not exists customers_branch_idx
+  on public.customers(branch_id, last_seen_at desc);
+
+-- ── 2. Customer events — normalized timeline ──────────────────────────
+-- One row per touchpoint, regardless of source channel.
+-- content = human-readable summary of the event.
+-- metadata = raw payload from the source system (jsonb, never queried).
+-- external_id = source system's own ID (FB message ID, Freshdesk ticket #, etc.)
+create table if not exists public.customer_events (
+  id           uuid primary key default uuid_generate_v4(),
+  customer_id  uuid not null references public.customers(id) on delete cascade,
+  branch_id    uuid not null references public.branches(id) on delete cascade,
+  channel      text not null
+               check (channel in (
+                 'queue', 'facebook', 'instagram',
+                 'whatsapp', 'email', 'freshdesk', 'manual'
+               )),
+  event_type   text not null
+               check (event_type in (
+                 'message',
+                 'queue_join', 'queue_serve', 'queue_complete',
+                 'ticket_open', 'ticket_resolve',
+                 'note'
+               )),
+  content      text,        -- normalized readable text shown in the timeline
+  metadata     jsonb,       -- raw source payload — store but never filter on
+  external_id  text,        -- dedup key from source system
+  staff_id     uuid references public.staff(id) on delete set null,
+  created_at   timestamptz not null default now()
+);
+
+create index if not exists customer_events_customer_idx
+  on public.customer_events(customer_id, created_at desc);
+
+create index if not exists customer_events_branch_idx
+  on public.customer_events(branch_id, created_at desc);
+
+-- Prevent duplicate ingestion from source systems
+create unique index if not exists customer_events_external_dedup_idx
+  on public.customer_events(branch_id, channel, external_id)
+  where external_id is not null;
+
+-- ── 3. Customer notes — internal staff notes ──────────────────────────
+-- Private to the branch. Never shown to the customer.
+create table if not exists public.customer_notes (
+  id           uuid primary key default uuid_generate_v4(),
+  customer_id  uuid not null references public.customers(id) on delete cascade,
+  branch_id    uuid not null references public.branches(id) on delete cascade,
+  staff_id     uuid references public.staff(id) on delete set null,
+  content      text not null,
+  created_at   timestamptz not null default now()
+);
+
+create index if not exists customer_notes_customer_idx
+  on public.customer_notes(customer_id, created_at desc);
+
+-- ── 4. Customer AI summaries ──────────────────────────────────────────
+-- One active summary per customer. Regenerated on demand or on schedule.
+-- Generated by lib/customers.js calling OpenAI with the last N events.
+create table if not exists public.customer_summaries (
+  id                  uuid primary key default uuid_generate_v4(),
+  customer_id         uuid not null references public.customers(id) on delete cascade,
+  summary             text,        -- 2–3 sentence plain-English summary
+  sentiment           text
+                      check (sentiment in ('positive', 'neutral', 'negative', 'frustrated')),
+  key_issues          text[],      -- up to 5 short phrases
+  recommended_action  text,        -- one-line suggested next step for staff
+  generated_at        timestamptz not null default now(),
+  unique (customer_id)             -- upsert on regenerate
+);
+
+-- ── 5. Link tickets to customers ──────────────────────────────────────
+-- Nullable — old tickets remain valid. When a ticket is created with
+-- a known customer, set this FK. Queue join auto-logs a customer_event.
+alter table public.tickets
+  add column if not exists customer_id uuid
+    references public.customers(id) on delete set null;
+
+create index if not exists tickets_customer_idx
+  on public.tickets(customer_id)
+  where customer_id is not null;
+
+-- ── 6. RLS ────────────────────────────────────────────────────────────
+alter table public.customers          enable row level security;
+alter table public.customer_events    enable row level security;
+alter table public.customer_notes     enable row level security;
+alter table public.customer_summaries enable row level security;
+
+-- Helper: is this user a member of the given branch?
+-- Reused across all four policies.
+
+create policy "customers_branch_rw" on public.customers
+  for all
+  using (
+    branch_id in (
+      select id from public.branches where owner_id = auth.uid()
+      union
+      select branch_id from public.staff where user_id = auth.uid()
+    )
+  );
+
+create policy "customer_events_branch_rw" on public.customer_events
+  for all
+  using (
+    branch_id in (
+      select id from public.branches where owner_id = auth.uid()
+      union
+      select branch_id from public.staff where user_id = auth.uid()
+    )
+  );
+
+create policy "customer_notes_branch_rw" on public.customer_notes
+  for all
+  using (
+    branch_id in (
+      select id from public.branches where owner_id = auth.uid()
+      union
+      select branch_id from public.staff where user_id = auth.uid()
+    )
+  );
+
+create policy "customer_summaries_branch_rw" on public.customer_summaries
+  for all
+  using (
+    customer_id in (
+      select id from public.customers
+      where branch_id in (
+        select id from public.branches where owner_id = auth.uid()
+        union
+        select branch_id from public.staff where user_id = auth.uid()
+      )
+    )
+  );
