@@ -103,7 +103,7 @@ function Hero() {
           <Link to="/signup" style={{ display: "inline-flex", alignItems: "center", gap: 10, background: C.gold, color: C.void, padding: "12px 26px", borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: "none", letterSpacing: "0.01em", transition: "all 0.2s ease" }}
             onMouseEnter={e => { e.currentTarget.style.opacity = "0.88"; e.currentTarget.style.transform = "translateY(-1px)"; }}
             onMouseLeave={e => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "none"; }}>
-            Request early access <Ic.Arr />
+            Try for free <Ic.Arr />
           </Link>
           <div style={{ marginTop: 48, display: "flex", flexDirection: "column", gap: 10 }}>
             {["WhatsApp & SMS notification ready", "Set up in under 10 minutes", "Prayer pause scheduling built in"].map(t => (
@@ -327,9 +327,9 @@ function Pricing() {
   const [ref, visible] = useInView(0.1);
   const [annual, setAnnual] = useState(false);
   const tiers = [
-    { name: "Starter",    price: annual ? 29 : 39,  desc: "For single-location businesses.", features: ["1 branch", "1 kiosk terminal", "WhatsApp notifications", "Basic analytics", "Email support"], cta: "Get started",          featured: false },
-    { name: "Growth",     price: annual ? 79 : 99,  desc: "For businesses ready to scale.",  features: ["Up to 5 branches", "Unlimited kiosks", "WhatsApp & SMS", "Loyalty punch cards", "Prayer pause scheduling", "Advanced analytics", "Priority support"], cta: "Request early access", featured: true },
-    { name: "Enterprise", price: null,               desc: "For large networks and government.", features: ["Unlimited branches", "Custom integrations", "Dedicated onboarding", "SLA guarantee", "Multilingual UI", "24/7 support"], cta: "Contact us",           featured: false },
+    { name: "Starter",    price: annual ? 29 : 39,  desc: "For single-location businesses.", features: ["1 branch", "1 kiosk terminal", "WhatsApp notifications", "Basic analytics", "Email support"], cta: "Try for free",  featured: false },
+    { name: "Growth",     price: annual ? 79 : 99,  desc: "For businesses ready to scale.",  features: ["Up to 5 branches", "Unlimited kiosks", "WhatsApp & SMS", "Loyalty punch cards", "Prayer pause scheduling", "Advanced analytics", "Priority support"], cta: "Try for free",  featured: true },
+    { name: "Enterprise", price: null,               desc: "For large networks and government.", features: ["Unlimited branches", "Custom integrations", "Dedicated onboarding", "SLA guarantee", "Multilingual UI", "24/7 support"], cta: "Contact us",    featured: false },
   ];
   return (
     <section id="pricing" ref={ref} style={{ padding: "120px 48px", background: C.card }}>
@@ -402,7 +402,7 @@ function FinalCTA() {
         <Link to="/signup" style={{ display: "inline-flex", alignItems: "center", gap: 10, background: C.gold, color: C.void, padding: "13px 28px", borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: "none", letterSpacing: "0.01em", transition: "all 0.2s ease" }}
           onMouseEnter={e => { e.currentTarget.style.opacity = "0.9"; e.currentTarget.style.transform = "translateY(-1px)"; }}
           onMouseLeave={e => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "none"; }}>
-          Request early access <Ic.Arr />
+          Try for free <Ic.Arr />
         </Link>
         <div style={{ marginTop: 18, fontSize: 11, color: C.muted, letterSpacing: "0.02em" }}>No credit card required · Cancel any time</div>
       </div>

@@ -333,7 +333,7 @@ function ProductCTA() {
           <Link to="/signup" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: C.gold, color: C.void, padding: "12px 24px", borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: "none", letterSpacing: "0.01em", transition: "all 0.2s ease" }}
             onMouseEnter={e => e.currentTarget.style.opacity = "0.88"}
             onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
-            Request early access <Ic.Arr />
+            Try for free <Ic.Arr />
           </Link>
           <Link to="/industries" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "transparent", color: C.muted, padding: "12px 24px", borderRadius: 8, fontSize: 13, fontWeight: 500, textDecoration: "none", border: `1px solid ${C.border}`, letterSpacing: "0.01em", transition: "all 0.2s ease" }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = C.dim; e.currentTarget.style.color = C.ink; }}
