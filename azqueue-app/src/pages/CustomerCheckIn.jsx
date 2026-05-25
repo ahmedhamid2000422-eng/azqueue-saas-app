@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { sendConfirmation } from "../lib/notifications";
 import { findOrCreateCustomer, logQueueEvent, generatePersona } from "../lib/customers";
+import { getCustomerCard, punchDots, hasUnclaimedReward } from "../lib/loyalty";
 import { getEffectiveChecklist, buildChecklistMessage } from "../lib/checklists";
 import { sendMessage } from "../lib/messaging";
 import Button from "../components/Button";
@@ -124,6 +125,10 @@ export default function CustomerCheckIn() {
         });
         // Auto-generate/refresh persona so staff see a profile when the customer arrives
         generatePersona(customer.id, branch.id).catch(() => {});
+        // Load loyalty card so it can be shown on the ticket page
+        getCustomerCard(branch.id, customer.id).then(card => {
+          if (card) sessionStorage.setItem("loyalty_card", JSON.stringify(card));
+        }).catch(() => {});
         // Auto-send document checklist if this service requires one
         const checklist = getEffectiveChecklist(branch.id, serviceName);
         if (checklist?.needsChecklist && checklist.items.length > 0 && phone.trim()) {

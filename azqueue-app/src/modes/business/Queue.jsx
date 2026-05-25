@@ -13,6 +13,7 @@ import { getComplexity, analyzeQueue, smartSort, buildDurationStats, TIERS } fro
 import { pickBestStaff, enrichStaffLoad } from "../../lib/autoAssign";
 import { findOrCreateCustomer, generatePersona, logQueueEvent } from "../../lib/customers";
 import { saveScore, scoreEmoji, scoreColour } from "../../lib/satisfaction";
+import { addPunch, addBonusPunch, getCustomerCard, hasUnclaimedReward, punchDots, redeemReward } from "../../lib/loyalty";
 import Button from "../../components/Button";
 import Card, { CardHeader } from "../../components/Card";
 import Stat from "../../components/Stat";
@@ -48,6 +49,10 @@ export default function Queue() {
   const [surveyScore, setSurveyScore] = useState(0);
   const [surveyNote, setSurveyNote] = useState("");
   const [surveyBusy, setSurveyBusy] = useState(false);
+
+  // Loyalty punch card
+  const [loyaltyReward, setLoyaltyReward] = useState(null); // { customerName, reward } when earned
+  const [loyaltyCards, setLoyaltyCards] = useState({});     // customerId → card data
 
   const [scheduledCount, setScheduledCount] = useState(0);
   const [upcomingBookings, setUpcomingBookings] = useState([]);
@@ -443,6 +448,19 @@ export default function Queue() {
             score, note,
           }).catch(() => {});
         }
+        // Auto-punch loyalty card
+        addPunch(branch.id, cust.id, ticket.id, ticket.staff_id ?? null).then(({ rewardEarned, program }) => {
+          if (rewardEarned && program) {
+            setLoyaltyReward({
+              customerName: cust.name ?? ticket.customer_name ?? "Customer",
+              reward: program.reward_description,
+            });
+          }
+          // Refresh loyalty card in cache
+          getCustomerCard(branch.id, cust.id).then(card => {
+            if (card) setLoyaltyCards(prev => ({ ...prev, [cust.id]: card }));
+          }).catch(() => {});
+        }).catch(() => {});
       }).catch(() => {});
     }
     await reload();
@@ -631,6 +649,10 @@ export default function Queue() {
           onSkip={() => submitSurveyAndComplete(0, "")}
         />
       )}
+      <RewardToast
+        reward={loyaltyReward}
+        onClose={() => setLoyaltyReward(null)}
+      />
       <header className="flex justify-between items-start mb-8 gap-4">
         <div>
           <div className="ovline mb-2 text-gold-soft">Live · combined queue</div>
@@ -866,6 +888,18 @@ export default function Queue() {
                     </div>
                     {personaCache[t.id] && (
                       <PersonaMini data={personaCache[t.id]} />
+                    )}
+                    {personaCache[t.id]?.customerId && loyaltyCards[personaCache[t.id].customerId] && (
+                      <LoyaltyChip
+                        card={loyaltyCards[personaCache[t.id].customerId]}
+                        onBonus={() => addBonusPunch(branch.id, personaCache[t.id].customerId, t.id, null)
+                          .then(({ rewardEarned, program }) => {
+                            if (rewardEarned && program) setLoyaltyReward({ customerName: t.customer_name ?? "Customer", reward: program.reward_description });
+                            getCustomerCard(branch.id, personaCache[t.id].customerId).then(card => {
+                              if (card) setLoyaltyCards(prev => ({ ...prev, [personaCache[t.id].customerId]: card }));
+                            }).catch(() => {});
+                          }).catch(() => {})}
+                      />
                     )}
                   </div>
                   <div className="flex flex-col items-end gap-1">
@@ -1398,116 +1432,126 @@ function ReassignMenu({ ticket, staffList, onReassign, disabled }) {
   );
 }
 
+/* ── LoyaltyChip ─────────────────────────────────────────────────────── */
+function LoyaltyChip({ card, onBonus }) {
+  const dots = punchDots(card, card.program);
+  const unclaimed = hasUnclaimedReward(card);
+  return (
+    <div className={`border px-2 py-1.5 mt-1 ${unclaimed ? "border-gold bg-gold/10" : "border-line bg-bg"}`}>
+      <div className="flex items-center justify-between mb-1">
+        <span className="ovline text-[7px] text-gold-soft">
+          {unclaimed ? "🎁 Reward ready!" : `🎟 ${card.current_punches}/${card.program?.punches_required} punches`}
+        </span>
+        <button
+          onClick={onBonus}
+          className="text-[7px] ovline text-gold-soft border border-gold-deep px-1.5 py-0.5 hover:bg-gold-deep/20 transition"
+        >
+          + bonus
+        </button>
+      </div>
+      {!unclaimed && dots.length > 0 && (
+        <div className="flex gap-0.5 flex-wrap">
+          {dots.map((filled, i) => (
+            <span key={i} className={`w-2 h-2 rounded-full border ${filled ? "bg-gold border-gold" : "border-line"}`} />
+          ))}
+        </div>
+      )}
+      {unclaimed && (
+        <div className="text-[9px] text-gold-soft">{card.program?.reward_description}</div>
+      )}
+    </div>
+  );
+}
+
+/* ── RewardToast ─────────────────────────────────────────────────────── */
+function RewardToast({ reward, onClose }) {
+  if (!reward) return null;
+  return (
+    <div className="fixed bottom-6 right-6 z-50 bg-bg-elev border border-gold shadow-2xl p-5 max-w-xs drift-up">
+      <div className="text-2xl mb-2">🎉</div>
+      <div className="text-sm font-medium text-gold-soft mb-1">Loyalty reward earned!</div>
+      <div className="text-xs text-ink-soft mb-1">
+        <span className="text-ink font-medium">{reward.customerName}</span> just hit their punch goal.
+      </div>
+      <div className="text-xs text-gold-soft italic mb-3">"{reward.reward}"</div>
+      <button
+        onClick={onClose}
+        className="text-[10px] ovline text-ink-mute border border-line px-3 py-1 hover:border-gold-deep transition w-full"
+      >
+        Got it — tell the customer
+      </button>
+    </div>
+  );
+}
+
+
 /* ── SatisfactionSurvey ─────────────────────────────────────────────── */
 function SatisfactionSurvey({ ticket, busy, onSubmit, onSkip }) {
   const [score, setScore] = useState(0);
-  const [note, setNote] = useState("");
+  const [note,  setNote]  = useState("");
 
-  const labels = ["", "Poor", "Fair", "Good", "Great", "Excellent"];
-  const emojis = ["☆", "😞", "😐", "😊", "😄", "🤩"];
-  const colours = ["", "text-red-400", "text-orange-400", "text-yellow-400", "text-green-400", "text-emerald-400"];
+  const emojis = [
+    { v: 1, label: "😞", title: "Very dissatisfied" },
+    { v: 2, label: "😕", title: "Dissatisfied" },
+    { v: 3, label: "😐", title: "Neutral" },
+    { v: 4, label: "😊", title: "Satisfied" },
+    { v: 5, label: "😄", title: "Very satisfied" },
+  ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-bg-elev border border-gold-deep/40 shadow-2xl p-8 max-w-sm w-full mx-4">
-        <div className="ovline text-gold-soft text-[9px] mb-2">Customer survey</div>
+      <div className="bg-bg-elev border border-line shadow-2xl max-w-sm w-full mx-4 p-7">
+        <div className="ovline text-gold-soft mb-1 text-[9px]">How did it go?</div>
         <h2 className="font-display text-2xl font-light tracking-tightest mb-1">
           Rate this visit
         </h2>
-        {ticket.customer_name && (
-          <p className="text-xs text-ink-soft mb-6">{ticket.customer_name} · #{ticket.token}</p>
-        )}
+        <div className="text-xs text-ink-mute mb-5">
+          {ticket.customer_name ?? ticket.token}
+          {ticket.service_name ? <span className="ml-2 text-ink-soft">· {ticket.service_name}</span> : null}
+        </div>
 
-        {/* Star rating */}
-        <div className="flex gap-3 justify-center mb-4">
-          {[1, 2, 3, 4, 5].map((s) => (
+        {/* Emoji rating */}
+        <div className="flex justify-between mb-5">
+          {emojis.map(({ v, label, title }) => (
             <button
-              key={s}
-              onClick={() => setScore(s)}
-              className={`text-3xl transition-transform hover:scale-110 ${s <= score ? colours[s] : "text-ink-mute/40"}`}
-              title={labels[s]}
+              key={v}
+              title={title}
+              onClick={() => setScore(v)}
+              className={`text-3xl transition-transform ${
+                score === v ? "scale-125" : "opacity-40 hover:opacity-70 hover:scale-110"
+              }`}
             >
-              {s <= score ? emojis[s] : "☆"}
+              {label}
             </button>
           ))}
         </div>
-        {score > 0 && (
-          <p className={`text-center text-xs mb-4 ${colours[score]}`}>{labels[score]}</p>
-        )}
 
-        {/* Note */}
-        <div className="mb-6">
-          <div className="ovline text-[9px] mb-1.5">Staff note (optional)</div>
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="e.g. needed extra time, missing documents, VIP customer…"
-            rows={2}
-            className="w-full bg-bg border border-line focus:border-gold-deep outline-none text-xs px-3 py-2 transition text-ink placeholder:text-ink-mute resize-none"
-          />
-        </div>
+        {/* Optional note */}
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Optional note…"
+          rows={2}
+          className="w-full bg-bg border border-line focus:border-gold-deep outline-none text-sm px-3 py-2 text-ink placeholder:text-ink-mute resize-none transition mb-4"
+        />
 
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <button
             onClick={() => onSubmit(score, note)}
             disabled={busy || score === 0}
-            className="flex-1 bg-gold-deep/10 border border-gold-deep text-gold-soft text-xs px-4 py-2.5 hover:bg-gold-deep/20 transition disabled:opacity-40"
+            className="flex-1 bg-gold text-[#141410] text-xs font-medium py-2.5 tracking-wide disabled:opacity-40 transition hover:opacity-90"
           >
-            {busy ? "Saving…" : "Submit & complete"}
+            {busy ? "Completing…" : "Complete visit"}
           </button>
           <button
             onClick={onSkip}
             disabled={busy}
-            className="border border-line text-ink-mute text-xs px-4 py-2.5 hover:text-ink hover:border-line-2 transition disabled:opacity-40"
+            className="text-xs text-ink-mute border border-line px-4 py-2.5 hover:border-line-2 transition disabled:opacity-40"
           >
             Skip
           </button>
         </div>
       </div>
-    </div>
-  );
-}
-
-/* ── PersonaMini ─────────────────────────────────────────────────────── */
-function PersonaMini({ data }) {
-  const [open, setOpen] = useState(false);
-  if (!data) return null;
-
-  const scoreText = data.avgScore
-    ? `${data.avgScore}★`
-    : null;
-
-  const scoreClass = data.avgScore
-    ? data.avgScore >= 4 ? "text-emerald-400"
-    : data.avgScore >= 3 ? "text-yellow-400"
-    : "text-red-400"
-    : "";
-
-  return (
-    <div className="mt-1.5">
-      <button
-        onClick={() => setOpen((x) => !x)}
-        className="flex items-center gap-2 text-[9px] ovline text-ink-mute hover:text-ink transition"
-      >
-        <span className={data.isNew ? "text-[#74b9e8]" : "text-[#9bbd9b]"}>
-          {data.isNew ? "✦ New" : `↩ Returning · ${data.visitCount} visits`}
-        </span>
-        {scoreText && (
-          <span className={scoreClass}>{scoreText}</span>
-        )}
-        <span className="opacity-40">{open ? "▲" : "▼"}</span>
-      </button>
-      {open && data.persona && (
-        <div className="mt-1.5 border-l-2 border-gold-deep/30 pl-2.5 text-[10px] text-ink-soft leading-relaxed max-w-xs">
-          {data.persona}
-          {data.persona.length >= 120 && <span className="text-ink-mute">…</span>}
-        </div>
-      )}
-      {open && !data.persona && (
-        <div className="mt-1.5 text-[10px] text-ink-mute italic pl-2.5">
-          Generating profile…
-        </div>
-      )}
     </div>
   );
 }

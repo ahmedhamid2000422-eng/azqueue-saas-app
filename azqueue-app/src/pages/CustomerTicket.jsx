@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { distanceMeters, estimateEtaSec, arrivalState, formatDistance, formatEta } from "../lib/arrival";
+import { punchDots, hasUnclaimedReward } from "../lib/loyalty";
 import LuxeFrame from "../components/LuxeFrame";
 import Button from "../components/Button";
 import LanguagePicker from "../components/LanguagePicker";
@@ -25,6 +26,7 @@ export default function CustomerTicket() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [justJoined, setJustJoined] = useState(false); // show success banner on fresh check-in
+  const [loyaltyCard, setLoyaltyCard] = useState(null); // loaded from sessionStorage set during check-in
 
   // Initial load
   useEffect(() => {
@@ -67,6 +69,14 @@ export default function CustomerTicket() {
     })();
     return () => { cancelled = true; };
   }, [ticketId]);
+
+  // Load loyalty card stored during check-in
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("loyalty_card");
+      if (raw) setLoyaltyCard(JSON.parse(raw));
+    } catch {}
+  }, []);
 
   // Recompute position whenever the ticket or its branch changes
   useEffect(() => {
@@ -229,6 +239,9 @@ export default function CustomerTicket() {
           <div className="text-sm mt-1 font-mono">{fmtTime(ticket.created_at)}</div>
         </div>
       </div>
+
+      {/* Loyalty punch card — shown if the branch has a program */}
+      {loyaltyCard && <LoyaltyCardDisplay card={loyaltyCard} />}
 
       <div className="mt-6 text-[10px] text-ink-mute text-center tracking-wide">
         {t("ticket.keep_open")}
@@ -402,6 +415,49 @@ function ArrivalCard({ ticket, trackingState, onEnable }) {
       </div>
       <div className="text-[10px] text-ink-mute mt-3 tracking-wide text-center">
         Tracking stops automatically when you're served. We don't keep this data after.
+      </div>
+    </div>
+  );
+}
+
+/* ── Loyalty card display ──────────────────────────────────────────── */
+function LoyaltyCardDisplay({ card }) {
+  const program = card?.program;
+  if (!program) return null;
+
+  const dots = punchDots(card, program);
+  const unclaimed = hasUnclaimedReward(card);
+  const remaining = program.punches_required - card.current_punches;
+
+  return (
+    <div className="mt-6 border border-line bg-bg-elev p-5">
+      <div className="flex items-center justify-between mb-3">
+        <div className="ovline text-[9px] text-gold-soft">{program.name ?? "Loyalty Card"}</div>
+        {unclaimed && (
+          <div className="text-[9px] tracking-wide bg-gold text-[#141410] px-2 py-0.5 font-medium">
+            🎁 Reward ready!
+          </div>
+        )}
+      </div>
+
+      {/* Punch dots */}
+      <div className="flex flex-wrap gap-1.5 mb-3">
+        {dots.map((filled, i) => (
+          <div
+            key={i}
+            className={`w-5 h-5 rounded-full border transition ${
+              filled
+                ? "bg-gold border-gold shadow-[0_0_6px_rgba(201,168,106,0.4)]"
+                : "border-line-2 bg-bg"
+            }`}
+          />
+        ))}
+      </div>
+
+      <div className="text-[11px] text-ink-soft">
+        {unclaimed
+          ? `You've earned: ${program.reward_description} — let staff know to claim it.`
+          : `${remaining} more visit${remaining === 1 ? "" : "s"} to earn: ${program.reward_description}`}
       </div>
     </div>
   );

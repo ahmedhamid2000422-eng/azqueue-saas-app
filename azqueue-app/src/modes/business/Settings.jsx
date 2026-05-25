@@ -21,6 +21,7 @@ import {
   disconnectFreshdesk,
   testFreshdeskCredentials,
 } from "../../lib/freshdesk";
+import { getLoyaltyProgram, saveLoyaltyProgram } from "../../lib/loyalty";
 
 export default function Settings() {
   const { user } = useAuth();
@@ -45,6 +46,7 @@ export default function Settings() {
     { id: "staff",    label: "Staff" },
     { id: "modes",    label: "Modes" },
     { id: "checklists",   label: "Checklists" },
+    { id: "loyalty",      label: "Loyalty" },
     { id: "integrations", label: "Integrations" },
     { id: "billing",      label: "Billing" },
   ];
@@ -84,6 +86,7 @@ export default function Settings() {
       {tab === "staff"    && <StaffTab branch={branch} />}
       {tab === "modes"    && <ModesTab branch={branch} reload={reload} />}
       {tab === "checklists"   && <ChecklistsTab branch={branch} />}
+      {tab === "loyalty"      && <LoyaltyTab branch={branch} />}
       {tab === "integrations" && <IntegrationsTab branch={branch} />}
       {tab === "billing"      && <BillingTab />}
     </div>
@@ -1108,6 +1111,146 @@ function IntegrationsTab({ branch }) {
         <h3 className="text-sm text-ink-soft">WhatsApp Business · Facebook · Instagram · HubSpot</h3>
         <p className="text-[11px] text-ink-mute mt-1">More integrations are on the roadmap.</p>
       </Card>
+    </div>
+  );
+}
+
+
+/* ── Loyalty Program Tab ─────────────────────────────────────────── */
+function LoyaltyTab({ branch }) {
+  const [program,  setProgram]  = useState(null);
+  const [loading,  setLoading]  = useState(true);
+  const [busy,     setBusy]     = useState(false);
+  const [saved,    setSaved]    = useState(false);
+
+  const [progName, setProgName] = useState("Loyalty Card");
+  const [punches,  setPunches]  = useState(10);
+  const [reward,   setReward]   = useState("Free service of your choice");
+
+  useEffect(() => {
+    if (!branch?.id) return;
+    setLoading(true);
+    getLoyaltyProgram(branch.id).then((p) => {
+      if (p) {
+        setProgram(p);
+        setProgName(p.name);
+        setPunches(p.punches_required);
+        setReward(p.reward_description);
+      }
+      setLoading(false);
+    });
+  }, [branch?.id]);
+
+  async function handleSave() {
+    if (!branch?.id || busy) return;
+    setBusy(true);
+    setSaved(false);
+    try {
+      const p = await saveLoyaltyProgram(branch.id, {
+        name: progName.trim() || "Loyalty Card",
+        punchesRequired: Math.min(50, Math.max(1, Number(punches))),
+        rewardDescription: reward.trim() || "Free service of your choice",
+      });
+      setProgram(p);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      alert("Failed to save: " + err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (loading) {
+    return <div className="ovline text-ink-mute py-8">Loading…</div>;
+  }
+
+  const previewCount = Math.min(Number(punches) || 10, 20);
+
+  return (
+    <div className="max-w-xl space-y-6">
+      <Card className="p-6">
+        <CardHeader
+          title="Digital Punch Card"
+          description="Customers earn a punch every time they complete a visit. When they hit the target, they unlock a reward."
+        />
+
+        {/* Live preview dots */}
+        <div className="flex flex-wrap gap-2 mb-6">
+          {Array.from({ length: previewCount }, (_, i) => (
+            <div
+              key={i}
+              className={`w-6 h-6 rounded-full border transition ${
+                i < Math.min(previewCount, 6)
+                  ? "bg-gold border-gold shadow-[0_0_6px_rgba(201,168,106,0.35)]"
+                  : "border-line-2 bg-bg"
+              }`}
+            />
+          ))}
+          {Number(punches) > 20 && (
+            <span className="text-[10px] text-ink-mute self-center">
+              +{Number(punches) - 20} more
+            </span>
+          )}
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="ovline text-[9px] block mb-1">Program name</label>
+            <input
+              value={progName}
+              onChange={(e) => setProgName(e.target.value)}
+              placeholder="Loyalty Card"
+              className="w-full bg-bg border border-line focus:border-gold-deep outline-none text-sm px-4 py-3 text-ink placeholder:text-ink-mute transition"
+            />
+          </div>
+
+          <div>
+            <label className="ovline text-[9px] block mb-1">Punches to earn reward (1–50)</label>
+            <input
+              type="number"
+              min={1}
+              max={50}
+              value={punches}
+              onChange={(e) => setPunches(e.target.value)}
+              className="w-full bg-bg border border-line focus:border-gold-deep outline-none text-sm px-4 py-3 text-ink placeholder:text-ink-mute transition"
+            />
+          </div>
+
+          <div>
+            <label className="ovline text-[9px] block mb-1">Reward description</label>
+            <input
+              value={reward}
+              onChange={(e) => setReward(e.target.value)}
+              placeholder="Free service of your choice"
+              className="w-full bg-bg border border-line focus:border-gold-deep outline-none text-sm px-4 py-3 text-ink placeholder:text-ink-mute transition"
+            />
+            <div className="text-[10px] text-ink-mute mt-1">
+              Shown to customers on their ticket page and to staff on the customer profile.
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4 mt-6">
+          <Button onClick={handleSave} disabled={busy}>
+            {busy ? "Saving…" : program ? "Update program" : "Enable loyalty program"}
+          </Button>
+          {saved && <span className="text-[10px] text-[#9bbd9b]">Saved.</span>}
+        </div>
+      </Card>
+
+      {program && (
+        <Card className="p-6">
+          <CardHeader title="How it works" />
+          <div className="text-[12px] text-ink-soft space-y-2 leading-relaxed">
+            <p>A punch is added automatically every time staff complete a ticket.</p>
+            <p>Staff can also add bonus punches manually from the customer profile in Customers.</p>
+            <p>When the customer earns a reward, a notification appears in the queue dashboard.</p>
+            <p>Customers see their punch card on the ticket page after checking in.</p>
+            <p>Staff redeem rewards from the customer profile card in Customers.</p>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

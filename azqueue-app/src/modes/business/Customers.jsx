@@ -23,6 +23,15 @@ import {
   generateAiReply,
 } from "../../lib/messaging";
 import { scoreEmoji, scoreColour } from "../../lib/satisfaction";
+import {
+  getCustomerCard,
+  getCardEvents,
+  addBonusPunch,
+  redeemReward,
+  punchDots,
+  hasUnclaimedReward,
+  getLoyaltyProgram,
+} from "../../lib/loyalty";
 
 /**
  * Customers — unified identity + conversation timeline.
@@ -225,6 +234,11 @@ function CustomersInner() {
 
   const [error,      setError]      = useState(null);
 
+  // Loyalty card
+  const [loyaltyCard,   setLoyaltyCard]   = useState(null);
+  const [loyaltyEvents, setLoyaltyEvents] = useState([]);
+  const [loyaltyBusy,   setLoyaltyBusy]  = useState(false);
+
   // Add-customer form
   const [showAddForm,  setShowAddForm]  = useState(false);
   const [addName,      setAddName]      = useState("");
@@ -261,16 +275,28 @@ function CustomersInner() {
   // ── Load profile ────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!selected) { setProfile(null); return; }
+    if (!selected) { setProfile(null); setLoyaltyCard(null); setLoyaltyEvents([]); return; }
     setProfLoading(true);
     setComposeText("");
     setComposeResult(null);
+    setLoyaltyCard(null);
+    setLoyaltyEvents([]);
     Promise.all([
       loadCustomerProfile(selected),
       loadChannelConnections(branch?.id),
     ]).then(([prof, conns]) => {
       setProfile(prof);
       setConnections(conns);
+      // Load loyalty card non-blocking
+      if (branch?.id) {
+        getCustomerCard(branch.id, selected).then(async (card) => {
+          setLoyaltyCard(card);
+          if (card?.id) {
+            const evs = await getCardEvents(card.id);
+            setLoyaltyEvents(evs);
+          }
+        }).catch(() => {});
+      }
     }).finally(() => setProfLoading(false));
   }, [selected, branch?.id]);
 
@@ -445,6 +471,37 @@ function CustomersInner() {
     if (!tag || !profile) return;
     setTagDraft("");
     await handleTagToggle(tag);
+  }
+
+  // ── Loyalty handlers ──────────────────────────────────────────────
+  async function handleBonusPunch() {
+    if (!selected || !branch?.id || loyaltyBusy) return;
+    setLoyaltyBusy(true);
+    try {
+      await addBonusPunch(branch.id, selected, null, user?.id ?? null);
+      const card = await getCustomerCard(branch.id, selected);
+      setLoyaltyCard(card);
+      if (card?.id) {
+        const evs = await getCardEvents(card.id);
+        setLoyaltyEvents(evs);
+      }
+    } catch {}
+    setLoyaltyBusy(false);
+  }
+
+  async function handleRedeemReward() {
+    if (!selected || !branch?.id || loyaltyBusy) return;
+    setLoyaltyBusy(true);
+    try {
+      await redeemReward(branch.id, selected, user?.id ?? null);
+      const card = await getCustomerCard(branch.id, selected);
+      setLoyaltyCard(card);
+      if (card?.id) {
+        const evs = await getCardEvents(card.id);
+        setLoyaltyEvents(evs);
+      }
+    } catch {}
+    setLoyaltyBusy(false);
   }
 
   // Collect all unique tags across the loaded customer list for the filter bar
@@ -990,6 +1047,76 @@ function CustomersInner() {
               </div>
             )}
 
+            {/* ── Loyalty card ── */}
+            {loyaltyCard && (
+              <div className="mb-6 border border-line bg-bg-elev p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="ovline text-[9px] text-gold-soft">
+                    {loyaltyCard.program?.name ?? "Loyalty Card"}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {hasUnclaimedReward(loyaltyCard) && (
+                      <button
+                        onClick={handleRedeemReward}
+                        disabled={loyaltyBusy}
+                        className="text-[9px] tracking-wide bg-gold text-[#141410] px-2 py-0.5 font-medium hover:opacity-90 disabled:opacity-50"
+                      >
+                        🎁 Redeem reward
+                      </button>
+                    )}
+                    <button
+                      onClick={handleBonusPunch}
+                      disabled={loyaltyBusy}
+                      className="text-[9px] ovline border border-gold-deep text-gold-soft px-2 py-0.5 hover:bg-[rgba(201,168,106,0.08)] disabled:opacity-50"
+                    >
+                      + Bonus punch
+                    </button>
+                  </div>
+                </div>
+
+                {/* Punch dots */}
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {punchDots(loyaltyCard, loyaltyCard.program).map((filled, i) => (
+                    <div
+                      key={i}
+                      className={`w-4 h-4 rounded-full border transition ${
+                        filled
+                          ? "bg-gold border-gold shadow-[0_0_5px_rgba(201,168,106,0.4)]"
+                          : "border-line-2 bg-bg"
+                      }`}
+                    />
+                  ))}
+                </div>
+
+                <div className="text-[11px] text-ink-soft mb-3">
+                  {hasUnclaimedReward(loyaltyCard)
+                    ? `Reward ready: ${loyaltyCard.program?.reward_description}`
+                    : `${loyaltyCard.program?.punches_required - loyaltyCard.current_punches} more visit${(loyaltyCard.program?.punches_required - loyaltyCard.current_punches) === 1 ? "" : "s"} to earn: ${loyaltyCard.program?.reward_description}`}
+                </div>
+
+                <div className="text-[10px] text-ink-mute flex gap-4">
+                  <span>{loyaltyCard.lifetime_punches} lifetime visits</span>
+                  <span>{loyaltyCard.rewards_earned} reward{loyaltyCard.rewards_earned !== 1 ? "s" : ""} earned</span>
+                  {loyaltyCard.last_punch_at && (
+                    <span>Last: {new Date(loyaltyCard.last_punch_at).toLocaleDateString()}</span>
+                  )}
+                </div>
+
+                {loyaltyEvents.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-line flex flex-col gap-1">
+                    {loyaltyEvents.slice(0, 5).map((ev) => (
+                      <div key={ev.id} className="flex items-center gap-2 text-[10px] text-ink-mute">
+                        <span>{ev.event_type === "punch" ? "★" : ev.event_type === "bonus_punch" ? "✦" : ev.event_type === "reward_earned" ? "🎁" : "✓"}</span>
+                        <span className="capitalize">{ev.event_type.replace("_", " ")}</span>
+                        {ev.note && <span className="text-ink-soft">— {ev.note}</span>}
+                        <span className="ml-auto">{new Date(ev.created_at).toLocaleDateString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* ── Timeline ── */}
             <div className="mb-6">
               <div className="ovline text-[9px] mb-3 text-gold-soft">
@@ -1046,120 +1173,84 @@ function CustomersInner() {
                 {/* Channel selector */}
                 <div className="flex gap-1.5 flex-wrap">
                   {["manual","whatsapp","facebook","instagram","email"].map((ch) => {
-                    const conn     = connections[ch];
-                    const active   = composeChannel === ch;
+                    const conn      = connections[ch];
+                    const active    = composeChannel === ch;
                     const connected = ch === "manual" || conn?.status === "connected";
                     return (
                       <button
                         key={ch}
+                        type="button"
                         onClick={() => setComposeChannel(ch)}
-                        title={connected ? CHANNEL_LABEL[ch] : `${CHANNEL_LABEL[ch]} — not connected`}
-                        className={`text-[9px] tracking-[0.12em] uppercase border px-2 py-0.5 transition ${
+                        disabled={!connected}
+                        className={`text-[9px] tracking-[0.12em] uppercase px-2 py-1 border transition ${
                           active
-                            ? CHANNEL_COLOR[ch] ?? "text-ink border-line"
-                            : "text-ink-mute border-line/50 hover:border-line"
-                        } ${!connected ? "opacity-40" : ""}`}
+                            ? "border-gold text-gold"
+                            : connected
+                              ? "border-line text-ink-soft hover:border-gold-deep hover:text-ink"
+                              : "border-line/40 text-ink-mute/50 cursor-not-allowed"
+                        }`}
+                        title={connected ? undefined : ch + " not connected"}
                       >
-                        {ch === "manual" ? "Manual" : CHANNEL_LABEL[ch]}
-                        {!connected && ch !== "manual" && " ·"}
+                        {ch === "manual" ? "Note" : ch}
+                        {connected && ch !== "manual" && (
+                          <span className="ml-1 text-[#9bbd9b] text-[8px]">●</span>
+                        )}
                       </button>
                     );
                   })}
                 </div>
               </div>
 
-              <form onSubmit={handleSend} className="p-4 flex flex-col gap-3">
-                {/* Connection status hint */}
-                {composeChannel !== "manual" && connections[composeChannel]?.status !== "connected" && (
-                  <div className="text-[10px] text-ink-mute border border-line px-3 py-2">
-                    {CHANNEL_LABEL[composeChannel]} is not connected — message will be logged but you'll need to send it manually in the native platform.
-                    {" "}<span className="text-gold-soft">Connect in Settings → Channels when ready.</span>
-                  </div>
-                )}
-
-                {/* Textarea */}
+              <div className="px-4 py-3">
                 <textarea
-                  rows={3}
                   value={composeText}
                   onChange={(e) => setComposeText(e.target.value)}
-                  placeholder={`Write a message to send via ${CHANNEL_LABEL[composeChannel] ?? composeChannel}…`}
-                  className="w-full bg-transparent border border-line text-xs px-3 py-2 resize-none focus:outline-none focus:border-gold-deep placeholder:text-ink-mute"
+                  placeholder={
+                    composeChannel === "manual"
+                      ? "Add a staff note…"
+                      : `Type a message to send via ${composeChannel}…`
+                  }
+                  rows={3}
+                  className="w-full bg-bg border border-line focus:border-gold-deep outline-none text-sm px-3 py-2 text-ink placeholder:text-ink-mute resize-none transition"
                 />
+              </div>
 
-                {/* Actions row */}
-                <div className="flex items-center gap-2">
-                  {aiEnabled && (
-                    <button
-                      type="button"
-                      onClick={handleAiDraft}
-                      disabled={aiDraftBusy || !profile.events?.length}
-                      className="text-[10px] text-ink-mute hover:text-gold-soft border border-line px-2.5 py-1 transition disabled:opacity-40"
-                    >
-                      {aiDraftBusy ? "Drafting..." : "AI draft"}
-                    </button>
-                  )}
-                  <div className="flex-1" />
+              <div className="px-4 pb-4 flex items-center gap-3 flex-wrap">
+                <Button
+                  size="sm"
+                  onClick={handleSend}
+                  disabled={composeBusy || !composeText.trim()}
+                >
+                  {composeBusy ? "Sending…" : composeChannel === "manual" ? "Save note" : "Send"}
+                </Button>
+                {composeChannel !== "manual" && (
                   <Button
                     size="sm"
-                    type="submit"
-                    disabled={composeBusy || !composeText.trim()}
+                    variant="ghost"
+                    onClick={handleAiDraft}
+                    disabled={aiDraftBusy || !profile.events?.length}
                   >
-                    {composeBusy ? "Sending..." : composeChannel === "manual" ? "Log message" : `Send via ${CHANNEL_LABEL[composeChannel]}`}
+                    {aiDraftBusy ? "Drafting…" : "AI draft"}
                   </Button>
-                </div>
-
-                {composeResult && (
-                  <div className={`text-[10px] px-3 py-2 border ${
-                    composeResult.sent
-                      ? "border-[#506b50] text-[#9bbd9b]"
-                      : "border-line text-ink-mute"
-                  }`}>
-                    {composeResult.sent
-                      ? `Sent via ${CHANNEL_LABEL[composeChannel]}`
-                      : "Logged — send manually in the native platform"}
-                  </div>
                 )}
-              </form>
+                {composeResult && (
+                  <span className={`text-[10px] ${composeResult.sent ? "text-[#9bbd9b]" : "text-ink-mute"}`}>
+                    {composeResult.sent ? "Sent ✓" : composeResult.manual ? "Saved as note" : "Delivered"}
+                  </span>
+                )}
+              </div>
             </div>
 
-            {/* Internal notes */}
-            <div>
-              <div className="ovline text-[9px] mb-3 text-gold-soft">Internal notes</div>
-              <form onSubmit={handleAddNote} className="flex gap-2 mb-4">
-                <input
-                  value={noteText}
-                  onChange={(e) => setNoteText(e.target.value)}
-                  placeholder="Add a private note visible only to staff..."
-                  className="flex-1 bg-transparent border border-line text-xs px-3 py-2 focus:outline-none focus:border-gold-deep placeholder:text-ink-mute"
-                />
-                <Button size="sm" type="submit" disabled={noteBusy || !noteText.trim()}>
-                  Add
-                </Button>
-              </form>
-              {profile.notes.length === 0 ? (
-                <p className="text-xs text-ink-mute">No notes yet.</p>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  {profile.notes.map((note) => (
-                    <div
-                      key={note.id}
-                      className="border border-line bg-bg-elev px-4 py-3 text-xs flex gap-3 items-start"
-                    >
-                      <span className="text-ink-soft flex-1 leading-relaxed">{note.content}</span>
-                      <div className="flex items-center gap-3 shrink-0 text-[10px]">
-                        <span className="text-ink-mute">{fmtDate(note.created_at)}</span>
-                        <button
-                          onClick={() => handleDeleteNote(note.id)}
-                          className="text-ink-mute hover:text-red-400 transition"
-                        >
-                          x
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+            {/* ── Delete zone ── */}
+            <div className="mt-8 pt-6 border-t border-line/50 flex justify-end">
+              <button
+                onClick={handleDelete}
+                className="text-[10px] text-ink-mute hover:text-red-400 transition tracking-wide"
+              >
+                Delete customer record
+              </button>
             </div>
+
           </div>
         )}
       </main>
