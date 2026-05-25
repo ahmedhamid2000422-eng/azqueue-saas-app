@@ -1,21 +1,25 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   AzQueue Landing — "Da Vinci" edition
-   Every pixel earns its place. Every word does work.
-───────────────────────────────────────────────────────────────────────────── */
+/*
+ * AzQueue Landing — Premium edition
+ * Positioning: "The operating system for walk-in service businesses."
+ * Direction: Stripe / Linear / Ramp — dark, gold, precise, spacious.
+ */
 
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-[#0e0e0b] text-[#f5f3ee] font-sans overflow-x-hidden">
+    <div className="min-h-screen bg-[#080807] text-[#f0ede6] overflow-x-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
       <Nav />
       <Hero />
-      <FlowSection />
-      <KioskSection />
-      <FeaturesSection />
-      <ForSection />
-      <SocialProof />
+      <TrustBar />
+      <ProblemSolution />
+      <WorkflowSection />
+      <ProductShowcase />
+      <FeaturesGrid />
+      <StatBar />
+      <IndustriesSection />
+      <Testimonials />
       <Pricing />
       <FinalCTA />
       <Footer />
@@ -23,32 +27,84 @@ export default function Landing() {
   );
 }
 
-/* ── Nav ───────────────────────────────────────────────────────────────────── */
+/* ── Helpers ── */
+function useInView(threshold = 0.2) {
+  const ref = useRef(null);
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setInView(true); obs.disconnect(); } }, { threshold });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [threshold]);
+  return [ref, inView];
+}
+
+function useCounter(target, duration = 1200, active = false) {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    if (!active) return;
+    let start = null;
+    const step = (ts) => {
+      if (!start) start = ts;
+      const progress = Math.min((ts - start) / duration, 1);
+      setCount(Math.floor(progress * target));
+      if (progress < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }, [active, target, duration]);
+  return count;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   NAV
+══════════════════════════════════════════════════════════════════════ */
 function Nav() {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
-    const h = () => setScrolled(window.scrollY > 40);
+    const h = () => setScrolled(window.scrollY > 60);
     window.addEventListener("scroll", h, { passive: true });
     return () => window.removeEventListener("scroll", h);
   }, []);
 
   return (
-    <nav className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrolled ? "bg-[#0e0e0b]/95 backdrop-blur border-b border-white/5" : ""}`}>
-      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 bg-[#c9a86a] rounded flex items-center justify-center font-serif text-[#0e0e0b] text-sm font-bold shadow-[0_0_20px_rgba(201,168,106,0.35)]">
-            A
-          </div>
-          <span className="font-serif text-base tracking-tight text-[#f5f3ee]">AzQueue</span>
+    <nav style={{
+      position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
+      transition: "background 0.3s, border-color 0.3s",
+      background: scrolled ? "rgba(8,8,7,0.96)" : "transparent",
+      backdropFilter: scrolled ? "blur(12px)" : "none",
+      borderBottom: scrolled ? "1px solid rgba(255,255,255,0.06)" : "1px solid transparent",
+    }}>
+      <div style={{ maxWidth: 1120, margin: "0 auto", padding: "0 28px", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{
+            width: 28, height: 28, background: "#c9a86a", borderRadius: 4,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontFamily: "Georgia, serif", fontSize: 13, fontWeight: 700, color: "#080807",
+            boxShadow: "0 0 24px rgba(201,168,106,0.4)",
+          }}>A</div>
+          <span style={{ fontFamily: "Georgia, serif", fontSize: 15, letterSpacing: "-0.01em", color: "#f0ede6" }}>AzQueue</span>
         </div>
-        <div className="hidden md:flex items-center gap-8 text-[11px] tracking-[0.18em] uppercase text-[#908e86]">
-          <a href="#how" className="hover:text-[#f5f3ee] transition">How it works</a>
-          <a href="#features" className="hover:text-[#f5f3ee] transition">Features</a>
-          <a href="#pricing" className="hover:text-[#f5f3ee] transition">Pricing</a>
+
+        <div style={{ display: "flex", gap: 36, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: "#5a5852" }}>
+          {[["#workflow", "How it works"], ["#features", "Features"], ["#pricing", "Pricing"]].map(([href, label]) => (
+            <a key={label} href={href} style={{ color: "#5a5852", textDecoration: "none", transition: "color 0.15s" }}
+               onMouseEnter={e => e.target.style.color = "#f0ede6"}
+               onMouseLeave={e => e.target.style.color = "#5a5852"}>
+              {label}
+            </a>
+          ))}
         </div>
-        <Link
-          to="/login"
-          className="text-[11px] tracking-[0.18em] uppercase bg-[#c9a86a] text-[#0e0e0b] px-4 py-2 font-medium hover:bg-[#d4b87a] transition"
+
+        <Link to="/login" style={{
+          fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase",
+          background: "#c9a86a", color: "#080807", padding: "10px 20px",
+          textDecoration: "none", fontWeight: 600,
+          transition: "background 0.15s",
+        }}
+          onMouseEnter={e => e.currentTarget.style.background = "#d4b87a"}
+          onMouseLeave={e => e.currentTarget.style.background = "#c9a86a"}
         >
           Start free
         </Link>
@@ -57,287 +113,594 @@ function Nav() {
   );
 }
 
-/* ── Hero ──────────────────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════════
+   HERO
+══════════════════════════════════════════════════════════════════════ */
+function TickerAnimation() {
+  const [token, setToken] = useState("A-01");
+  const [state, setState] = useState("waiting");
+  useEffect(() => {
+    const tokens = ["A-07","B-12","A-03","C-21","B-08"];
+    let i = 0;
+    const cycle = () => {
+      setState("serving");
+      setTimeout(() => {
+        i = (i + 1) % tokens.length;
+        setToken(tokens[i]);
+        setState("waiting");
+      }, 1800);
+    };
+    const id = setInterval(cycle, 3200);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <div style={{
+      background: "#111109", border: `1px solid ${state === "serving" ? "rgba(155,189,155,0.4)" : "rgba(201,168,106,0.25)"}`,
+      padding: "12px 20px", display: "inline-flex", alignItems: "center", gap: 12,
+      transition: "border-color 0.5s",
+    }}>
+      <div style={{
+        width: 6, height: 6, borderRadius: "50%",
+        background: state === "serving" ? "#9bbd9b" : "#c9a86a",
+        boxShadow: `0 0 8px ${state === "serving" ? "#9bbd9b" : "#c9a86a"}`,
+        animation: "breathe 2s ease-in-out infinite",
+      }} />
+      <span style={{ fontFamily: "monospace", fontSize: 11, letterSpacing: "0.15em", color: "#908e86" }}>
+        {state === "serving" ? "NOW SERVING" : "NEXT UP"}
+      </span>
+      <span style={{ fontFamily: "Georgia, serif", fontSize: 22, color: state === "serving" ? "#9bbd9b" : "#c9a86a", letterSpacing: "-0.01em", transition: "color 0.4s" }}>
+        {token}
+      </span>
+    </div>
+  );
+}
+
 function Hero() {
   return (
-    <section className="pt-36 pb-20 px-6 text-center max-w-4xl mx-auto">
-      <div className="inline-flex items-center gap-2 text-[10px] tracking-[0.25em] uppercase text-[#c9a86a] border border-[#c9a86a]/30 px-3 py-1.5 mb-10">
-        <span className="w-1.5 h-1.5 rounded-full bg-[#c9a86a] animate-pulse" />
-        Walk-in queue management
-      </div>
+    <section style={{ paddingTop: 160, paddingBottom: 120, textAlign: "center", padding: "160px 28px 120px", position: "relative" }}>
+      {/* Subtle radial glow behind headline */}
+      <div style={{
+        position: "absolute", top: "30%", left: "50%", transform: "translate(-50%,-50%)",
+        width: 600, height: 400, borderRadius: "50%",
+        background: "radial-gradient(ellipse, rgba(201,168,106,0.06) 0%, transparent 70%)",
+        pointerEvents: "none",
+      }} />
 
-      <h1 className="font-serif font-light text-5xl md:text-7xl tracking-tight leading-[1.08] mb-6 text-[#f5f3ee]">
-        Your walk-in queue,<br />
-        <span style={{ background: "linear-gradient(135deg, #c9a86a, #e8d5a3)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-          on autopilot.
-        </span>
-      </h1>
+      <div style={{ maxWidth: 840, margin: "0 auto", position: "relative" }}>
+        <div style={{
+          display: "inline-flex", alignItems: "center", gap: 8,
+          fontSize: 10, letterSpacing: "0.25em", textTransform: "uppercase",
+          color: "#c9a86a", border: "1px solid rgba(201,168,106,0.25)",
+          padding: "7px 16px", marginBottom: 48,
+        }}>
+          <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#c9a86a", display: "inline-block", animation: "breathe 2s ease-in-out infinite" }} />
+          Customer flow infrastructure
+        </div>
 
-      <p className="text-lg md:text-xl text-[#908e86] max-w-2xl mx-auto leading-relaxed mb-4">
-        Customers scan a QR code, check in on an iPad, and get WhatsApp or SMS updates when it's their turn.
-        No paper. No shouting names. No confusion.
-      </p>
-
-      <p className="text-sm text-[#5e5c57] mb-12">
-        Built for clinics, law firms, government counters, salons & repair shops across Malaysia, MENA and Africa.
-      </p>
-
-      <div className="flex flex-col sm:flex-row gap-4 justify-center">
-        <Link
-          to="/login"
-          className="inline-block bg-[#c9a86a] text-[#0e0e0b] px-8 py-4 text-sm font-semibold tracking-wide hover:bg-[#d4b87a] transition shadow-[0_0_40px_rgba(201,168,106,0.25)]"
-        >
-          Start free — no credit card
-        </Link>
-        <a
-          href="#how"
-          className="inline-block border border-white/10 text-[#908e86] px-8 py-4 text-sm tracking-wide hover:border-white/20 hover:text-[#f5f3ee] transition"
-        >
-          See how it works ↓
-        </a>
-      </div>
-
-      {/* Trust bar */}
-      <div className="mt-16 flex flex-wrap justify-center gap-8 text-[11px] tracking-[0.15em] uppercase text-[#5e5c57]">
-        {["Multilingual kiosk", "WhatsApp + SMS", "Real-time dashboard", "Prayer time aware", "iPad ready"].map((t) => (
-          <span key={t} className="flex items-center gap-1.5">
-            <span className="text-[#c9a86a]">✦</span> {t}
+        <h1 style={{
+          fontFamily: "Georgia, 'Times New Roman', serif",
+          fontSize: "clamp(40px, 6vw, 72px)",
+          fontWeight: 300, letterSpacing: "-0.025em", lineHeight: 1.08,
+          color: "#f0ede6", marginBottom: 28,
+        }}>
+          The operating system<br />
+          <span style={{ background: "linear-gradient(135deg, #c9a86a 0%, #e8d5a3 50%, #c9a86a 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+            for walk-in service businesses.
           </span>
+        </h1>
+
+        <p style={{ fontSize: 18, color: "#6a6760", maxWidth: 580, margin: "0 auto 16px", lineHeight: 1.75 }}>
+          Customers check in on a kiosk. Staff see every ticket live. Customers get WhatsApp or SMS updates when they're up. No paper. No shouting. No chaos.
+        </p>
+        <p style={{ fontSize: 13, color: "#3a3835", marginBottom: 52 }}>
+          Built for clinics, law firms, immigration offices, and service centers across Malaysia, MENA and Africa.
+        </p>
+
+        <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap", marginBottom: 64 }}>
+          <Link to="/login" style={{
+            background: "#c9a86a", color: "#080807", padding: "16px 36px",
+            fontSize: 13, fontWeight: 600, letterSpacing: "0.05em",
+            textDecoration: "none", transition: "all 0.2s",
+            boxShadow: "0 0 48px rgba(201,168,106,0.2)",
+          }}
+            onMouseEnter={e => { e.currentTarget.style.background = "#d4b87a"; e.currentTarget.style.boxShadow = "0 0 64px rgba(201,168,106,0.35)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "#c9a86a"; e.currentTarget.style.boxShadow = "0 0 48px rgba(201,168,106,0.2)"; }}
+          >
+            Start free — no credit card
+          </Link>
+          <a href="#workflow" style={{
+            border: "1px solid rgba(255,255,255,0.1)", color: "#908e86",
+            padding: "16px 36px", fontSize: 13, letterSpacing: "0.05em",
+            textDecoration: "none", transition: "all 0.15s",
+          }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(201,168,106,0.3)"; e.currentTarget.style.color = "#f0ede6"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "#908e86"; }}
+          >
+            See how it works ↓
+          </a>
+        </div>
+
+        {/* Live ticket ticker */}
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 48 }}>
+          <TickerAnimation />
+        </div>
+
+        {/* Trust pills */}
+        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 24, fontSize: 10, letterSpacing: "0.15em", textTransform: "uppercase", color: "#3a3835" }}>
+          {["WhatsApp + SMS", "6 languages", "Prayer time aware", "iPad kiosk", "AI-powered", "14-day free trial"].map(t => (
+            <span key={t} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ color: "#c9a86a" }}>✦</span> {t}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes breathe { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.6;transform:scale(0.85)} }
+        @keyframes slideUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+      `}</style>
+    </section>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   TRUST BAR
+══════════════════════════════════════════════════════════════════════ */
+function TrustBar() {
+  return (
+    <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)", padding: "28px 28px" }}>
+      <div style={{ maxWidth: 1120, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", gap: 48, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: "#3a3835" }}>Trusted by businesses in</span>
+        {["Kuala Lumpur", "Dubai", "Riyadh", "Lagos", "Nairobi", "Karachi"].map(city => (
+          <span key={city} style={{ fontSize: 11, letterSpacing: "0.12em", color: "#5a5852" }}>{city}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   PROBLEM → SOLUTION
+══════════════════════════════════════════════════════════════════════ */
+function ProblemSolution() {
+  const [ref, inView] = useInView(0.15);
+  const before = [
+    "Customers crowd the entrance, not knowing their position",
+    "Staff shout names and numbers across the room",
+    "No-shows back up the queue for everyone",
+    "Walk-ins and appointments collide with no system",
+    "Zero visibility into wait times or staff performance",
+  ];
+  const after = [
+    "Customers check in on a kiosk and wait anywhere they like",
+    "WhatsApp or SMS tells each customer exactly when to come",
+    "Live queue updates eliminate confusion and no-shows",
+    "Walk-ins and bookings merge into one intelligent dashboard",
+    "Real-time analytics — wait times, SLA alerts, staff metrics",
+  ];
+
+  return (
+    <section style={{ padding: "120px 28px", background: "#0a0a08" }}>
+      <div ref={ref} style={{ maxWidth: 1120, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 72 }}>
+          <div style={{ fontSize: 10, letterSpacing: "0.25em", textTransform: "uppercase", color: "#c9a86a", marginBottom: 16 }}>The transformation</div>
+          <h2 style={{ fontFamily: "Georgia, serif", fontSize: "clamp(28px, 4vw, 48px)", fontWeight: 300, letterSpacing: "-0.02em", color: "#f0ede6" }}>
+            Every walk-in service business<br />lives in one of two worlds.
+          </h2>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2, background: "rgba(255,255,255,0.04)" }}>
+          {/* Before */}
+          <div style={{
+            background: "#0a0a08", padding: 48,
+            opacity: inView ? 1 : 0, transform: inView ? "translateY(0)" : "translateY(24px)",
+            transition: "opacity 0.6s ease, transform 0.6s ease",
+          }}>
+            <div style={{ fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", color: "#6b3535", marginBottom: 16 }}>Without AzQueue</div>
+            <h3 style={{ fontFamily: "Georgia, serif", fontSize: 24, fontWeight: 300, color: "#8a7070", marginBottom: 32, letterSpacing: "-0.01em" }}>Controlled chaos.</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {before.map(item => (
+                <div key={item} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+                  <span style={{ color: "#6b3535", fontSize: 12, marginTop: 2, flexShrink: 0 }}>✕</span>
+                  <span style={{ fontSize: 13, color: "#4a3a3a", lineHeight: 1.6 }}>{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* After */}
+          <div style={{
+            background: "#0c0d0a", padding: 48,
+            borderLeft: "1px solid rgba(201,168,106,0.15)",
+            opacity: inView ? 1 : 0, transform: inView ? "translateY(0)" : "translateY(24px)",
+            transition: "opacity 0.6s ease 0.15s, transform 0.6s ease 0.15s",
+          }}>
+            <div style={{ fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", color: "#c9a86a", marginBottom: 16 }}>With AzQueue</div>
+            <h3 style={{ fontFamily: "Georgia, serif", fontSize: 24, fontWeight: 300, color: "#c9a86a", marginBottom: 32, letterSpacing: "-0.01em" }}>Operational calm.</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {after.map(item => (
+                <div key={item} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+                  <span style={{ color: "#9bbd9b", fontSize: 12, marginTop: 2, flexShrink: 0 }}>✦</span>
+                  <span style={{ fontSize: 13, color: "#908e86", lineHeight: 1.6 }}>{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   WORKFLOW — 5 STEPS
+══════════════════════════════════════════════════════════════════════ */
+function WorkflowSection() {
+  const [ref, inView] = useInView(0.1);
+
+  const steps = [
+    { n: "01", icon: "🚶", title: "Walk in", sub: "Customer arrives and sees the QR code or kiosk at reception" },
+    { n: "02", icon: "📲", title: "Self check-in", sub: "Picks service, enters name and phone — 30 seconds on any device" },
+    { n: "03", icon: "💬", title: "Instant notification", sub: "Receives WhatsApp or SMS ticket with live position link" },
+    { n: "04", icon: "☕", title: "Wait anywhere", sub: "Monitors their position in real time from their own phone" },
+    { n: "05", icon: "✅", title: "Called when ready", sub: "One tap from staff sends the call notification automatically" },
+  ];
+
+  return (
+    <section id="workflow" style={{ padding: "120px 28px" }}>
+      <div style={{ maxWidth: 1120, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 80 }}>
+          <div style={{ fontSize: 10, letterSpacing: "0.25em", textTransform: "uppercase", color: "#c9a86a", marginBottom: 16 }}>The workflow</div>
+          <h2 style={{ fontFamily: "Georgia, serif", fontSize: "clamp(28px, 4vw, 48px)", fontWeight: 300, letterSpacing: "-0.02em", color: "#f0ede6", marginBottom: 12 }}>
+            Five steps. Zero friction.
+          </h2>
+          <p style={{ fontSize: 15, color: "#5a5852", maxWidth: 480, margin: "0 auto" }}>
+            Every touchpoint handled automatically. Staff focus on the work — not the queue.
+          </p>
+        </div>
+
+        <div ref={ref} style={{ display: "flex", alignItems: "flex-start", position: "relative" }}>
+          {/* Connecting line */}
+          <div style={{
+            position: "absolute", top: 36, left: "10%", right: "10%", height: 1,
+            background: "linear-gradient(90deg, transparent, rgba(201,168,106,0.2) 20%, rgba(201,168,106,0.2) 80%, transparent)",
+            transition: "opacity 0.8s",
+            opacity: inView ? 1 : 0,
+          }} />
+
+          {steps.map((s, i) => (
+            <div key={i} style={{
+              flex: 1, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center",
+              opacity: inView ? 1 : 0,
+              transform: inView ? "translateY(0)" : "translateY(32px)",
+              transition: `opacity 0.5s ease ${i * 0.12}s, transform 0.5s ease ${i * 0.12}s`,
+            }}>
+              <div style={{
+                width: 72, height: 72, borderRadius: "50%",
+                background: "#111109", border: "1px solid rgba(201,168,106,0.2)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 28, marginBottom: 20, position: "relative", zIndex: 1,
+                boxShadow: "0 0 32px rgba(201,168,106,0.08)",
+              }}>
+                {s.icon}
+              </div>
+              <div style={{ fontSize: 9, letterSpacing: "0.22em", textTransform: "uppercase", color: "#c9a86a", marginBottom: 6 }}>{s.n}</div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: "#f0ede6", marginBottom: 8, padding: "0 8px" }}>{s.title}</div>
+              <div style={{ fontSize: 11, color: "#4a4845", lineHeight: 1.6, padding: "0 12px" }}>{s.sub}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   PRODUCT SHOWCASE — Kiosk + Dashboard
+══════════════════════════════════════════════════════════════════════ */
+function WhatsAppBubble() {
+  const [typed, setTyped] = useState("");
+  const msg = "Klinik Sejahtera: You're checked in. Ticket A-07 for General Consultation. We'll WhatsApp you when you're up.";
+  useEffect(() => {
+    let i = 0;
+    const id = setInterval(() => {
+      i++;
+      setTyped(msg.slice(0, i));
+      if (i >= msg.length) clearInterval(id);
+    }, 28);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <div style={{
+      position: "absolute", right: -20, top: 24,
+      background: "#25d366", borderRadius: "16px 16px 4px 16px",
+      padding: "12px 16px", maxWidth: 200,
+      boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+    }}>
+      <div style={{ fontSize: 10, fontWeight: 600, color: "#075e54", marginBottom: 4 }}>Klinik Sejahtera</div>
+      <div style={{ fontSize: 10, color: "#064e45", lineHeight: 1.55 }}>{typed}<span style={{ opacity: typed.length < msg.length ? 1 : 0 }}>|</span></div>
+    </div>
+  );
+}
+
+function KioskMockup() {
+  return (
+    <div style={{ position: "relative", display: "inline-block" }}>
+      {/* iPad frame */}
+      <div style={{
+        width: 280, background: "#1a1a16", borderRadius: 28,
+        border: "7px solid #252520", padding: 12,
+        boxShadow: "0 48px 100px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04)",
+      }}>
+        <div style={{ width: 32, height: 4, background: "#252520", borderRadius: 2, margin: "0 auto 10px" }} />
+        <div style={{ background: "#080807", borderRadius: 14, overflow: "hidden" }}>
+          {/* Kiosk screen */}
+          <div style={{ background: "#0a0a08", padding: 20 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20, paddingBottom: 12, borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+              <div style={{ width: 22, height: 22, background: "#c9a86a", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#080807" }}>A</div>
+              <span style={{ fontFamily: "Georgia, serif", fontSize: 13, color: "#f0ede6" }}>AzQueue</span>
+            </div>
+            <div style={{ fontSize: 8, letterSpacing: "0.2em", textTransform: "uppercase", color: "#c9a86a", marginBottom: 4 }}>Walk-in check-in</div>
+            <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: "#f0ede6", marginBottom: 16 }}>Klinik Sejahtera</div>
+            {/* Services */}
+            {[["General Consultation", true], ["Vaccination", false], ["Blood Test", false]].map(([svc, active]) => (
+              <div key={svc} style={{
+                display: "flex", alignItems: "center", gap: 10,
+                padding: "9px 12px", marginBottom: 4,
+                background: active ? "rgba(201,168,106,0.1)" : "#111109",
+                border: `1px solid ${active ? "rgba(201,168,106,0.3)" : "rgba(255,255,255,0.04)"}`,
+                borderRadius: 6,
+              }}>
+                <div style={{
+                  width: 10, height: 10, borderRadius: "50%",
+                  background: active ? "#c9a86a" : "transparent",
+                  border: active ? "none" : "1px solid #3a3835",
+                }} />
+                <span style={{ fontSize: 10, color: active ? "#c9a86a" : "#5a5852" }}>{svc}</span>
+              </div>
+            ))}
+            {/* Fields */}
+            <div style={{ marginTop: 14, marginBottom: 14, display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ background: "#111109", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 4, padding: "9px 12px", fontSize: 10, color: "#3a3835" }}>Ahmad bin Razali</div>
+              <div style={{ background: "#111109", border: "1px solid rgba(201,168,106,0.3)", borderRadius: 4, padding: "9px 12px", fontSize: 10, color: "#c9a86a" }}>+60 12-345 6789</div>
+            </div>
+            <div style={{ background: "#c9a86a", borderRadius: 4, padding: "11px 0", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#080807" }}>Check in →</div>
+          </div>
+        </div>
+        <div style={{ width: 32, height: 4, background: "#252520", borderRadius: 2, margin: "10px auto 0" }} />
+      </div>
+      {/* WhatsApp bubble */}
+      <WhatsAppBubble />
+      {/* Ticket chip */}
+      <div style={{
+        position: "absolute", bottom: 40, left: -24,
+        background: "#111109", border: "1px solid rgba(201,168,106,0.3)",
+        borderRadius: 12, padding: "12px 18px", textAlign: "center",
+        boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+      }}>
+        <div style={{ fontSize: 8, letterSpacing: "0.2em", textTransform: "uppercase", color: "#c9a86a", marginBottom: 4 }}>Ticket</div>
+        <div style={{ fontFamily: "Georgia, serif", fontSize: 28, color: "#c9a86a", lineHeight: 1 }}>A-07</div>
+        <div style={{ fontSize: 9, color: "#3a3835", marginTop: 4, fontFamily: "monospace" }}>3 ahead · ~12m</div>
+      </div>
+    </div>
+  );
+}
+
+function DashboardMockup() {
+  const tickets = [
+    { token: "A-04", name: "Siti Rahimah", service: "General", wait: "18m", status: "waiting" },
+    { token: "A-05", name: "Rajiv Kumar", service: "Blood Test", wait: "12m", status: "waiting" },
+    { token: "A-06", name: "Fatimah Hassan", service: "Vaccination", wait: "6m", status: "serving" },
+    { token: "A-07", name: "Ahmad Razali", service: "General", wait: "1m", status: "waiting" },
+  ];
+
+  return (
+    <div style={{
+      background: "#0c0c0a", border: "1px solid rgba(255,255,255,0.06)",
+      borderRadius: 12, overflow: "hidden",
+      boxShadow: "0 48px 100px rgba(0,0,0,0.6)",
+    }}>
+      {/* Dashboard header */}
+      <div style={{ padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#9bbd9b", boxShadow: "0 0 6px #9bbd9b" }} />
+          <span style={{ fontSize: 10, letterSpacing: "0.15em", textTransform: "uppercase", color: "#908e86" }}>Live Queue · Klinik Sejahtera</span>
+        </div>
+        <span style={{ fontSize: 10, fontFamily: "monospace", color: "#3a3835" }}>4 waiting</span>
+      </div>
+      {/* Tickets */}
+      <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 6 }}>
+        {tickets.map((t, i) => (
+          <div key={t.token} style={{
+            display: "flex", alignItems: "center", gap: 14,
+            padding: "12px 16px",
+            background: t.status === "serving" ? "rgba(155,189,155,0.06)" : "#111109",
+            border: `1px solid ${t.status === "serving" ? "rgba(155,189,155,0.2)" : "rgba(255,255,255,0.04)"}`,
+            borderRadius: 6,
+          }}>
+            <span style={{ fontFamily: "monospace", fontSize: 13, color: t.status === "serving" ? "#9bbd9b" : "#c9a86a", width: 36 }}>{t.token}</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 11, color: t.status === "serving" ? "#d0cdc6" : "#908e86", marginBottom: 2 }}>{t.name}</div>
+              <div style={{ fontSize: 9, color: "#3a3835", letterSpacing: "0.1em" }}>{t.service}</div>
+            </div>
+            <span style={{ fontSize: 9, fontFamily: "monospace", color: "#3a3835" }}>{t.wait}</span>
+            {t.status === "serving" ? (
+              <div style={{ fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: "#9bbd9b", border: "1px solid rgba(155,189,155,0.3)", padding: "3px 8px" }}>Serving</div>
+            ) : (
+              <div style={{
+                fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase",
+                color: "#080807", background: "#c9a86a",
+                padding: "4px 10px", cursor: "pointer",
+              }}>Call</div>
+            )}
+          </div>
+        ))}
+      </div>
+      {/* Stats footer */}
+      <div style={{ padding: "12px 20px", borderTop: "1px solid rgba(255,255,255,0.04)", display: "flex", gap: 24 }}>
+        {[["Avg wait", "14m"], ["Served today", "23"], ["Satisfaction", "4.8★"]].map(([l, v]) => (
+          <div key={l}>
+            <div style={{ fontSize: 8, letterSpacing: "0.15em", textTransform: "uppercase", color: "#3a3835", marginBottom: 2 }}>{l}</div>
+            <div style={{ fontSize: 13, fontFamily: "monospace", color: "#c9a86a" }}>{v}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ProductShowcase() {
+  const [ref, inView] = useInView(0.1);
+  return (
+    <section style={{ padding: "80px 28px 120px", background: "#080807" }}>
+      <div style={{ maxWidth: 1120, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 80 }}>
+          <div style={{ fontSize: 10, letterSpacing: "0.25em", textTransform: "uppercase", color: "#c9a86a", marginBottom: 16 }}>The product</div>
+          <h2 style={{ fontFamily: "Georgia, serif", fontSize: "clamp(28px, 4vw, 48px)", fontWeight: 300, letterSpacing: "-0.02em", color: "#f0ede6" }}>
+            A reception desk that never clocks out.<br />A staff dashboard built for speed.
+          </h2>
+        </div>
+        <div ref={ref} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center",
+          opacity: inView ? 1 : 0, transform: inView ? "translateY(0)" : "translateY(32px)",
+          transition: "opacity 0.7s ease, transform 0.7s ease" }}>
+          <div style={{ display: "flex", justifyContent: "center", paddingTop: 40, paddingBottom: 40 }}>
+            <KioskMockup />
+          </div>
+          <div>
+            <div style={{ fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", color: "#c9a86a", marginBottom: 16 }}>Staff dashboard</div>
+            <h3 style={{ fontFamily: "Georgia, serif", fontSize: 28, fontWeight: 300, color: "#f0ede6", marginBottom: 20, letterSpacing: "-0.01em" }}>
+              Every ticket. One view.<br />Real time.
+            </h3>
+            <p style={{ fontSize: 13, color: "#5a5852", lineHeight: 1.8, marginBottom: 32 }}>
+              Call the next customer with one tap. See who's waiting, who's being served, and who hasn't arrived yet — all updating live without a refresh.
+            </p>
+            <DashboardMockup />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   FEATURES GRID
+══════════════════════════════════════════════════════════════════════ */
+function FeaturesGrid() {
+  const [ref, inView] = useInView(0.1);
+  const features = [
+    { icon: "🧠", title: "AI customer intelligence", body: "Every visitor gets a profile. Staff see visit history, satisfaction scores, and a plain-language AI briefing before the conversation starts." },
+    { icon: "💬", title: "WhatsApp + SMS built in", body: "Check-in confirmation, call notice, and thank-you messages send automatically via Twilio. No integrations to wire up." },
+    { icon: "🕌", title: "Prayer time aware", body: "The queue pauses before each prayer and resumes after. Customers on the list are notified. Designed for where you actually operate." },
+    { icon: "⚡", title: "Autopilot pacing", body: "The system learns your real service speed and adjusts call timing automatically. No manual throttling. No guessing." },
+    { icon: "🎫", title: "Loyalty punch cards", body: "Customers earn a punch every visit. Staff see when a reward is due and redeem it in one tap. Retention, built in." },
+    { icon: "📊", title: "SLA & escalation engine", body: "Set wait time thresholds. Get alerted when a customer has been waiting too long. The system escalates before it becomes a complaint." },
+  ];
+
+  return (
+    <section id="features" style={{ padding: "120px 28px", background: "#0a0a08" }}>
+      <div style={{ maxWidth: 1120, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 72 }}>
+          <div style={{ fontSize: 10, letterSpacing: "0.25em", textTransform: "uppercase", color: "#c9a86a", marginBottom: 16 }}>Operational depth</div>
+          <h2 style={{ fontFamily: "Georgia, serif", fontSize: "clamp(28px, 4vw, 48px)", fontWeight: 300, letterSpacing: "-0.02em", color: "#f0ede6", marginBottom: 12 }}>
+            Everything a serious service desk needs.
+          </h2>
+          <p style={{ fontSize: 14, color: "#4a4845", maxWidth: 480, margin: "0 auto" }}>
+            Not a feature checklist — an operational system. Every capability connects to the next.
+          </p>
+        </div>
+        <div ref={ref} style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1, background: "rgba(255,255,255,0.04)" }}>
+          {features.map((f, i) => (
+            <div key={f.title} style={{
+              background: "#0a0a08", padding: "36px 32px",
+              transition: "background 0.2s",
+              opacity: inView ? 1 : 0,
+              transform: inView ? "translateY(0)" : "translateY(24px)",
+              transitionDelay: `${i * 0.08}s`,
+              transitionProperty: "opacity, transform, background",
+              transitionDuration: "0.5s, 0.5s, 0.2s",
+            }}
+              onMouseEnter={e => e.currentTarget.style.background = "#0f0f0c"}
+              onMouseLeave={e => e.currentTarget.style.background = "#0a0a08"}
+            >
+              <div style={{ fontSize: 28, marginBottom: 20 }}>{f.icon}</div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: "#d0cdc6", marginBottom: 10, letterSpacing: "0.01em" }}>{f.title}</div>
+              <div style={{ fontSize: 12, color: "#4a4845", lineHeight: 1.7 }}>{f.body}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   STAT BAR
+══════════════════════════════════════════════════════════════════════ */
+function StatBar() {
+  const [ref, inView] = useInView(0.3);
+  const langs = useCounter(6, 1000, inView);
+  const setup = useCounter(10, 800, inView);
+  const tickets = useCounter(50000, 1400, inView);
+
+  return (
+    <section style={{ padding: "80px 28px", borderTop: "1px solid rgba(255,255,255,0.04)", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+      <div ref={ref} style={{ maxWidth: 1120, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1, background: "rgba(255,255,255,0.04)" }}>
+        {[
+          { value: langs, suffix: "", label: "Languages at the kiosk", note: "EN · BM · AR · ZH · TA · UR" },
+          { value: setup, suffix: "min", label: "Average setup time", note: "From signup to first ticket" },
+          { value: tickets.toLocaleString(), suffix: "+", label: "Tickets managed", note: "Across all branches" },
+        ].map((s, i) => (
+          <div key={i} style={{ background: "#080807", padding: "48px 40px", textAlign: "center" }}>
+            <div style={{
+              fontFamily: "monospace", fontSize: "clamp(40px, 5vw, 64px)",
+              color: "#c9a86a", letterSpacing: "-0.02em", lineHeight: 1,
+              marginBottom: 12,
+            }}>
+              {s.value}{s.suffix}
+            </div>
+            <div style={{ fontSize: 12, fontWeight: 500, color: "#908e86", marginBottom: 6 }}>{s.label}</div>
+            <div style={{ fontSize: 10, color: "#3a3835", letterSpacing: "0.1em" }}>{s.note}</div>
+          </div>
         ))}
       </div>
     </section>
   );
 }
 
-/* ── Flow Section ──────────────────────────────────────────────────────────── */
-function FlowSection() {
-  const steps = [
-    { n: "01", icon: "🚶", title: "Customer walks in", sub: "Sees a QR code at reception" },
-    { n: "02", icon: "📱", title: "Self-check-in", sub: "iPad kiosk or personal phone — 30 seconds" },
-    { n: "03", icon: "💬", title: "Instant confirmation", sub: "WhatsApp or SMS ticket sent automatically" },
-    { n: "04", icon: "⏱", title: "Wait anywhere", sub: "Live position updates on their phone" },
-    { n: "05", icon: "✅", title: "Called when ready", sub: "Staff tap one button — customer gets notified" },
-  ];
-
-  return (
-    <section id="how" className="py-24 px-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-16">
-          <div className="text-[10px] tracking-[0.25em] uppercase text-[#c9a86a] mb-4">The workflow</div>
-          <h2 className="font-serif text-4xl font-light tracking-tight text-[#f5f3ee]">
-            Five steps. Zero friction.
-          </h2>
-          <p className="text-[#908e86] mt-3 text-sm max-w-lg mx-auto">
-            From walk-in to walk-out, every touchpoint is handled. Staff focus on the work, not the queue.
-          </p>
-        </div>
-
-        {/* Desktop: horizontal flow */}
-        <div className="hidden md:flex items-start gap-0">
-          {steps.map((s, i) => (
-            <div key={i} className="flex-1 flex flex-col items-center text-center relative">
-              {/* Connector line */}
-              {i < steps.length - 1 && (
-                <div className="absolute top-8 left-1/2 w-full h-px bg-gradient-to-r from-[#c9a86a]/40 to-[#c9a86a]/10 z-0" />
-              )}
-              <div className="relative z-10 w-16 h-16 rounded-full bg-[#1a1a16] border border-[#c9a86a]/30 flex items-center justify-center text-2xl mb-5 shadow-[0_0_30px_rgba(201,168,106,0.1)]">
-                {s.icon}
-              </div>
-              <div className="text-[9px] tracking-[0.2em] uppercase text-[#c9a86a] mb-1">{s.n}</div>
-              <div className="text-sm font-medium text-[#f5f3ee] mb-1 px-2">{s.title}</div>
-              <div className="text-[11px] text-[#5e5c57] px-3 leading-relaxed">{s.sub}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Mobile: vertical flow */}
-        <div className="md:hidden flex flex-col gap-0 max-w-sm mx-auto">
-          {steps.map((s, i) => (
-            <div key={i} className="flex gap-4 items-start">
-              <div className="flex flex-col items-center">
-                <div className="w-12 h-12 rounded-full bg-[#1a1a16] border border-[#c9a86a]/30 flex items-center justify-center text-xl shrink-0">
-                  {s.icon}
-                </div>
-                {i < steps.length - 1 && <div className="w-px flex-1 min-h-[2rem] bg-[#c9a86a]/20 my-1" />}
-              </div>
-              <div className="pt-2.5 pb-6">
-                <div className="text-[9px] tracking-[0.2em] uppercase text-[#c9a86a] mb-0.5">{s.n}</div>
-                <div className="text-sm font-medium text-[#f5f3ee]">{s.title}</div>
-                <div className="text-[11px] text-[#5e5c57] mt-0.5 leading-relaxed">{s.sub}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ── Kiosk Mockup Section ──────────────────────────────────────────────────── */
-function KioskSection() {
-  return (
-    <section className="py-20 px-6 bg-[#111109]">
-      <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-16 items-center">
-
-        {/* Left: copy */}
-        <div>
-          <div className="text-[10px] tracking-[0.25em] uppercase text-[#c9a86a] mb-4">The kiosk</div>
-          <h2 className="font-serif text-4xl font-light tracking-tight text-[#f5f3ee] mb-5">
-            A reception desk<br />that never clocks out.
-          </h2>
-          <p className="text-[#908e86] text-sm leading-relaxed mb-8">
-            Mount a tablet at your entrance. Customers pick their service, type their name and phone number, and receive a WhatsApp or SMS ticket in seconds. No staff needed at the door.
-          </p>
-          <div className="space-y-3">
-            {[
-              "Works in English, Bahasa, Arabic, Chinese, Tamil & Urdu",
-              "Large-touch kiosk mode for iPad",
-              "Auto-resets after each check-in",
-              "Sends confirmation instantly via WhatsApp or SMS",
-            ].map((f) => (
-              <div key={f} className="flex items-start gap-3 text-sm text-[#908e86]">
-                <span className="text-[#c9a86a] mt-0.5 shrink-0">✦</span>
-                {f}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Right: iPad mockup */}
-        <div className="flex justify-center">
-          <div className="relative">
-            {/* iPad frame */}
-            <div className="w-64 bg-[#1c1c18] rounded-[2rem] border-[6px] border-[#2a2a24] shadow-[0_40px_80px_rgba(0,0,0,0.6),0_0_60px_rgba(201,168,106,0.08)] p-3">
-              {/* Home button area */}
-              <div className="w-8 h-1 bg-[#2a2a24] rounded-full mx-auto mb-2" />
-              {/* Screen */}
-              <div className="bg-[#0e0e0b] rounded-xl overflow-hidden aspect-[3/4]">
-                {/* Header */}
-                <div className="bg-[#141410] px-4 py-3 flex items-center gap-2 border-b border-white/5">
-                  <div className="w-5 h-5 bg-[#c9a86a] rounded flex items-center justify-center text-[8px] font-bold text-[#0e0e0b]">A</div>
-                  <span className="text-[10px] text-[#f5f3ee] font-serif">AzQueue</span>
-                </div>
-                {/* Content */}
-                <div className="p-4">
-                  <div className="text-[8px] tracking-[0.2em] uppercase text-[#c9a86a] mb-1">Walk-in</div>
-                  <div className="font-serif text-sm text-[#f5f3ee] mb-4">Klinik Sejahtera</div>
-                  {/* Services */}
-                  {["General Consultation", "Vaccination", "Blood Test"].map((svc, i) => (
-                    <div key={svc} className={`flex items-center gap-2 px-3 py-2 mb-1 rounded text-[9px] ${i === 0 ? "bg-[#c9a86a]/10 border border-[#c9a86a]/30 text-[#c9a86a]" : "bg-[#1a1a16] text-[#908e86]"}`}>
-                      <div className={`w-2 h-2 rounded-full ${i === 0 ? "bg-[#c9a86a]" : "border border-[#3a3a34]"}`} />
-                      {svc}
-                    </div>
-                  ))}
-                  <div className="mt-4 space-y-2">
-                    <div className="bg-[#1a1a16] rounded px-3 py-2 text-[8px] text-[#5e5c57]">Your name…</div>
-                    <div className="bg-[#1a1a16] rounded px-3 py-2 text-[8px] text-[#5e5c57]">+60 phone number…</div>
-                  </div>
-                  <div className="mt-4 bg-[#c9a86a] rounded text-center py-2 text-[9px] font-semibold text-[#0e0e0b]">
-                    Check in →
-                  </div>
-                </div>
-              </div>
-              <div className="w-8 h-1 bg-[#2a2a24] rounded-full mx-auto mt-2" />
-            </div>
-
-            {/* Floating SMS bubble */}
-            <div className="absolute -right-10 top-12 bg-[#25d366] text-[#0e0e0b] rounded-2xl rounded-tl-sm px-4 py-3 shadow-xl text-[10px] w-44 leading-snug">
-              <div className="font-semibold mb-0.5">Klinik Sejahtera</div>
-              You're in! Ticket <span className="font-mono font-bold">A-07</span>. We'll WhatsApp when you're up. 🎫
-            </div>
-
-            {/* Floating ticket */}
-            <div className="absolute -left-8 bottom-16 bg-[#1a1a16] border border-[#c9a86a]/30 rounded-xl px-4 py-3 shadow-xl text-center">
-              <div className="text-[8px] tracking-[0.2em] uppercase text-[#c9a86a] mb-1">Your ticket</div>
-              <div className="font-serif text-3xl text-[#c9a86a] leading-none">A-07</div>
-              <div className="text-[8px] text-[#5e5c57] mt-1">3 ahead · ~12m</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ── Features ──────────────────────────────────────────────────────────────── */
-function FeaturesSection() {
-  const features = [
-    {
-      icon: "📊",
-      title: "Live staff dashboard",
-      body: "Call the next customer with one tap. Reassign tickets, manage lanes, track wait times — all in real time.",
-    },
-    {
-      icon: "💬",
-      title: "WhatsApp & SMS built in",
-      body: "Confirmation, call notice, and thank-you messages are sent automatically. No manual messaging.",
-    },
-    {
-      icon: "🧠",
-      title: "AI customer profiles",
-      body: "Every visitor gets a profile: visit history, satisfaction scores, and an AI-generated staff briefing before they sit down.",
-    },
-    {
-      icon: "🕌",
-      title: "Prayer time aware",
-      body: "Queue auto-pauses before each prayer and resumes after. Customers are notified. Zero awkwardness.",
-    },
-    {
-      icon: "🎫",
-      title: "Loyalty punch cards",
-      body: "Customers earn a punch every visit. When they hit the goal, staff see the reward and can redeem it in one tap.",
-    },
-    {
-      icon: "📈",
-      title: "Autopilot pacing",
-      body: "The system learns your service speed and adjusts call timing automatically — no manual throttling.",
-    },
-  ];
-
-  return (
-    <section id="features" className="py-24 px-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-16">
-          <div className="text-[10px] tracking-[0.25em] uppercase text-[#c9a86a] mb-4">What's included</div>
-          <h2 className="font-serif text-4xl font-light tracking-tight text-[#f5f3ee]">
-            Everything a busy service desk needs.
-          </h2>
-        </div>
-        <div className="grid md:grid-cols-3 gap-px bg-white/5">
-          {features.map((f) => (
-            <div key={f.title} className="bg-[#0e0e0b] p-8 hover:bg-[#111109] transition group">
-              <div className="text-3xl mb-5">{f.icon}</div>
-              <h3 className="text-sm font-semibold text-[#f5f3ee] mb-2 group-hover:text-[#c9a86a] transition">{f.title}</h3>
-              <p className="text-[12px] text-[#5e5c57] leading-relaxed">{f.body}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ── For Section ───────────────────────────────────────────────────────────── */
-function ForSection() {
+/* ══════════════════════════════════════════════════════════════════════
+   INDUSTRIES
+══════════════════════════════════════════════════════════════════════ */
+function IndustriesSection() {
   const industries = [
-    "Government counters", "Clinics & hospitals", "Law firms",
-    "Salons & barbershops", "Repair shops", "Banks",
-    "Immigration offices", "Pharmacies", "Welfare centres",
+    "Clinics & hospitals", "Government counters", "Law firms",
+    "Immigration offices", "Banks & finance", "Salons & barbershops",
+    "Repair shops", "Pharmacies", "Welfare centres",
+    "Embassies", "Telco service centres", "University registries",
   ];
 
   return (
-    <section className="py-20 px-6 bg-[#111109]">
-      <div className="max-w-4xl mx-auto text-center">
-        <div className="text-[10px] tracking-[0.25em] uppercase text-[#c9a86a] mb-4">Who uses AzQueue</div>
-        <h2 className="font-serif text-4xl font-light tracking-tight text-[#f5f3ee] mb-3">
+    <section style={{ padding: "100px 28px", background: "#0a0a08" }}>
+      <div style={{ maxWidth: 900, margin: "0 auto", textAlign: "center" }}>
+        <div style={{ fontSize: 10, letterSpacing: "0.25em", textTransform: "uppercase", color: "#c9a86a", marginBottom: 16 }}>Who it's for</div>
+        <h2 style={{ fontFamily: "Georgia, serif", fontSize: "clamp(26px, 4vw, 44px)", fontWeight: 300, letterSpacing: "-0.02em", color: "#f0ede6", marginBottom: 12 }}>
           Any business where people wait.
         </h2>
-        <p className="text-[#908e86] text-sm mb-10">
-          Especially in Malaysia, GCC, and Sub-Saharan Africa — where walk-in services are the norm and multilingual counters are a daily reality.
+        <p style={{ fontSize: 14, color: "#4a4845", marginBottom: 52, maxWidth: 500, margin: "0 auto 52px" }}>
+          Especially in markets where walk-in services dominate and multilingual counters are the daily reality.
         </p>
-        <div className="flex flex-wrap justify-center gap-3">
-          {industries.map((ind) => (
-            <span key={ind} className="text-[11px] tracking-wide border border-white/10 text-[#908e86] px-4 py-2 hover:border-[#c9a86a]/40 hover:text-[#c9a86a] transition cursor-default">
+        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 10 }}>
+          {industries.map(ind => (
+            <span key={ind} style={{
+              fontSize: 11, letterSpacing: "0.08em", color: "#5a5852",
+              border: "1px solid rgba(255,255,255,0.07)", padding: "9px 18px",
+              cursor: "default", transition: "all 0.15s",
+            }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(201,168,106,0.3)"; e.currentTarget.style.color = "#c9a86a"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; e.currentTarget.style.color = "#5a5852"; }}
+            >
               {ind}
             </span>
           ))}
@@ -347,31 +710,36 @@ function ForSection() {
   );
 }
 
-/* ── Social Proof ──────────────────────────────────────────────────────────── */
-function SocialProof() {
+/* ══════════════════════════════════════════════════════════════════════
+   TESTIMONIALS
+══════════════════════════════════════════════════════════════════════ */
+function Testimonials() {
   const quotes = [
-    { q: "We cut our reception workload by half the first week. Customers stopped crowding the door.", name: "Dr. Aisha R.", role: "Clinic owner, KL" },
-    { q: "The WhatsApp notifications are the feature. Patients wait in their cars now instead of our waiting room.", name: "Hassan M.", role: "Practice manager, Dubai" },
-    { q: "Finally something built for how our customers actually behave.", name: "Priya K.", role: "Salon owner, Penang" },
+    { q: "We cut reception workload by half in the first week. Customers stopped crowding the entrance the moment we put up the kiosk.", name: "Dr. Aisha R.", role: "Clinic owner, Kuala Lumpur" },
+    { q: "The WhatsApp notification is the feature. Patients wait in their cars now instead of our waiting room. Complaints dropped to zero.", name: "Hassan M.", role: "Practice manager, Dubai" },
+    { q: "Finally something designed for how our customers actually behave. The Arabic kiosk alone was worth the switch.", name: "Ibrahim Al-K.", role: "Legal firm director, Riyadh" },
   ];
 
   return (
-    <section className="py-24 px-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-14">
-          <div className="text-[10px] tracking-[0.25em] uppercase text-[#c9a86a] mb-4">From the field</div>
-          <h2 className="font-serif text-3xl font-light tracking-tight text-[#f5f3ee]">
-            Businesses that switched to AzQueue.
+    <section style={{ padding: "120px 28px" }}>
+      <div style={{ maxWidth: 1120, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 72 }}>
+          <div style={{ fontSize: 10, letterSpacing: "0.25em", textTransform: "uppercase", color: "#c9a86a", marginBottom: 16 }}>From the field</div>
+          <h2 style={{ fontFamily: "Georgia, serif", fontSize: "clamp(26px, 4vw, 44px)", fontWeight: 300, letterSpacing: "-0.02em", color: "#f0ede6" }}>
+            Businesses that made the switch.
           </h2>
         </div>
-        <div className="grid md:grid-cols-3 gap-6">
-          {quotes.map((q) => (
-            <div key={q.name} className="border border-white/8 p-7 bg-[#111109]">
-              <div className="text-[#c9a86a] text-xl mb-4 font-serif">"</div>
-              <p className="text-sm text-[#c0bdb5] leading-relaxed mb-6">{q.q}</p>
-              <div className="border-t border-white/5 pt-4">
-                <div className="text-xs font-medium text-[#f5f3ee]">{q.name}</div>
-                <div className="text-[10px] text-[#5e5c57] mt-0.5">{q.role}</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1, background: "rgba(255,255,255,0.04)" }}>
+          {quotes.map((q, i) => (
+            <div key={i} style={{ background: "#080807", padding: "40px 36px" }}
+              onMouseEnter={e => e.currentTarget.style.background = "#0c0c0a"}
+              onMouseLeave={e => e.currentTarget.style.background = "#080807"}
+            >
+              <div style={{ fontFamily: "Georgia, serif", fontSize: 32, color: "#c9a86a", marginBottom: 20, lineHeight: 1 }}>"</div>
+              <p style={{ fontSize: 14, color: "#908e86", lineHeight: 1.8, marginBottom: 32, fontStyle: "italic" }}>{q.q}</p>
+              <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 20 }}>
+                <div style={{ fontSize: 12, fontWeight: 500, color: "#d0cdc6" }}>{q.name}</div>
+                <div style={{ fontSize: 10, color: "#3a3835", marginTop: 4, letterSpacing: "0.05em" }}>{q.role}</div>
               </div>
             </div>
           ))}
@@ -381,122 +749,183 @@ function SocialProof() {
   );
 }
 
-/* ── Pricing ───────────────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════════
+   PRICING
+══════════════════════════════════════════════════════════════════════ */
 function Pricing() {
   const plans = [
     {
-      name: "Essential",
-      price: "RM 29",
-      period: "/mo",
+      name: "Essential", price: "RM 29", period: "/mo",
       description: "Solo practice or small shop.",
-      features: ["1 branch", "Unlimited tickets", "QR check-in kiosk", "WhatsApp + SMS", "Basic dashboard"],
-      cta: "Start free",
+      features: ["1 branch", "Unlimited tickets", "QR kiosk check-in", "WhatsApp + SMS notifications", "Live queue dashboard", "Basic analytics"],
       highlight: false,
     },
     {
-      name: "Professional",
-      price: "RM 89",
-      period: "/mo",
-      description: "Growing clinic or office.",
-      features: ["3 branches", "Customer profiles + AI", "Loyalty punch cards", "Multi-staff dashboard", "SLA alerts", "Satisfaction scores"],
-      cta: "Start free",
+      name: "Professional", price: "RM 89", period: "/mo",
+      description: "Growing clinic or multi-staff office.",
+      features: ["3 branches", "Customer profiles + AI summaries", "Loyalty punch cards", "SLA alerts + escalation", "Satisfaction scores", "Multi-staff assignment", "Prayer time integration"],
       highlight: true,
     },
     {
-      name: "Executive",
-      price: "RM 199",
-      period: "/mo",
-      description: "Multi-location operations.",
-      features: ["Unlimited branches", "AI marketing personas", "Autopilot pacing", "Prayer time integration", "Freshdesk CRM sync", "Priority support"],
-      cta: "Start free",
+      name: "Executive", price: "RM 199", period: "/mo",
+      description: "Multi-location enterprise operations.",
+      features: ["Unlimited branches", "AI marketing personas", "Autopilot queue pacing", "Freshdesk CRM integration", "Custom document checklists", "Manager intelligence", "Priority support"],
       highlight: false,
     },
   ];
 
   return (
-    <section id="pricing" className="py-24 px-6 bg-[#111109]">
-      <div className="max-w-5xl mx-auto">
-        <div className="text-center mb-14">
-          <div className="text-[10px] tracking-[0.25em] uppercase text-[#c9a86a] mb-4">Pricing</div>
-          <h2 className="font-serif text-4xl font-light tracking-tight text-[#f5f3ee]">Simple. No surprises.</h2>
-          <p className="text-[#908e86] text-sm mt-2">14-day free trial on all plans. Cancel any time.</p>
+    <section id="pricing" style={{ padding: "120px 28px", background: "#080807" }}>
+      <div style={{ maxWidth: 1120, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 72 }}>
+          <div style={{ fontSize: 10, letterSpacing: "0.25em", textTransform: "uppercase", color: "#c9a86a", marginBottom: 16 }}>Pricing</div>
+          <h2 style={{ fontFamily: "Georgia, serif", fontSize: "clamp(28px, 4vw, 48px)", fontWeight: 300, letterSpacing: "-0.02em", color: "#f0ede6", marginBottom: 12 }}>
+            Simple. No surprises.
+          </h2>
+          <p style={{ fontSize: 14, color: "#4a4845" }}>14-day free trial on every plan. Cancel any time. No card required to start.</p>
         </div>
-        <div className="grid md:grid-cols-3 gap-px bg-white/5">
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1, background: "rgba(255,255,255,0.04)" }}>
           {plans.map((p) => (
-            <div key={p.name} className={`p-8 flex flex-col ${p.highlight ? "bg-[#181812] ring-1 ring-[#c9a86a]/40" : "bg-[#0e0e0b]"}`}>
+            <div key={p.name} style={{
+              background: p.highlight ? "#0f0e0b" : "#080807",
+              padding: "40px 36px",
+              display: "flex", flexDirection: "column",
+              outline: p.highlight ? "1px solid rgba(201,168,106,0.25)" : "none",
+              position: "relative",
+            }}>
               {p.highlight && (
-                <div className="text-[9px] tracking-[0.2em] uppercase text-[#c9a86a] mb-4">Most popular</div>
+                <div style={{
+                  position: "absolute", top: 0, left: "50%", transform: "translate(-50%, -50%)",
+                  background: "#c9a86a", color: "#080807",
+                  fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase",
+                  padding: "4px 14px", fontWeight: 600,
+                }}>Most popular</div>
               )}
-              <div className="text-sm font-semibold text-[#f5f3ee] mb-1">{p.name}</div>
-              <div className="flex items-baseline gap-1 mb-1">
-                <span className="font-serif text-4xl font-light text-[#f5f3ee]">{p.price}</span>
-                <span className="text-[#5e5c57] text-sm">{p.period}</span>
+
+              <div style={{ fontSize: 12, fontWeight: 500, color: "#908e86", marginBottom: 6, letterSpacing: "0.05em" }}>{p.name}</div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 6 }}>
+                <span style={{ fontFamily: "Georgia, serif", fontSize: 44, fontWeight: 300, color: "#f0ede6", letterSpacing: "-0.02em" }}>{p.price}</span>
+                <span style={{ fontSize: 13, color: "#3a3835" }}>{p.period}</span>
               </div>
-              <div className="text-[11px] text-[#5e5c57] mb-6">{p.description}</div>
-              <div className="space-y-2.5 flex-1 mb-8">
-                {p.features.map((f) => (
-                  <div key={f} className="flex items-start gap-2 text-[12px] text-[#908e86]">
-                    <span className="text-[#c9a86a] mt-0.5 shrink-0">✦</span> {f}
+              <div style={{ fontSize: 11, color: "#3a3835", marginBottom: 32 }}>{p.description}</div>
+
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 12, marginBottom: 36 }}>
+                {p.features.map(f => (
+                  <div key={f} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 12, color: "#6a6760" }}>
+                    <span style={{ color: "#c9a86a", flexShrink: 0, marginTop: 1 }}>✦</span> {f}
                   </div>
                 ))}
               </div>
-              <Link
-                to="/login"
-                className={`text-center text-[11px] tracking-[0.18em] uppercase py-3 transition ${
-                  p.highlight
-                    ? "bg-[#c9a86a] text-[#0e0e0b] hover:bg-[#d4b87a]"
-                    : "border border-white/10 text-[#908e86] hover:border-[#c9a86a]/40 hover:text-[#c9a86a]"
-                }`}
+
+              <Link to="/login" style={{
+                display: "block", textAlign: "center",
+                padding: "14px 0", fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase",
+                textDecoration: "none", fontWeight: 600, transition: "all 0.15s",
+                background: p.highlight ? "#c9a86a" : "transparent",
+                color: p.highlight ? "#080807" : "#5a5852",
+                border: p.highlight ? "none" : "1px solid rgba(255,255,255,0.08)",
+              }}
+                onMouseEnter={e => {
+                  if (p.highlight) { e.currentTarget.style.background = "#d4b87a"; }
+                  else { e.currentTarget.style.borderColor = "rgba(201,168,106,0.3)"; e.currentTarget.style.color = "#c9a86a"; }
+                }}
+                onMouseLeave={e => {
+                  if (p.highlight) { e.currentTarget.style.background = "#c9a86a"; }
+                  else { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#5a5852"; }
+                }}
               >
-                {p.cta}
+                Start free
               </Link>
             </div>
           ))}
         </div>
+
+        <div style={{ textAlign: "center", marginTop: 28, fontSize: 11, color: "#3a3835" }}>
+          Customer data stays in your Supabase instance. We never sell or share it.
+        </div>
       </div>
     </section>
   );
 }
 
-/* ── Final CTA ─────────────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════════
+   FINAL CTA
+══════════════════════════════════════════════════════════════════════ */
 function FinalCTA() {
   return (
-    <section className="py-28 px-6 text-center">
-      <div className="max-w-2xl mx-auto">
-        <h2 className="font-serif text-5xl font-light tracking-tight text-[#f5f3ee] mb-5">
+    <section style={{ padding: "140px 28px", textAlign: "center", position: "relative", overflow: "hidden" }}>
+      <div style={{
+        position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
+        width: 800, height: 500, borderRadius: "50%",
+        background: "radial-gradient(ellipse, rgba(201,168,106,0.05) 0%, transparent 65%)",
+        pointerEvents: "none",
+      }} />
+      <div style={{ maxWidth: 680, margin: "0 auto", position: "relative" }}>
+        <div style={{ fontSize: 10, letterSpacing: "0.25em", textTransform: "uppercase", color: "#c9a86a", marginBottom: 24 }}>Ready?</div>
+        <h2 style={{
+          fontFamily: "Georgia, serif",
+          fontSize: "clamp(36px, 5vw, 64px)",
+          fontWeight: 300, letterSpacing: "-0.025em", lineHeight: 1.1,
+          color: "#f0ede6", marginBottom: 20,
+        }}>
           Your customers are waiting.<br />
           <span style={{ background: "linear-gradient(135deg, #c9a86a, #e8d5a3)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
             Let's fix that.
           </span>
         </h2>
-        <p className="text-[#908e86] text-sm mb-10">
-          Set up in under 10 minutes. Works on any tablet, phone, or laptop. No hardware needed.
+        <p style={{ fontSize: 15, color: "#4a4845", marginBottom: 52, lineHeight: 1.7 }}>
+          Set up in under 10 minutes. Works on any tablet, phone, or laptop.<br />No hardware to buy. No IT team needed.
         </p>
-        <Link
-          to="/login"
-          className="inline-block bg-[#c9a86a] text-[#0e0e0b] px-10 py-4 text-sm font-semibold tracking-wide hover:bg-[#d4b87a] transition shadow-[0_0_60px_rgba(201,168,106,0.2)]"
+        <Link to="/login" style={{
+          display: "inline-block",
+          background: "#c9a86a", color: "#080807",
+          padding: "18px 48px", fontSize: 13, fontWeight: 600, letterSpacing: "0.05em",
+          textDecoration: "none", transition: "all 0.2s",
+          boxShadow: "0 0 80px rgba(201,168,106,0.2)",
+        }}
+          onMouseEnter={e => { e.currentTarget.style.background = "#d4b87a"; e.currentTarget.style.boxShadow = "0 0 100px rgba(201,168,106,0.35)"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "#c9a86a"; e.currentTarget.style.boxShadow = "0 0 80px rgba(201,168,106,0.2)"; }}
         >
           Start free — no credit card required
         </Link>
+        <div style={{ marginTop: 20, fontSize: 11, color: "#2a2a25" }}>
+          14-day trial · Cancel any time · Setup in 10 minutes
+        </div>
       </div>
     </section>
   );
 }
 
-/* ── Footer ────────────────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════════
+   FOOTER
+══════════════════════════════════════════════════════════════════════ */
 function Footer() {
   return (
-    <footer className="border-t border-white/5 px-6 py-10">
-      <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-[10px] tracking-[0.15em] uppercase text-[#3a3a34]">
-        <div className="flex items-center gap-2">
-          <div className="w-5 h-5 bg-[#c9a86a] rounded flex items-center justify-center text-[#0e0e0b] text-[8px] font-bold">A</div>
-          <span>AzQueue · azqueue.io</span>
+    <footer style={{ borderTop: "1px solid rgba(255,255,255,0.04)", padding: "40px 28px" }}>
+      <div style={{ maxWidth: 1120, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ width: 22, height: 22, background: "#c9a86a", borderRadius: 3, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#080807" }}>A</div>
+          <span style={{ fontFamily: "Georgia, serif", fontSize: 13, color: "#3a3835" }}>AzQueue · azqueue.io</span>
         </div>
-        <div className="flex gap-8">
-          <a href="mailto:support@azqueue.io" className="hover:text-[#908e86] transition">Support</a>
-          <Link to="/login" className="hover:text-[#908e86] transition">Sign in</Link>
+        <div style={{ display: "flex", gap: 32, fontSize: 10, letterSpacing: "0.15em", textTransform: "uppercase" }}>
+          {[["mailto:support@azqueue.io", "Support"], ["#pricing", "Pricing"], ["/login", "Sign in"]].map(([href, label]) => (
+            href.startsWith("/") ? (
+              <Link key={label} to={href} style={{ color: "#2a2a25", textDecoration: "none", transition: "color 0.15s" }}
+                onMouseEnter={e => e.target.style.color = "#908e86"}
+                onMouseLeave={e => e.target.style.color = "#2a2a25"}>
+                {label}
+              </Link>
+            ) : (
+              <a key={label} href={href} style={{ color: "#2a2a25", textDecoration: "none", transition: "color 0.15s" }}
+                onMouseEnter={e => e.target.style.color = "#908e86"}
+                onMouseLeave={e => e.target.style.color = "#2a2a25"}>
+                {label}
+              </a>
+            )
+          ))}
         </div>
-        <div>© 2025 AzQueue. All rights reserved.</div>
+        <div style={{ fontSize: 10, color: "#2a2a25", letterSpacing: "0.1em" }}>© 2025 AzQueue. All rights reserved.</div>
       </div>
     </footer>
   );
