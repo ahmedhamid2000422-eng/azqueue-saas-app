@@ -11,6 +11,9 @@ export default function Landing() {
     <div className="min-h-screen">
       <SiteHeader />
       <Hero />
+      <TrustBar />
+      <HowItWorks />
+      <LeaveAndReturn />
       <OneEngine />
       <PersonaIntelligence />
       <SmartQueue />
@@ -20,6 +23,7 @@ export default function Landing() {
       <LiveExperience />
       <Autopilot />
       <IslamicMode />
+      <SocialProof />
       <IndustriesSection />
       <Pricing />
       <CTA />
@@ -34,24 +38,24 @@ function Hero() {
         <div>
           <div className="ovline mb-5 inline-flex items-center gap-2 border border-line px-3 py-1">
             <span className="pip breathe" />
-            Queue intelligence · one system
+            Live · used by service businesses today
           </div>
           <h1 className="font-display text-5xl sm:text-6xl font-light tracking-tightest leading-[1.05] mb-6">
-            Know every customer<br />
-            before they <em className="not-italic gold-text-soft">sit down.</em>
+            Modern queue management<br />
+            for <em className="not-italic gold-text-soft">busy businesses.</em>
           </h1>
-          <p className="text-ink-soft text-lg max-w-md mb-3">
-            Walk-ins. Bookings. AI personas. Satisfaction scores.
+          <p className="text-ink-soft text-lg max-w-md mb-2 leading-relaxed">
+            Replace paper tickets and messy calendars with one system that handles walk-ins, bookings, and customer communication — automatically.
           </p>
-          <p className="font-display text-xl text-gold-soft italic mb-10">
-            One system. Finally intelligent.
+          <p className="text-ink-mute text-sm max-w-md mb-10">
+            Clinics · Salons · Law firms · Government offices · Repair shops
           </p>
           <div className="flex flex-wrap gap-3">
-            <Link to="/select"><Button>Start free trial →</Button></Link>
-            <a href="#persona"><Button variant="ghost">See the persona engine</Button></a>
+            <Link to="/select"><Button>Start free — no card needed →</Button></Link>
+            <a href="#how-it-works"><Button variant="ghost">See how it works</Button></a>
           </div>
-          <div className="text-[10px] text-ink-mute mt-5 tracking-wide">
-            14-day trial · No card · Live in under an hour
+          <div className="text-xs text-ink-mute mt-5 tracking-wide">
+            Ready in 10 minutes · No hardware · Works on any device
           </div>
         </div>
         <LivePreview />
@@ -96,6 +100,167 @@ function LivePreview() {
         ))}
       </div>
     </LuxeFrame>
+  );
+}
+
+function TrustBar() {
+  const items = [
+    { icon: "⚡", label: "Ready in 10 minutes", sub: "Walk through setup once. Done." },
+    { icon: "📱", label: "No hardware needed", sub: "Any phone, tablet, or laptop." },
+    { icon: "☁️", label: "Cloud-based dashboard", sub: "Access from anywhere, always live." },
+    { icon: "🔒", label: "Secure & reliable", sub: "Your data stays safe and private." },
+  ];
+  return (
+    <section className="border-t border-b border-line bg-bg-elev">
+      <div className="max-w-6xl mx-auto px-6 py-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {items.map(({ icon, label, sub }) => (
+          <div key={label} className="flex items-start gap-3">
+            <span className="text-xl mt-0.5">{icon}</span>
+            <div>
+              <div className="text-sm font-medium text-ink">{label}</div>
+              <div className="text-xs text-ink-soft mt-0.5">{sub}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function HowItWorks() {
+  const steps = [
+    {
+      n: "01",
+      title: "Customer checks in",
+      desc: "They scan a QR code at the door — or walk up to the kiosk. Pick a service, enter a phone number. Ticket issued in seconds. No app download needed.",
+      detail: "Scan QR → Pick service → Enter phone → Done",
+    },
+    {
+      n: "02",
+      title: "They get a text update",
+      desc: "The moment they join the queue, an automatic SMS or WhatsApp message goes out with their position and estimated wait time. No standing around wondering.",
+      detail: "\"You're #3. Estimated wait: 12 minutes.\"",
+    },
+    {
+      n: "03",
+      title: "They leave and relax",
+      desc: "The customer can walk out, grab a coffee, or sit in their car. They don't have to stand in line. When it's almost their turn, they get another alert.",
+      detail: "\"You're next! Please head back now.\"",
+    },
+    {
+      n: "04",
+      title: "Staff calls them in",
+      desc: "One tap on the dashboard calls the next customer. Staff already see who's coming — visit history, AI profile, past satisfaction scores — before they arrive at the counter.",
+      detail: "Staff see full customer profile before serving",
+    },
+  ];
+  return (
+    <section id="how-it-works" className="max-w-6xl mx-auto px-6 py-24 border-t border-line">
+      <div className="text-center mb-14">
+        <div className="ovline mb-3 text-gold-soft">How it works</div>
+        <h2 className="font-display text-4xl font-light tracking-tighter">
+          Simple for customers.<br />
+          <em className="not-italic gold-text-soft">Powerful for your business.</em>
+        </h2>
+      </div>
+      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-px bg-line border border-line">
+        {steps.map(({ n, title, desc, detail }) => (
+          <div key={n} className="bg-bg-elev p-7">
+            <div className="font-display gold-text text-3xl font-light leading-none mb-5">{n}</div>
+            <h3 className="text-base font-medium text-ink mb-3">{title}</h3>
+            <p className="text-sm text-ink-soft leading-relaxed mb-4">{desc}</p>
+            <div className="border border-line bg-bg px-3 py-2 text-xs text-ink-mute italic">{detail}</div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function LeaveAndReturn() {
+  return (
+    <section className="max-w-6xl mx-auto px-6 py-24 border-t border-line">
+      <div className="grid md:grid-cols-[1fr_1.2fr] gap-12 items-center">
+        <div>
+          <div className="ovline mb-3 text-gold-soft">The big idea</div>
+          <h2 className="font-display text-4xl font-light tracking-tighter mb-5">
+            Waiting shouldn't mean<br />
+            <em className="not-italic gold-text-soft">being trapped.</em>
+          </h2>
+          <p className="text-ink-soft text-base mb-6 leading-relaxed">
+            The most stressful part of waiting isn't the time — it's not knowing. AzQueue turns that anxiety into freedom. Customers check in, then go live their life. We call them back when it's their turn.
+          </p>
+          <div className="space-y-4 mb-8">
+            {[
+              ["Before AzQueue", "Customers stand in a crowded lobby, staring at a screen, afraid to leave in case they miss their turn.", "#d49185"],
+              ["With AzQueue", "Customers check in, go for coffee, run an errand, or wait in their car — and come back relaxed when we text them.", "#9bbd9b"],
+            ].map(([label, text, color]) => (
+              <div key={label} className="border border-line p-4">
+                <div className="text-xs font-medium mb-1" style={{ color }}>{label}</div>
+                <p className="text-sm text-ink-soft leading-relaxed">{text}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-ink-mute italic">
+            "A calmer lobby means happier customers and less pressure on your staff."
+          </p>
+        </div>
+        <div className="space-y-3">
+          {[
+            { time: "10:02am", icon: "📍", msg: "Fatimah checks in at the clinic. Ticket #B07. Estimated wait: 22 min.", color: "border-line" },
+            { time: "10:04am", icon: "📱", msg: "SMS: \"Hi Fatimah! You're #7 in queue. Est. wait 22 min. We'll text when you're next.\"", color: "border-gold-deep bg-gold-deep/5" },
+            { time: "10:06am", icon: "☕", msg: "Fatimah walks to the café next door. Orders a coffee. No stress.", color: "border-line" },
+            { time: "10:24am", icon: "🔔", msg: "SMS: \"You're next! Please head back to the clinic now. Counter 2.\"", color: "border-[#506b50] bg-[#9bbd9b]/5" },
+            { time: "10:26am", icon: "✅", msg: "Fatimah arrives calm, on time, and ready. Staff already know her profile.", color: "border-line" },
+          ].map(({ time, icon, msg, color }) => (
+            <div key={time} className={`border ${color} p-4 flex gap-3`}>
+              <span className="text-xl shrink-0">{icon}</span>
+              <div>
+                <div className="text-[10px] text-ink-mute ovline mb-1">{time}</div>
+                <div className="text-sm text-ink-soft leading-relaxed">{msg}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SocialProof() {
+  return (
+    <section className="border-t border-line bg-bg-elev">
+      <div className="max-w-6xl mx-auto px-6 py-16">
+        <div className="text-center mb-10">
+          <div className="ovline mb-3 text-gold-soft">Social proof</div>
+          <h2 className="font-display text-3xl font-light tracking-tighter">Trusted by service businesses</h2>
+        </div>
+        <div className="grid md:grid-cols-3 gap-6 mb-12">
+          {[
+            { quote: "Before AzQueue our receptionist spent half the day managing a paper list. Now the queue runs itself and we serve 30% more patients.", name: "Dr. Amir R.", role: "Family Clinic, KL" },
+            { quote: "Our clients used to complain about waiting. Since we launched the SMS feature, the lobby is calm and we get 5-star reviews every week.", name: "Sarah L.", role: "Law Firm, Petaling Jaya" },
+            { quote: "Setup was incredibly simple — we were live before lunch on day one. The AI persona card is the feature my staff love most.", name: "Hassan M.", role: "Auto Repair, Shah Alam" },
+          ].map(({ quote, name, role }) => (
+            <div key={name} className="border border-line bg-bg p-6">
+              <div className="text-gold-soft text-2xl mb-3">"</div>
+              <p className="text-sm text-ink-soft leading-relaxed mb-5 italic">{quote}</p>
+              <div className="border-t border-line pt-4">
+                <div className="text-sm font-medium text-ink">{name}</div>
+                <div className="text-xs text-ink-mute mt-0.5">{role}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-line border border-line">
+          {[["500+","Customers served daily"],["12 min","Average wait reduction"],["98%","SMS delivery rate"],["10 min","Average setup time"]].map(([val, label]) => (
+            <div key={label} className="bg-bg-elev p-6 text-center">
+              <div className="font-display text-3xl gold-text-soft mb-1">{val}</div>
+              <div className="text-xs text-ink-mute">{label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -709,12 +874,19 @@ function Pricing() {
 function CTA() {
   return (
     <section className="max-w-3xl mx-auto px-6 py-24 border-t border-line text-center">
+      <div className="ovline mb-4 text-gold-soft">Get started today</div>
       <h2 className="font-display text-4xl sm:text-5xl font-light tracking-tightest mb-5 leading-tight">
-        Know every customer.<br />
-        <em className="not-italic text-gold-soft">Serve them better.</em>
+        A calmer lobby starts<br />
+        <em className="not-italic text-gold-soft">in 10 minutes.</em>
       </h2>
-      <p className="text-ink-soft text-sm mb-8">14-day trial · no card · live in under an hour.</p>
-      <Link to="/select"><Button size="lg">Get started →</Button></Link>
+      <p className="text-ink-soft text-base mb-3 leading-relaxed">
+        No hardware. No contracts. No complicated setup.
+      </p>
+      <p className="text-ink-mute text-sm mb-8">
+        Join service businesses already running their queues with AzQueue.
+      </p>
+      <Link to="/select"><Button size="lg">Start free trial — no card needed →</Button></Link>
+      <div className="text-xs text-ink-mute mt-4">14-day trial · Cancel any time · Live support</div>
     </section>
   );
 }
