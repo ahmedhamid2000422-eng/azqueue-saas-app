@@ -1,41 +1,49 @@
 import { supabase } from "./supabase";
 
 /**
- * notifications — fires WhatsApp messages by invoking the `send-notification`
- * Supabase Edge Function. The function handles the actual Twilio call.
+ * notifications — fires WhatsApp or SMS messages by invoking the
+ * `send-notification` Supabase Edge Function (Twilio).
  *
- * Until you've deployed the function and set TWILIO_* secrets, calls fall through
- * harmlessly — the function logs a dry-run row in notifications_log so you can
- * verify wiring without sending real messages.
+ * Until the function is deployed and TWILIO_* secrets are set, calls fall
+ * through harmlessly — the function logs a dry-run row in notifications_log.
  *
  * Templates:
- *   "confirm"      — fires when a customer checks in
- *   "call"         — fires when their ticket goes to "serving"
- *   "thanks"       — fires when their ticket is "completed"
- *   "prayer_pause" — fires when prayer auto-pause kicks in
+ *   "confirm"      — customer checks in
+ *   "call"         — ticket moves to "serving"
+ *   "thanks"       — ticket completed
+ *   "prayer_pause" — prayer auto-pause
+ *
+ * Channels:
+ *   "whatsapp"  (default) — requires TWILIO_WHATSAPP_FROM
+ *   "sms"                 — requires TWILIO_SMS_FROM
  */
-export async function notify({ ticketId, template, extras = {} }) {
+export async function notify({ ticketId, template, channel = "whatsapp", extras = {} }) {
   if (!ticketId || !template) return { error: "missing ticketId or template" };
 
   try {
     const { data, error } = await supabase.functions.invoke("send-notification", {
-      body: { ticketId, template, extras },
+      body: { ticketId, template, channel, extras },
     });
     if (error) return { error: error.message };
     return { data };
   } catch (e) {
-    // Edge function not deployed yet — quietly ignore so the app still works
     if (import.meta.env.DEV) {
-      console.info("[notify dry-run]", { ticketId, template, extras });
+      console.info("[notify dry-run]", { ticketId, template, channel, extras });
     }
     return { error: e?.message };
   }
 }
 
 /**
- * Convenience helpers for the three customer-facing flows.
+ * Convenience helpers — default to WhatsApp. Pass channel: "sms" to
+ * send via SMS instead, or use the *Sms variants for explicit SMS sends.
  */
-export const sendConfirmation = (ticketId)         => notify({ ticketId, template: "confirm" });
-export const sendCallNotice   = (ticketId)         => notify({ ticketId, template: "call" });
-export const sendThanks       = (ticketId)         => notify({ ticketId, template: "thanks" });
-export const sendPrayerPause  = (ticketId, extras) => notify({ ticketId, template: "prayer_pause", extras });
+export const sendConfirmation    = (ticketId, channel = "whatsapp") => notify({ ticketId, template: "confirm",      channel });
+export const sendCallNotice      = (ticketId, channel = "whatsapp") => notify({ ticketId, template: "call",         channel });
+export const sendThanks          = (ticketId, channel = "whatsapp") => notify({ ticketId, template: "thanks",       channel });
+export const sendPrayerPause     = (ticketId, extras, channel = "whatsapp") => notify({ ticketId, template: "prayer_pause", channel, extras });
+
+// Explicit SMS shortcuts
+export const sendConfirmationSms = (ticketId) => notify({ ticketId, template: "confirm",      channel: "sms" });
+export const sendCallNoticeSms   = (ticketId) => notify({ ticketId, template: "call",         channel: "sms" });
+export const sendThanksSms       = (ticketId) => notify({ ticketId, template: "thanks",       channel: "sms" });
