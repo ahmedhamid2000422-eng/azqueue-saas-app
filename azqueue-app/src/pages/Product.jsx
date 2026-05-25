@@ -1,888 +1,347 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import Button from "../components/Button";
-import SiteHeader from "../components/SiteHeader";
-import SiteFooter from "../components/SiteFooter";
-import LuxeFrame from "../components/LuxeFrame";
-import LiveTicker, { CountUp } from "../components/LiveTicker";
+import SiteNav from "../components/SiteNav";
+
+const C = {
+  void:   "#080807",
+  ink:    "#f0ede6",
+  gold:   "#b8955a",
+  muted:  "#60605a",
+  faint:  "#2a2926",
+  border: "rgba(255,255,255,0.07)",
+  card:   "#0c0c0b",
+  panel:  "#111110",
+  live:   "#4ade80",
+  dim:    "#3a3835",
+};
+
+const T = {
+  display: { fontSize: 46, fontWeight: 500, letterSpacing: "-0.01em", lineHeight: 1.1, fontFamily: "Georgia, 'Times New Roman', serif" },
+  h2:      { fontSize: 34, fontWeight: 500, letterSpacing: "-0.005em", lineHeight: 1.15, fontFamily: "Georgia, 'Times New Roman', serif" },
+  h3:      { fontSize: 24, fontWeight: 500, letterSpacing: "-0.005em", lineHeight: 1.25, fontFamily: "Georgia, 'Times New Roman', serif" },
+  label:   { fontSize: 10, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", color: C.gold },
+  body:    { fontSize: 15, fontWeight: 400, lineHeight: 1.7, letterSpacing: "-0.005em", color: C.muted },
+};
+
+function useInView(threshold = 0.1) {
+  const ref = useRef(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setVisible(true); }, { threshold });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [threshold]);
+  return [ref, visible];
+}
+
+const Ic = {
+  Check:  () => <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
+  Arr:    () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>,
+  Queue:  () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="3" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="3" cy="18" r="1" fill="currentColor" stroke="none"/></svg>,
+  Msg:    () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
+  Moon:   () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>,
+  Star:   () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+  Chart:  () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
+  Branch: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>,
+};
+
+const WaIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="white">
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/>
+  </svg>
+);
 
 export default function Product() {
   return (
-    <div className="min-h-screen bg-bg text-ink">
-      <SiteHeader />
-      <Hero />
-      <CombinedQueue />
-      <Autopilot />
-      <FeatureRow />
-      <ChannelRow />
-      <CTA />
-      <SiteFooter />
+    <div style={{ background: C.void, color: C.ink, fontFamily: "'Inter', system-ui, sans-serif", overflowX: "hidden" }}>
+      <SiteNav solid />
+      <PageHero />
+      <KioskSection />
+      <DashboardSection />
+      <WhatsAppSection />
+      <FeaturesGrid />
+      <ProductCTA />
     </div>
   );
 }
 
-/* ── Hero ───────────────────────────────────────────────────────── */
-function Hero() {
+/* ── Page Hero ── */
+function PageHero() {
   return (
-    <section className="atmosphere-hero max-w-6xl mx-auto px-6 pt-20 pb-24">
-      <div className="grid lg:grid-cols-[1.1fr_1fr] gap-12 items-center">
-        <div>
-          <div className="ovline mb-5 inline-flex items-center gap-2 border border-line px-3 py-1">
-            <span className="pip breathe" />
-            Product · the flow engine
-          </div>
-          <h1 className="font-display text-5xl sm:text-6xl font-light tracking-tightest leading-[1.05] mb-6">
-            One engine.<br />
-            <em className="not-italic gold-text-soft">Every flow.</em>
+    <section style={{ padding: "160px 48px 100px", background: C.card, borderBottom: `1px solid ${C.border}` }}>
+      <div style={{ maxWidth: 1160, margin: "0 auto" }}>
+        <div style={{ ...T.label, marginBottom: 24 }}>The product</div>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 60, flexWrap: "wrap" }}>
+          <h1 style={{ ...T.display, color: C.ink, margin: 0, maxWidth: 560 }}>
+            Every tool your team needs.<br />
+            <em style={{ color: C.gold, fontStyle: "italic" }}>In one place.</em>
           </h1>
-          <p className="text-ink-soft text-lg max-w-md mb-3">
-            Walk-ins, bookings, prayer pauses, branch service.
+          <p style={{ ...T.body, maxWidth: 360, margin: 0, fontSize: 15 }}>
+            AzQueue replaces paper queues, printed tickets, and shouted names with a system your customers and staff actually prefer.
           </p>
-          <p className="font-display text-xl text-gold-soft italic mb-10">
-            One queue, calibrated for premium service.
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <Link to="/signup"><Button>Start free trial →</Button></Link>
-            <a href="#queue"><Button variant="ghost">See it live</Button></a>
-          </div>
-          <div className="text-[10px] text-ink-mute mt-5 tracking-wide">
-            14-day trial · No card · Live in under an hour
-          </div>
         </div>
-        <HeroPanel />
+        <div style={{ display: "flex", gap: 12, marginTop: 48 }}>
+          {["Self-service kiosk", "WhatsApp & SMS", "Staff dashboard", "Prayer pause", "Loyalty cards", "Multi-branch"].map(t => (
+            <div key={t} style={{ fontSize: 11, color: C.muted, border: `1px solid ${C.border}`, borderRadius: 20, padding: "5px 14px", letterSpacing: "0.02em" }}>{t}</div>
+          ))}
+        </div>
       </div>
     </section>
   );
 }
 
-function HeroPanel() {
+/* ── Kiosk Section ── */
+function KioskSection() {
+  const [ref, visible] = useInView();
   return (
-    <LuxeFrame className="p-7">
-      <div className="flex items-center justify-between mb-4">
-        <span className="ovline text-[9px]">Combined queue</span>
-        <span className="ovline text-[9px] text-[#9bbd9b] flex items-center">
-          <span className="pip breathe mr-1.5" /> Live
-        </span>
+    <section ref={ref} style={{ padding: "120px 48px" }}>
+      <div style={{ maxWidth: 1160, margin: "0 auto", display: "flex", alignItems: "center", gap: 100 }}>
+        <div style={{ flex: 1, opacity: visible ? 1 : 0, transform: visible ? "none" : "translateX(-16px)", transition: "all 0.7s ease" }}>
+          <KioskScreenMockup />
+        </div>
+        <div style={{ flex: "0 0 380px", opacity: visible ? 1 : 0, transform: visible ? "none" : "translateX(16px)", transition: "all 0.7s ease 0.1s" }}>
+          <div style={{ ...T.label, marginBottom: 20 }}>Self-service kiosk</div>
+          <h2 style={{ ...T.h3, color: C.ink, margin: "0 0 18px" }}>Check in under 30 seconds. No app required.</h2>
+          <p style={{ ...T.body, margin: "0 0 32px", fontSize: 14 }}>Deploy on any tablet. Your brand, your colors. Customers tap their service, enter their number, and receive a ticket instantly.</p>
+          {["Works on any Android or iPad tablet", "Arabic, English, and 4 additional languages", "Configurable per branch and service type", "Branded with your logo and colors"].map(t => (
+            <div key={t} style={{ display: "flex", gap: 10, marginBottom: 10, alignItems: "center" }}>
+              <div style={{ width: 16, height: 16, borderRadius: 4, border: `1px solid ${C.faint}`, display: "flex", alignItems: "center", justifyContent: "center", color: C.gold, flexShrink: 0 }}><Ic.Check /></div>
+              <span style={{ fontSize: 13, color: C.muted, lineHeight: 1.5 }}>{t}</span>
+            </div>
+          ))}
+        </div>
       </div>
+    </section>
+  );
+}
 
-      <LiveTicker
-        values={["A102", "T04", "P012", "07"]}
-        intervalMs={3800}
-      />
-      <div className="text-[10px] text-ink-mute mt-3 tracking-wide">Counter 2 · Combined Mode</div>
-
-      <div className="rule-ornament my-5 text-[8px]"><span>✦</span></div>
-
-      <div className="grid grid-cols-2 gap-px bg-line border border-line">
-        {[
-          ["Walk-ins · today", 128],
-          ["Bookings · today", 76],
-          ["Avg wait", "12m"],
-          ["Customer NPS", 72],
-        ].map(([l, v]) => (
-          <div key={l} className="bg-bg-elev p-3">
-            <div className="ovline text-[8px]">{l}</div>
-            <div className="font-display text-base mt-1 gold-text-soft">
-              {typeof v === "number" ? <CountUp to={v} /> : v}
+function KioskScreenMockup() {
+  return (
+    <div style={{ position: "relative", maxWidth: 440 }}>
+      <div style={{ background: "linear-gradient(150deg, #1c1b19, #131210)", borderRadius: 22, border: "1px solid #222120", padding: "4px 4px 18px", boxShadow: "0 32px 64px rgba(0,0,0,0.55)" }}>
+        <div style={{ borderRadius: 19, overflow: "hidden", background: "#f3f0ea" }}>
+          <div style={{ background: C.void, padding: "24px 28px 18px", textAlign: "center" }}>
+            <div style={{ fontSize: 9, color: C.dim, letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 12 }}>Al Noor Medical Center</div>
+            <div style={{ fontSize: 48, fontWeight: 400, color: C.gold, fontFamily: "Georgia, serif", letterSpacing: "0.03em", lineHeight: 1 }}>A 43</div>
+            <div style={{ fontSize: 10, color: C.muted, marginTop: 8 }}>2 ahead · estimated 6 minutes</div>
+          </div>
+          <div style={{ padding: "22px 24px" }}>
+            <div style={{ fontSize: 8.5, color: "#9a9890", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 12 }}>Choose your service</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              {[["General", true], ["Specialist", false], ["Lab Results", false], ["Pharmacy", false]].map(([s, active]) => (
+                <div key={s} style={{ padding: "14px 12px", borderRadius: 9, background: active ? C.gold : "#e8e4da", color: active ? C.void : "#5a5754", fontSize: 11, fontWeight: active ? 600 : 400, textAlign: "center" }}>{s}</div>
+              ))}
+            </div>
+            <div style={{ marginTop: 16, background: C.void, borderRadius: 9, padding: "13px 0", textAlign: "center" }}>
+              <span style={{ fontSize: 10, fontWeight: 600, color: C.gold, letterSpacing: "0.1em", textTransform: "uppercase" }}>Confirm check-in</span>
             </div>
           </div>
-        ))}
-      </div>
-
-      <div className="rule-ornament my-5 text-[8px]"><span>·</span></div>
-
-      <div>
-        <div className="ovline text-[9px] mb-3">Service streams</div>
-        {[
-          ["Walk-in", "A102", "haircut"],
-          ["Booking", "T04", "table for 4"],
-          ["Booking", "P012", "consultation"],
-        ].map(([source, token, detail]) => (
-          <div key={token} className="grid grid-cols-[60px_50px_1fr] gap-2 py-1.5 items-center">
-            <span className={`text-[9px] uppercase tracking-[0.1em] ${source === "Booking" ? "text-[#74b9e8]" : "text-gold-soft"}`}>
-              {source}
-            </span>
-            <span className="font-display text-gold-soft text-xs">{token}</span>
-            <span className="text-[11px] text-ink-soft">{detail}</span>
-          </div>
-        ))}
-      </div>
-    </LuxeFrame>
-  );
-}
-
-/* ── 01 · Combined Queue ────────────────────────────────────────── */
-function CombinedQueue() {
-  return (
-    <section id="queue" className="max-w-6xl mx-auto px-6 py-24 border-t border-line">
-      <div className="text-center mb-14">
-        <div className="ovline mb-3 text-gold-soft">01 · The Combined Queue</div>
-        <h2 className="font-display text-4xl font-light tracking-tighter">
-          Walk-in and booking <em className="not-italic gold-text-soft">merge without friction.</em>
-        </h2>
-        <p className="text-ink-soft text-sm mt-3 max-w-md mx-auto">
-          One ordered stream. No second app. No paper slip.
-        </p>
-      </div>
-
-      <TicketFlow />
-
-      <div className="grid md:grid-cols-4 gap-px bg-line border border-line mt-10">
-        {[
-          ["Single screen", "One ticket pool, both inputs visible."],
-          ["Fair priority", "Bookings hold a soft window; walk-ins fill gaps."],
-          ["No double-staffing", "One staff button covers both flows."],
-          ["No reset", "Prayer pauses, breaks — queue holds its position."],
-        ].map(([t, d]) => (
-          <div key={t} className="bg-bg-elev p-6">
-            <div className="ovline text-gold-soft mb-2">{t}</div>
-            <p className="text-ink-soft text-xs leading-relaxed">{d}</p>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-/* TicketFlow — two luxury ticket cards converging into a Combined panel */
-function TicketFlow() {
-  return (
-    <div className="grid lg:grid-cols-[1fr_64px_1.1fr] gap-6 lg:gap-0 items-center">
-      {/* Two source ticket cards */}
-      <div className="space-y-4">
-        <TicketCard
-          source="walk"
-          token="A102"
-          name="Ali Khan"
-          service="Haircut"
-          counter="Counter 2"
-          time="14:18"
-        />
-        <TicketCard
-          source="book"
-          token="P012"
-          name="Sara A."
-          service="Consultation"
-          counter="Slot 14:30"
-          time="12:42"
-        />
-      </div>
-
-      {/* Flow connector */}
-      <div className="hidden lg:flex flex-col items-center justify-center h-full relative">
-        <div className="w-px flex-1 bg-gradient-to-b from-transparent via-gold-deep to-gold-deep" />
-        <div className="w-2 h-2 border border-gold-deep rotate-45 my-2 bg-bg" />
-        <div className="ovline text-[8px] text-gold-soft py-1">into</div>
-        <div className="w-2 h-2 border border-gold-deep rotate-45 my-2 bg-bg" />
-        <div className="w-px flex-1 bg-gradient-to-t from-transparent via-gold-deep to-gold-deep" />
-      </div>
-
-      {/* Combined panel */}
-      <CombinedPanel />
-    </div>
-  );
-}
-
-/* Single ticket card — luxury boarding-pass aesthetic */
-function TicketCard({ source, token, name, service, counter, time }) {
-  const isBook = source === "book";
-  const sourceColor = isBook ? "text-[#74b9e8]" : "text-gold-soft";
-  const sourceLabel = isBook ? "Booking" : "Walk-in";
-
-  return (
-    <div className="relative grid grid-cols-[24px_1fr] luxe-panel border border-line">
-      {/* Perforated stub edge */}
-      <div className="relative border-r border-line border-dashed flex flex-col items-center justify-center py-2 gap-1.5">
-        {[...Array(7)].map((_, i) => (
-          <div key={i} className="w-1 h-1 rounded-full bg-line-2" />
-        ))}
-      </div>
-
-      {/* Ticket body */}
-      <div className="px-6 py-5">
-        <div className="flex items-start justify-between mb-3">
-          <div className={`ovline text-[9px] ${sourceColor} flex items-center gap-1.5`}>
-            <span className="pip" style={{ background: isBook ? "#74b9e8" : "#c9a86a" }} />
-            {sourceLabel}
-          </div>
-          <div className="text-[9px] text-ink-mute font-mono tracking-wide">{time}</div>
         </div>
-
-        <div className="flex items-baseline justify-between gap-4">
-          <div className="gold-text font-display text-5xl font-light tracking-tightest leading-none">
-            {token}
-          </div>
-          <div className="text-right">
-            <div className="text-xs text-ink leading-tight">{name}</div>
-            <div className="text-[10px] text-ink-mute mt-0.5 tracking-wide">{service}</div>
-          </div>
-        </div>
-
-        <div className="rule-ornament mt-4 mb-3 text-[7px]"><span>·</span></div>
-
-        <div className="flex items-center justify-between text-[9px] text-ink-mute uppercase tracking-[0.18em]">
-          <span>{counter}</span>
-          <span>KL Downtown</span>
-        </div>
+        <div style={{ height: 3, background: "#1a1917", borderRadius: 2, margin: "8px 56px 0" }} />
       </div>
     </div>
   );
 }
 
-/* Combined queue panel — receipt-style ledger of merged tickets */
-function CombinedPanel() {
+/* ── Dashboard Section ── */
+function DashboardSection() {
+  const [ref, visible] = useInView();
+  const rows = [
+    { token: "A 40", name: "Mohammed Al-Farsi",  service: "General",    wait: "12m", status: "serving" },
+    { token: "A 41", name: "Fatima Hassan",       service: "Lab",        wait: "18m", status: "waiting" },
+    { token: "A 42", name: "Sara Al-Amin",        service: "Pharmacy",   wait: "22m", status: "waiting" },
+    { token: "A 43", name: "Ahmed Khalil",        service: "General",    wait: "27m", status: "waiting" },
+    { token: "A 44", name: "Noura Bint Rashid",   service: "Specialist", wait: "31m", status: "waiting" },
+  ];
   return (
-    <LuxeFrame className="p-7">
-      <div className="flex items-center justify-between mb-4">
-        <div className="ovline text-[9px]">Combined queue</div>
-        <span className="ovline text-[9px] text-[#9bbd9b] flex items-center">
-          <span className="pip breathe mr-1.5" /> Live
-        </span>
-      </div>
-
-      <div className="text-[10px] text-ink-mute mb-2 tracking-wide">Now serving</div>
-      <div className="gold-text font-display text-7xl font-light tracking-tightest leading-none mb-1">
-        A102
-      </div>
-      <div className="text-[10px] text-ink-mute mb-5 tracking-wide">Counter 2 · Walk-in · Ali Khan</div>
-
-      <div className="rule-ornament my-4 text-[8px]"><span>✦</span></div>
-
-      <div className="ovline text-[9px] mb-3">Sequence · merged & priority-ordered</div>
-      <div className="space-y-px bg-line border border-line">
-        {[
-          { pos: "1", token: "A102", source: "walk", note: "now serving" },
-          { pos: "2", token: "P012", source: "book", note: "slot 14:30" },
-          { pos: "3", token: "T04",  source: "book", note: "slot 14:45" },
-          { pos: "4", token: "A103", source: "walk", note: "wait 8m" },
-          { pos: "5", token: "A104", source: "walk", note: "wait 12m" },
-        ].map((r, i) => (
-          <div
-            key={r.pos}
-            className={`grid grid-cols-[28px_60px_1fr_auto] gap-3 px-3 py-2 items-center ${
-              i === 0 ? "bg-[rgba(201,168,106,0.06)]" : "bg-bg-elev"
-            }`}
-          >
-            <span className="ovline text-[8px] text-ink-mute">{r.pos}</span>
-            <span className="font-display text-gold-soft text-xs">{r.token}</span>
-            <span className={`text-[9px] uppercase tracking-[0.18em] ${
-              r.source === "book" ? "text-[#74b9e8]" : "text-gold-soft"
-            }`}>
-              {r.source === "book" ? "Booking" : "Walk-in"}
-            </span>
-            <span className="text-[10px] text-ink-mute">{r.note}</span>
-          </div>
-        ))}
-      </div>
-
-      <div className="rule-ornament my-4 text-[8px]"><span>·</span></div>
-
-      <div className="grid grid-cols-3 gap-px bg-line border border-line">
-        {[
-          ["Walk-ins", 3],
-          ["Bookings", 2],
-          ["Avg wait", "8m"],
-        ].map(([l, v]) => (
-          <div key={l} className="bg-bg-elev p-2.5 text-center">
-            <div className="ovline text-[8px]">{l}</div>
-            <div className="font-display text-base mt-1 gold-text-soft">
-              {typeof v === "number" ? <CountUp to={v} /> : v}
+    <section ref={ref} style={{ padding: "120px 48px", background: C.card }}>
+      <div style={{ maxWidth: 1160, margin: "0 auto", display: "flex", alignItems: "center", gap: 100 }}>
+        <div style={{ flex: "0 0 360px", opacity: visible ? 1 : 0, transform: visible ? "none" : "translateX(-16px)", transition: "all 0.7s ease" }}>
+          <div style={{ ...T.label, marginBottom: 20 }}>Staff dashboard</div>
+          <h2 style={{ ...T.h3, color: C.ink, margin: "0 0 18px" }}>Complete queue visibility from one screen.</h2>
+          <p style={{ ...T.body, margin: "0 0 32px", fontSize: 14 }}>See every ticket, call the next customer, track wait times, and manage your team — all updated in real time.</p>
+          {["One-tap call to next in line", "Live wait time tracking per customer", "Prayer pause with automatic resume", "Satisfaction score on completion", "Staff performance at a glance"].map(t => (
+            <div key={t} style={{ display: "flex", gap: 10, marginBottom: 10, alignItems: "center" }}>
+              <div style={{ width: 16, height: 16, borderRadius: 4, border: `1px solid ${C.faint}`, display: "flex", alignItems: "center", justifyContent: "center", color: C.gold, flexShrink: 0 }}><Ic.Check /></div>
+              <span style={{ fontSize: 13, color: C.muted }}>{t}</span>
             </div>
-          </div>
-        ))}
-      </div>
-    </LuxeFrame>
-  );
-}
-
-/* ── 02 · Autopilot ─────────────────────────────────────────────── */
-function Autopilot() {
-  // Live countdown ticker for the autopilot panel
-  const [seconds, setSeconds] = useState(8);
-  useEffect(() => {
-    const id = setInterval(() => {
-      setSeconds((s) => (s <= 1 ? 12 : s - 1));
-    }, 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  return (
-    <section className="max-w-6xl mx-auto px-6 py-24 border-t border-line">
-      <div className="text-center mb-12">
-        <div className="ovline mb-3 text-gold-soft">02 · Autopilot</div>
-        <h2 className="font-display text-4xl font-light tracking-tighter">
-          Pace the queue with <em className="not-italic gold-text-soft">intelligent timing.</em>
-        </h2>
-        <p className="text-ink-soft text-sm mt-3 max-w-md mx-auto">
-          Adaptive · staff-aware · pause-aware.
-        </p>
-      </div>
-
-      <div className="grid lg:grid-cols-[1.1fr_1fr] gap-6 items-stretch">
-        <LuxeFrame className="p-10">
-          <div className="flex items-center justify-between mb-6 pb-4 border-b border-line">
-            <div>
-              <div className="ovline text-[9px]">Countdown</div>
-              <div className="gold-text font-display text-6xl font-light leading-none mt-1">{seconds}s</div>
+          ))}
+        </div>
+        <div style={{ flex: 1, opacity: visible ? 1 : 0, transform: visible ? "none" : "translateX(16px)", transition: "all 0.7s ease 0.1s" }}>
+          <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 16, overflow: "hidden", boxShadow: "0 20px 48px rgba(0,0,0,0.45)" }}>
+            <div style={{ padding: "12px 20px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ width: 7, height: 7, borderRadius: "50%", background: C.live }} />
+                <span style={{ fontSize: 12, fontWeight: 500, color: C.ink }}>Queue Dashboard</span>
+              </div>
+              <div style={{ display: "flex", gap: 20 }}>
+                {[["Serving", "A 40", C.gold], ["In queue", "5", C.ink], ["Avg wait", "22m", C.ink]].map(([l, v, col]) => (
+                  <span key={l} style={{ fontSize: 11, color: C.muted }}>{l}: <strong style={{ color: col, fontWeight: 500 }}>{v}</strong></span>
+                ))}
+              </div>
             </div>
-            <div className="text-right">
-              <div className="text-[10px] text-ink-mute uppercase tracking-[0.2em]">Next call</div>
-              <div className="text-ink text-sm mt-1">A102 · Haircut</div>
-              <div className="text-[10px] text-ink-mute mt-1">Counter 2</div>
+            <div style={{ padding: "8px 20px", display: "grid", gridTemplateColumns: "60px 1fr 90px 52px 88px", gap: 12, borderBottom: `1px solid ${C.border}` }}>
+              {["Ticket", "Customer", "Service", "Wait", "Status"].map(h => (
+                <div key={h} style={{ fontSize: 9.5, color: C.muted, letterSpacing: "0.08em", textTransform: "uppercase" }}>{h}</div>
+              ))}
             </div>
-          </div>
-
-          <div className="relative mx-auto w-52 h-52 my-2">
-            <svg viewBox="0 0 120 120" className="absolute inset-0 w-full h-full -rotate-90">
-              <defs>
-                <linearGradient id="ring-grad" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#7fa37f" />
-                  <stop offset="100%" stopColor="#cde0cd" />
-                </linearGradient>
-              </defs>
-              <circle cx="60" cy="60" r="52" fill="none" stroke="#26262a" strokeWidth="6" />
-              <circle cx="60" cy="60" r="52" fill="none" stroke="url(#ring-grad)" strokeWidth="6"
-                strokeDasharray="326" strokeDashoffset="98" strokeLinecap="round" />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-              <div className="text-[10px] uppercase tracking-[0.2em] text-ink-mute">Pacing</div>
-              <div className="gold-text font-display text-5xl font-light mt-1">82%</div>
-              <div className="text-[9px] text-ink-mute tracking-wide mt-2">on rhythm</div>
-            </div>
-          </div>
-
-          <div className="rule-ornament my-6 text-[8px]"><span>✦</span></div>
-
-          <div className="grid grid-cols-3 gap-px bg-line border border-line">
-            {[
-              ["Calls / hr", 21],
-              ["Service · avg", "4m"],
-              ["Idle staff", 0],
-            ].map(([l, v]) => (
-              <div key={l} className="bg-bg-elev p-3 text-center">
-                <div className="ovline text-[8px]">{l}</div>
-                <div className="font-display text-base mt-1 gold-text-soft">
-                  {typeof v === "number" ? <CountUp to={v} /> : v}
+            {rows.map((r, i) => (
+              <div key={i} style={{ padding: "11px 20px", display: "grid", gridTemplateColumns: "60px 1fr 90px 52px 88px", gap: 12, alignItems: "center", borderBottom: i < rows.length - 1 ? `1px solid ${C.border}` : "none", background: r.status === "serving" ? "rgba(74,222,128,0.02)" : "transparent" }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: r.status === "serving" ? C.gold : C.ink, fontFamily: "monospace" }}>{r.token}</div>
+                <div style={{ fontSize: 12, color: r.status === "serving" ? C.ink : C.muted }}>{r.name}</div>
+                <div style={{ fontSize: 11, color: C.muted }}>{r.service}</div>
+                <div style={{ fontSize: 11, color: C.muted }}>{r.wait}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <div style={{ width: 5, height: 5, borderRadius: "50%", background: r.status === "serving" ? C.live : C.faint }} />
+                  <span style={{ fontSize: 11, color: r.status === "serving" ? C.live : C.muted, textTransform: "capitalize" }}>{r.status}</span>
                 </div>
               </div>
             ))}
+            <div style={{ padding: "12px 20px", borderTop: `1px solid ${C.border}`, display: "flex", gap: 8 }}>
+              <button style={{ background: C.gold, color: C.void, border: "none", borderRadius: 6, padding: "7px 16px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Call next</button>
+              <button style={{ background: "transparent", color: C.muted, border: `1px solid ${C.border}`, borderRadius: 6, padding: "7px 12px", fontSize: 12, cursor: "pointer" }}>Prayer pause</button>
+            </div>
           </div>
-        </LuxeFrame>
-
-        <div className="bg-bg-elev border border-line p-10">
-          <p className="text-ink-soft text-sm mb-6">
-            Autopilot keeps service moving at a premium rhythm. Speeds up when staff are ahead. Slows down when the queue grows. Pauses gracefully for prayer and breaks.
-          </p>
-          <ul className="space-y-4 text-sm border-t border-line pt-6">
-            {[
-              ["Adaptive", "Calls calibrated to your real service time."],
-              ["Staff-aware", "Slows down when called > active staff."],
-              ["Pause-aware", "Halts during prayer or breaks automatically."],
-            ].map(([t, d]) => (
-              <li key={t} className="grid grid-cols-[16px_1fr] gap-3 items-start">
-                <span className="pip mt-2" />
-                <div>
-                  <div className="text-ink">{t}</div>
-                  <div className="text-ink-mute text-xs mt-0.5">{d}</div>
-                </div>
-              </li>
-            ))}
-          </ul>
         </div>
       </div>
     </section>
   );
 }
 
-/* ── Islamic Mode + Insights row ────────────────────────────────── */
-function FeatureRow() {
+/* ── WhatsApp Section ── */
+function WhatsAppSection() {
+  const [ref, visible] = useInView();
+  const msgs = [
+    { from: "sys", text: "Al Noor Clinic: You're checked in. Ticket A42 for General Consultation. We'll notify you when you're next.", time: "10:22" },
+    { from: "cus", text: "How many people ahead of me?", time: "10:31" },
+    { from: "sys", text: "Al Noor Clinic: 2 people ahead. Estimated wait: 8 minutes.", time: "10:31" },
+    { from: "sys", text: "Al Noor Clinic: You're next. Please proceed to counter 3. Ticket A42.", time: "10:39" },
+    { from: "sys", text: "Al Noor Clinic: Thank you for visiting. We hope to see you soon.", time: "10:52" },
+  ];
   return (
-    <section className="max-w-6xl mx-auto px-6 py-24 border-t border-line">
-      <div className="grid lg:grid-cols-2 gap-6 items-stretch">
-        <div className="bg-bg-elev border border-[#506b50] p-10">
-          <div className="ovline text-[#9bbd9b] mb-3">Feature · Islamic Mode</div>
-          <h2 className="font-display text-3xl font-light tracking-tighter mb-4">
-            Prayer-aware <em className="not-italic gold-text-soft">queue timing.</em>
-          </h2>
-          <p className="text-ink-soft text-sm mb-6">
-            Islamic Mode treats prayer pauses as a first-class part of service flow. Blocks calls before prayer, surfaces the next window, and keeps customers informed while the world stops.
-          </p>
-
-          <LuxeFrame variant="sage" className="p-6">
-            <div className="flex items-center justify-between mb-3">
-              <div className="ovline text-[9px] text-[#9bbd9b] flex items-center">
-                <span className="pip breathe mr-1.5" /> Next prayer
+    <section ref={ref} style={{ padding: "120px 48px" }}>
+      <div style={{ maxWidth: 1160, margin: "0 auto", display: "flex", alignItems: "center", gap: 100 }}>
+        <div style={{ flex: 1, display: "flex", justifyContent: "flex-start", opacity: visible ? 1 : 0, transform: visible ? "none" : "translateX(-16px)", transition: "all 0.7s ease" }}>
+          <div style={{ background: "#0b130e", border: "1px solid #1a2119", borderRadius: 18, overflow: "hidden", width: 340, boxShadow: "0 20px 48px rgba(0,0,0,0.4)" }}>
+            <div style={{ background: "#075E54", padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 32, height: 32, background: C.gold, borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 600, color: C.void }}>A</div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 500, color: "#fff" }}>AzQueue · Al Noor Clinic</div>
+                <div style={{ fontSize: 9.5, color: "rgba(255,255,255,0.65)" }}>Official business account</div>
               </div>
-              <div className="text-[10px] text-ink-mute uppercase tracking-[0.2em]">Auto-pause</div>
             </div>
-            <div className="gold-text font-display text-4xl font-light leading-none">Dhuhr · 13:15</div>
-            <div className="rule-ornament my-4 text-[8px]"><span>·</span></div>
-            <div className="text-[10px] text-ink-mute tracking-wide">
-              Resumes 13:35 · <CountUp to={12} /> customers notified
+            <div style={{ padding: "14px 12px", display: "flex", flexDirection: "column", gap: 7 }}>
+              {msgs.map((m, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: m.from === "cus" ? "flex-end" : "flex-start" }}>
+                  <div style={{ maxWidth: "85%", padding: "8px 11px", borderRadius: m.from === "cus" ? "11px 11px 2px 11px" : "11px 11px 11px 2px", background: m.from === "cus" ? "#005C4B" : "#1e2b20", fontSize: 11, color: "rgba(255,255,255,0.88)", lineHeight: 1.5 }}>
+                    {m.text}
+                    <div style={{ fontSize: 8.5, color: "rgba(255,255,255,0.3)", marginTop: 3, textAlign: "right" }}>{m.time}</div>
+                  </div>
+                </div>
+              ))}
             </div>
-          </LuxeFrame>
+          </div>
+        </div>
+        <div style={{ flex: "0 0 380px", opacity: visible ? 1 : 0, transform: visible ? "none" : "translateX(16px)", transition: "all 0.7s ease 0.1s" }}>
+          <div style={{ ...T.label, marginBottom: 20 }}>WhatsApp & SMS</div>
+          <h2 style={{ ...T.h3, color: C.ink, margin: "0 0 18px" }}>Every customer, always informed.</h2>
+          <p style={{ ...T.body, margin: "0 0 32px", fontSize: 14 }}>Automatic messages at every stage of their visit. No app download. No registration. Works on any phone.</p>
+          {["Confirmation sent on check-in", "Alert when called to counter", "Thank-you message on completion", "Prayer pause notice with resume time", "SMS fallback if WhatsApp unavailable"].map(t => (
+            <div key={t} style={{ display: "flex", gap: 10, marginBottom: 10, alignItems: "center" }}>
+              <div style={{ width: 16, height: 16, borderRadius: 4, border: `1px solid ${C.faint}`, display: "flex", alignItems: "center", justifyContent: "center", color: C.gold, flexShrink: 0 }}><Ic.Check /></div>
+              <span style={{ fontSize: 13, color: C.muted }}>{t}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
 
-          <Link to="/islamic-mode" className="text-[10px] tracking-[0.2em] uppercase text-gold-soft hover:text-gold mt-5 inline-block">
-            See Islamic Mode →
+/* ── Features Grid ── */
+function FeaturesGrid() {
+  const [ref, visible] = useInView(0.08);
+  const features = [
+    {
+      icon: <Ic.Queue />, title: "Smart queue management",
+      desc: "Auto-assign tickets, track wait times, and serve in order. Zero manual tracking.",
+      mini: <div style={{ display: "flex", gap: 4, marginTop: 14 }}>{["A40", "A41", "A42"].map((t, i) => <div key={t} style={{ flex: 1, background: i === 0 ? "rgba(184,149,90,0.12)" : "rgba(255,255,255,0.03)", border: `1px solid ${i === 0 ? "rgba(184,149,90,0.2)" : C.border}`, borderRadius: 5, padding: "5px 0", textAlign: "center", fontSize: 8.5, fontWeight: 600, color: i === 0 ? C.gold : C.muted, fontFamily: "monospace" }}>{t}</div>)}</div>,
+    },
+    {
+      icon: <Ic.Msg />, title: "WhatsApp & SMS",
+      desc: "Instant notifications at check-in, when called, and after service. No app needed.",
+      mini: <div style={{ marginTop: 14, background: "#0b130e", borderRadius: 7, padding: "8px 10px" }}><div style={{ fontSize: 8.5, color: "rgba(255,255,255,0.4)", marginBottom: 3 }}>AzQueue · just now</div><div style={{ fontSize: 9, color: "rgba(255,255,255,0.8)", lineHeight: 1.45 }}>You're next — Ticket A42, counter 3.</div></div>,
+    },
+    {
+      icon: <Ic.Moon />, title: "Prayer pause",
+      desc: "Scheduled pauses for prayer times. The queue holds automatically and resumes on time.",
+      mini: <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 8 }}><div style={{ flex: 1, height: 2, background: C.faint, borderRadius: 1 }} /><span style={{ fontSize: 9, color: C.gold, fontWeight: 500 }}>Paused · Asr</span></div>,
+    },
+    {
+      icon: <Ic.Star />, title: "Loyalty punch cards",
+      desc: "Reward returning customers. A punch earned on every completed visit, redeemed automatically.",
+      mini: <div style={{ marginTop: 14, display: "flex", gap: 4 }}>{Array(8).fill(0).map((_, i) => <div key={i} style={{ width: 13, height: 13, borderRadius: "50%", background: i < 5 ? C.gold : "transparent", border: `1px solid ${i < 5 ? "transparent" : C.faint}` }} />)}</div>,
+    },
+    {
+      icon: <Ic.Chart />, title: "Analytics & insights",
+      desc: "Peak hours, wait time trends, and service performance — all updated in real time.",
+      mini: <div style={{ marginTop: 14, display: "flex", alignItems: "flex-end", gap: 3, height: 24 }}>{[40, 65, 45, 80, 55, 90, 70].map((h, i) => <div key={i} style={{ flex: 1, height: `${h}%`, background: i === 5 ? C.gold : "rgba(184,149,90,0.15)", borderRadius: "2px 2px 0 0" }} />)}</div>,
+    },
+    {
+      icon: <Ic.Branch />, title: "Multi-branch",
+      desc: "One account, many locations. Each branch with its own queue, staff, and configuration.",
+      mini: <div style={{ marginTop: 14, display: "flex", gap: 5 }}>{["Main", "North", "Mall"].map(b => <div key={b} style={{ flex: 1, background: "rgba(255,255,255,0.03)", border: `1px solid ${C.border}`, borderRadius: 5, padding: "4px 0", textAlign: "center", fontSize: 8, color: C.muted }}>{b}</div>)}</div>,
+    },
+  ];
+  return (
+    <section ref={ref} style={{ padding: "120px 48px", background: C.card }}>
+      <div style={{ maxWidth: 1160, margin: "0 auto" }}>
+        <div style={{ marginBottom: 72 }}>
+          <div style={{ ...T.label, marginBottom: 20 }}>All features</div>
+          <h2 style={{ ...T.h2, color: C.ink, margin: 0 }}>Everything you need.<br />Nothing you don't.</h2>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1, background: C.border, borderRadius: 16, overflow: "hidden" }}>
+          {features.map((f, i) => (
+            <div key={i} style={{ background: C.void, padding: "32px 28px", opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(12px)", transition: `all 0.5s ease ${i * 0.06}s` }}
+              onMouseEnter={e => e.currentTarget.style.background = "#0d0d0c"}
+              onMouseLeave={e => e.currentTarget.style.background = C.void}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${C.faint}`, display: "flex", alignItems: "center", justifyContent: "center", color: C.gold, marginBottom: 18 }}>{f.icon}</div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: C.ink, marginBottom: 7, letterSpacing: "-0.01em" }}>{f.title}</div>
+              <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>{f.desc}</div>
+              {f.mini}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ── CTA ── */
+function ProductCTA() {
+  return (
+    <section style={{ padding: "120px 48px", background: C.void }}>
+      <div style={{ maxWidth: 680, margin: "0 auto", textAlign: "center" }}>
+        <div style={{ width: 36, height: 1, background: C.gold, margin: "0 auto 48px", opacity: 0.35 }} />
+        <h2 style={{ ...T.h2, color: C.ink, margin: "0 0 20px" }}>
+          Ready to transform your queue?
+        </h2>
+        <p style={{ ...T.body, margin: "0 0 40px" }}>10 minutes to deploy. No hardware required.</p>
+        <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+          <Link to="/signup" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: C.gold, color: C.void, padding: "12px 24px", borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: "none", letterSpacing: "0.01em", transition: "all 0.2s ease" }}
+            onMouseEnter={e => e.currentTarget.style.opacity = "0.88"}
+            onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
+            Request early access <Ic.Arr />
+          </Link>
+          <Link to="/industries" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "transparent", color: C.muted, padding: "12px 24px", borderRadius: 8, fontSize: 13, fontWeight: 500, textDecoration: "none", border: `1px solid ${C.border}`, letterSpacing: "0.01em", transition: "all 0.2s ease" }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = C.dim; e.currentTarget.style.color = C.ink; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.muted; }}>
+            See industries
           </Link>
         </div>
-
-        <InsightsLedger />
       </div>
-    </section>
-  );
-}
-
-/* InsightsLedger — premium alert ledger like a private banking statement */
-function InsightsLedger() {
-  const items = [
-    {
-      time: "09:42",
-      mark: "✱",
-      severity: "warn",
-      title: "Slow service alert",
-      body: "Tickets over 18m flagged for intervention.",
-      impact: "−12%",
-      impactLabel: "wait",
-      direction: "down",
-    },
-    {
-      time: "11:08",
-      mark: "✦",
-      severity: "info",
-      title: "Booking conversion",
-      body: "Unconfirmed slots surfaced before next service window.",
-      impact: "+24%",
-      impactLabel: "fill",
-      direction: "up",
-    },
-    {
-      time: "13:21",
-      mark: "✦",
-      severity: "info",
-      title: "Idle staff insight",
-      body: "Underused chairs highlighted for throughput.",
-      impact: "+8%",
-      impactLabel: "util",
-      direction: "up",
-    },
-    {
-      time: "16:55",
-      mark: "✱",
-      severity: "warn",
-      title: "Repeat-customer drift",
-      body: "Loyalty cohort waiting longer than first-timers.",
-      impact: "−4%",
-      impactLabel: "NPS",
-      direction: "down",
-    },
-  ];
-
-  return (
-    <LuxeFrame className="p-9">
-      <div className="flex items-baseline justify-between mb-5">
-        <div>
-          <div className="ovline text-gold-soft mb-2">Feature · Insights</div>
-          <h2 className="font-display text-3xl font-light tracking-tighter">
-            Actionable queue <em className="not-italic gold-text-soft">intelligence.</em>
-          </h2>
-        </div>
-        <div className="ovline text-[9px] text-ink-mute hidden md:block">Today · 4 entries</div>
-      </div>
-
-      {/* Ledger header */}
-      <div className="grid grid-cols-[44px_18px_1fr_70px] gap-3 px-1 pb-2 border-b border-line">
-        {["Time", "·", "Insight", "Impact"].map((h, i) => (
-          <div key={i} className={`ovline text-[8px] text-ink-mute ${i === 3 ? "text-right" : ""}`}>{h}</div>
-        ))}
-      </div>
-
-      {/* Ledger rows */}
-      <div className="divide-y divide-line border-b border-line">
-        {items.map((item) => (
-          <div
-            key={item.title}
-            className="grid grid-cols-[44px_18px_1fr_70px] gap-3 px-1 py-4 items-baseline hover:bg-[rgba(201,168,106,0.03)] transition"
-          >
-            {/* Time */}
-            <div className="font-mono text-[10px] text-gold-soft tracking-wide">{item.time}</div>
-
-            {/* Severity ornament */}
-            <div className={`text-[12px] leading-none ${
-              item.severity === "warn" ? "text-[#d49185]" : "text-gold-soft"
-            }`}>
-              {item.mark}
-            </div>
-
-            {/* Title + body */}
-            <div>
-              <div className="text-sm text-ink leading-tight">{item.title}</div>
-              <p className="text-ink-mute text-[11px] mt-1 leading-relaxed">{item.body}</p>
-            </div>
-
-            {/* Impact pill with arrow */}
-            <div className="text-right">
-              <div className={`inline-flex items-baseline gap-1 font-display text-base ${
-                item.direction === "up" ? "text-[#9bbd9b]" : "text-[#d49185]"
-              }`}>
-                <span className="text-[10px]">{item.direction === "up" ? "▲" : "▼"}</span>
-                <span>{item.impact}</span>
-              </div>
-              <div className="ovline text-[8px] text-ink-mute mt-0.5">{item.impactLabel}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="rule-ornament my-6 text-[8px]"><span>✦</span></div>
-
-      <div className="grid grid-cols-3 gap-px bg-line border border-line">
-        {[
-          ["Recalculated", "Nightly"],
-          ["Scope", "Per branch"],
-          ["Insights", 47],
-        ].map(([l, v]) => (
-          <div key={l} className="bg-bg-elev p-3 text-center">
-            <div className="ovline text-[8px]">{l}</div>
-            <div className="font-display text-base mt-1 gold-text-soft">
-              {typeof v === "number" ? <CountUp to={v} /> : v}
-            </div>
-          </div>
-        ))}
-      </div>
-    </LuxeFrame>
-  );
-}
-
-/* ── WhatsApp + Multi-branch ────────────────────────────────────── */
-function ChannelRow() {
-  return (
-    <section className="max-w-6xl mx-auto px-6 py-24 border-t border-line">
-      <div className="grid lg:grid-cols-[1.1fr_1fr] gap-6 items-stretch">
-        <LuxeFrame className="p-8">
-          <div className="ovline text-gold-soft mb-3">WhatsApp-first</div>
-          <h2 className="font-display text-3xl font-light tracking-tighter mb-6">
-            Notifications built for <em className="not-italic gold-text-soft">customers.</em>
-          </h2>
-
-          <WhatsAppChat />
-
-          <div className="rule-ornament my-6 text-[8px]"><span>·</span></div>
-
-          <div className="grid grid-cols-3 gap-px bg-line border border-line">
-            {[
-              ["Sent · today", 184],
-              ["Open rate", "97%"],
-              ["Languages", 5],
-            ].map(([l, v]) => (
-              <div key={l} className="bg-bg-elev p-3 text-center">
-                <div className="ovline text-[8px]">{l}</div>
-                <div className="font-display text-base mt-1 gold-text-soft">
-                  {typeof v === "number" ? <CountUp to={v} /> : v}
-                </div>
-              </div>
-            ))}
-          </div>
-        </LuxeFrame>
-
-        <BranchOpsPanel />
-      </div>
-    </section>
-  );
-}
-
-/* Multi-branch operations panel — premium ops dashboard with sparklines */
-function BranchOpsPanel() {
-  const branches = [
-    {
-      name: "KL Downtown",
-      city: "Bukit Bintang · Mon–Sun",
-      tickets: 12,
-      wait: "9m",
-      load: 0.78,
-      status: "live",
-      spark: [4, 6, 5, 8, 11, 9, 12, 10, 13, 12],
-    },
-    {
-      name: "Bangsar Studio",
-      city: "Bangsar · Mon–Sat",
-      tickets: 8,
-      wait: "6m",
-      load: 0.52,
-      status: "live",
-      spark: [3, 4, 6, 5, 7, 8, 6, 8, 7, 8],
-    },
-    {
-      name: "Puchong Clinic",
-      city: "Puchong · Tue–Sun",
-      tickets: 5,
-      wait: "4m",
-      load: 0.34,
-      status: "live",
-      spark: [1, 2, 3, 4, 4, 5, 5, 5, 6, 5],
-    },
-    {
-      name: "Subang Atelier",
-      city: "Subang · opening soon",
-      tickets: 0,
-      wait: "—",
-      load: 0,
-      status: "closed",
-      spark: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    },
-  ];
-
-  return (
-    <LuxeFrame className="p-9">
-      <div className="flex items-baseline justify-between mb-5">
-        <div>
-          <div className="ovline text-gold-soft mb-2">Multi-branch</div>
-          <h2 className="font-display text-3xl font-light tracking-tighter">
-            One dashboard <em className="not-italic gold-text-soft">across locations.</em>
-          </h2>
-        </div>
-        <div className="ovline text-[9px] text-ink-mute hidden md:block">Updated · just now</div>
-      </div>
-
-      <p className="text-ink-soft text-sm mb-6 max-w-md">
-        Every branch on one screen. Queue, performance, service flow — without switching apps.
-      </p>
-
-      {/* Column header */}
-      <div className="grid grid-cols-[1.2fr_72px_50px_60px_70px] gap-3 px-4 pb-2 border-b border-line">
-        {["Branch", "Today", "Live", "Wait", "Status"].map((h) => (
-          <div key={h} className="ovline text-[8px] text-ink-mute">{h}</div>
-        ))}
-      </div>
-
-      <div className="divide-y divide-line">
-        {branches.map((b) => (
-          <div
-            key={b.name}
-            className="grid grid-cols-[1.2fr_72px_50px_60px_70px] gap-3 px-4 py-4 items-center hover:bg-[rgba(201,168,106,0.03)] transition"
-          >
-            {/* Branch */}
-            <div className="flex items-center gap-3 min-w-0">
-              <span
-                className={`pip ${b.status === "live" ? "breathe" : "opacity-30"}`}
-                style={{ background: b.status === "live" ? "#9bbd9b" : "#6e6c65" }}
-              />
-              <div className="min-w-0">
-                <div className="font-display text-sm text-ink truncate">{b.name}</div>
-                <div className="text-[10px] text-ink-mute truncate tracking-wide">{b.city}</div>
-              </div>
-            </div>
-
-            {/* Sparkline */}
-            <Sparkline data={b.spark} active={b.status === "live"} />
-
-            {/* Tickets */}
-            <div className="font-display text-base gold-text-soft text-right">
-              {b.status === "live" ? <CountUp to={b.tickets} /> : "—"}
-            </div>
-
-            {/* Wait */}
-            <div className="text-right">
-              <div className="text-[11px] text-ink font-mono">{b.wait}</div>
-              {b.status === "live" && (
-                <div className="h-0.5 bg-line mt-1 overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-gold-deep to-gold" style={{ width: `${b.load * 100}%` }} />
-                </div>
-              )}
-            </div>
-
-            {/* Status pill */}
-            <div className="text-right">
-              <span className={`inline-block text-[8px] uppercase tracking-[0.2em] px-2 py-1 border ${
-                b.status === "live"
-                  ? "border-[#506b50] text-[#9bbd9b] bg-[rgba(80,107,80,0.08)]"
-                  : "border-line text-ink-mute"
-              }`}>
-                {b.status}
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="rule-ornament my-6 text-[8px]"><span>✦</span></div>
-
-      <div className="grid grid-cols-3 gap-px bg-line border border-line">
-        {[
-          ["Branches", 4],
-          ["Live tickets", 25],
-          ["Avg load", "63%"],
-        ].map(([l, v]) => (
-          <div key={l} className="bg-bg-elev p-3 text-center">
-            <div className="ovline text-[8px]">{l}</div>
-            <div className="font-display text-base mt-1 gold-text-soft">
-              {typeof v === "number" ? <CountUp to={v} /> : v}
-            </div>
-          </div>
-        ))}
-      </div>
-    </LuxeFrame>
-  );
-}
-
-/* Sparkline — minimal SVG line graph for branch traffic over time */
-function Sparkline({ data, active }) {
-  if (!active || !data.some((v) => v > 0)) {
-    return (
-      <div className="flex items-center h-6">
-        <div className="h-px bg-line w-full" />
-      </div>
-    );
-  }
-  const max = Math.max(...data, 1);
-  const w = 70;
-  const h = 24;
-  const step = w / (data.length - 1);
-  const points = data.map((v, i) => `${i * step},${h - (v / max) * h * 0.85 - 1}`).join(" ");
-  // Path version for a smoother feel
-  const pathD = "M" + points.split(" ").join(" L");
-  // Fill polygon: start from bottom-left, follow points, end at bottom-right
-  const fillD = `${pathD} L${w},${h} L0,${h} Z`;
-
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-6 overflow-visible">
-      <defs>
-        <linearGradient id="spark-fill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#c9a86a" stopOpacity="0.35" />
-          <stop offset="100%" stopColor="#c9a86a" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={fillD} fill="url(#spark-fill)" />
-      <path d={pathD} fill="none" stroke="#e4cb95" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-      {/* End point dot */}
-      <circle
-        cx={(data.length - 1) * step}
-        cy={h - (data[data.length - 1] / max) * h * 0.85 - 1}
-        r="1.6"
-        fill="#f5e3b9"
-      />
-    </svg>
-  );
-}
-
-/* ── WhatsApp chat mockup ───────────────────────────────────────── */
-function WhatsAppChat() {
-  // Subtle ambient texture for the chat surface — feels like an actual phone screen
-  const surface = {
-    background:
-      "radial-gradient(60% 40% at 50% 0%, rgba(127,163,127,0.06), transparent 70%), linear-gradient(180deg, #0d1310 0%, #0a0e0c 100%)",
-  };
-
-  const messages = [
-    {
-      token: "A102",
-      service: "Haircut",
-      body: "Your booking is confirmed for 14:30 today. We'll send a heads-up before you're called.",
-      time: "09:12",
-      read: true,
-    },
-    {
-      token: "A102",
-      service: "Now serving",
-      body: "You're next, Ali. Walk in now — Counter 2.",
-      time: "14:18",
-      read: true,
-      live: true,
-    },
-    {
-      token: "A102",
-      service: "Thank you",
-      body: "Thanks for visiting. Tap to rate your experience — ★ ★ ★ ★ ★",
-      time: "14:52",
-      read: false,
-    },
-  ];
-
-  return (
-    <div className="border border-[#1a3a26] bg-[#0a0e0c]" style={surface}>
-      {/* Phone header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-[#1a3a26] bg-[#0f1612]">
-        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#25D366] to-[#0d6a3a] flex items-center justify-center font-display text-[#0b0b0c] text-xs shadow-[0_0_18px_rgba(37,211,102,0.25)]">
-          A
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-[12px] text-ink leading-tight">AzQueue · KL Downtown</div>
-          <div className="flex items-center gap-1.5 text-[9px] text-[#9bbd9b] tracking-wide">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#25D366] animate-pulse" />
-            online · typing rarely, calling never
-          </div>
-        </div>
-        <div className="text-[9px] text-ink-mute font-mono uppercase tracking-[0.2em]">end-to-end</div>
-      </div>
-
-      {/* Day separator */}
-      <div className="flex justify-center py-3">
-        <div className="text-[9px] text-ink-mute uppercase tracking-[0.22em] bg-[#0f1612] border border-[#1a3a26] px-3 py-1 rounded-full">
-          Today
-        </div>
-      </div>
-
-      {/* Bubbles */}
-      <div className="px-4 pb-4 space-y-3">
-        {messages.map((m, i) => (
-          <div key={i} className="flex">
-            {/* Bubble — left-aligned (from business → customer view) */}
-            <div className="max-w-[88%] relative bg-[#11241b] border border-[#1f3a2a] rounded-2xl rounded-tl-sm px-4 py-3 shadow-[0_2px_18px_rgba(0,0,0,0.4)]">
-              {/* Sender chip */}
-              <div className="flex items-baseline justify-between gap-3 mb-1.5">
-                <div className="flex items-baseline gap-2">
-                  <span className="font-display text-[#9bbd9b] text-[11px] tracking-tight">{m.token}</span>
-                  <span className="text-[9px] text-ink-mute uppercase tracking-[0.18em]">{m.service}</span>
-                </div>
-                {m.live && (
-                  <span className="text-[8px] text-[#9bbd9b] uppercase tracking-[0.2em] flex items-center gap-1">
-                    <span className="w-1 h-1 rounded-full bg-[#25D366] animate-pulse" />
-                    live
-                  </span>
-                )}
-              </div>
-
-              {/* Body */}
-              <div className="text-[12px] text-ink leading-relaxed">{m.body}</div>
-
-              {/* Meta */}
-              <div className="flex items-center justify-end gap-1.5 mt-1.5 -mb-0.5">
-                <span className="text-[9px] text-ink-mute font-mono">{m.time}</span>
-                {/* WhatsApp-style read receipt — two ticks */}
-                <svg viewBox="0 0 16 12" className="w-3 h-3" fill="none" stroke={m.read ? "#74b9e8" : "#6e6c65"} strokeWidth="1.5">
-                  <path d="M1 6.5 L4.5 10 L11 2" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M5 6.5 L8.5 10 L15 2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Composer hint */}
-      <div className="flex items-center gap-2 px-4 py-3 border-t border-[#1a3a26] bg-[#0f1612]">
-        <div className="flex-1 h-8 rounded-full bg-[#0a0e0c] border border-[#1a3a26] px-3 flex items-center text-[10px] text-ink-mute italic">
-          Customers don't reply — this channel is one-way & on-brand.
-        </div>
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#25D366] to-[#0d6a3a] flex items-center justify-center text-[#0b0b0c] text-[14px]">
-          →
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ── CTA ────────────────────────────────────────────────────────── */
-function CTA() {
-  return (
-    <section className="atmosphere-hero max-w-3xl mx-auto px-6 py-24 border-t border-line text-center">
-      <div className="ovline text-gold-soft mb-3">Ready</div>
-      <h2 className="font-display text-4xl sm:text-5xl font-light tracking-tightest mb-5 leading-tight">
-        See it live.<br />
-        <em className="not-italic gold-text-soft">In under an hour.</em>
-      </h2>
-      <p className="text-ink-soft text-sm mb-8">14-day trial · no card · live in under an hour.</p>
-      <Link to="/signup"><Button size="lg">Start free trial →</Button></Link>
     </section>
   );
 }

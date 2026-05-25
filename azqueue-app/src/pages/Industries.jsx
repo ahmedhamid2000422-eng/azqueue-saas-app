@@ -1,246 +1,213 @@
+import { useRef, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import Button from "../components/Button";
-import SiteHeader from "../components/SiteHeader";
-import SiteFooter from "../components/SiteFooter";
-import LuxeFrame from "../components/LuxeFrame";
+import SiteNav from "../components/SiteNav";
+
+const C = {
+  void:   "#080807",
+  ink:    "#f0ede6",
+  gold:   "#b8955a",
+  muted:  "#60605a",
+  faint:  "#2a2926",
+  border: "rgba(255,255,255,0.07)",
+  card:   "#0c0c0b",
+  panel:  "#111110",
+  dim:    "#3a3835",
+};
+
+const T = {
+  display: { fontSize: 46, fontWeight: 500, letterSpacing: "-0.01em", lineHeight: 1.1, fontFamily: "Georgia, 'Times New Roman', serif" },
+  h2:      { fontSize: 34, fontWeight: 500, letterSpacing: "-0.005em", lineHeight: 1.15, fontFamily: "Georgia, 'Times New Roman', serif" },
+  h3:      { fontSize: 20, fontWeight: 500, letterSpacing: "-0.005em", lineHeight: 1.3, fontFamily: "Georgia, 'Times New Roman', serif" },
+  label:   { fontSize: 10, fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", color: C.gold },
+  body:    { fontSize: 15, fontWeight: 400, lineHeight: 1.7, letterSpacing: "-0.005em", color: C.muted },
+};
+
+function useInView(threshold = 0.1) {
+  const ref = useRef(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setVisible(true); }, { threshold });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [threshold]);
+  return [ref, visible];
+}
+
+const Ic = {
+  Arr: () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>,
+};
 
 const INDUSTRIES = [
   {
-    id: "service",
-    title: "Service",
-    tagline: "Barbershop, salon and spa flow in one premium queue.",
-    token: "A102",
-    primary: "Ali Khan · Haircut",
-    hero: "Haircut priority. Salon prep. Spa calm.",
-    upNext: [
-      ["A103", "Sara Ahmed", "Beard Trim"],
-      ["A104", "Mohammad U.", "Haircut"],
-      ["A105", "Zainab F.", "Salon"],
-    ],
-    labels: [
-      "Walk-in and booking merge into one ordered line.",
-      "Names, service, and wait estimate on a single screen.",
-      "Soft finish keeps the waiting area calm.",
-    ],
-    quote: "AzQueue keeps every chair filled and every customer moving — without the chaos.",
-    tokenFormat: "A### — walk-in token, salon-ready service.",
+    name: "Medical clinics",
+    tagline: "Designed for high-volume patient flow.",
+    body: "Manage general, specialist, lab, and pharmacy queues from one dashboard. Prayer pause keeps the flow respectful and compliant.",
+    features: ["Multi-service queues", "Prayer pause scheduling", "Patient WhatsApp updates", "Wait time estimation"],
+    stat: { value: "40%", label: "avg. reduction in perceived wait time" },
   },
   {
-    id: "hospitality",
-    title: "Hospitality",
-    tagline: "Restaurants and cafés see every party and table in one glance.",
-    token: "T04",
-    primary: "Khalid (4) · Table for 4",
-    hero: "Party size, table status and service pulse on one board.",
-    upNext: [
-      ["T05", "Party of 2", "Waiting"],
-      ["T06", "Party of 6", "Waiting"],
-      ["T07", "Party of 3", "Prep"],
-    ],
-    labels: [
-      "Party size and table type, not just order numbers.",
-      "Cover tracking and wait-time rhythm for the full floor.",
-      "Reservations and walk-ins blend into one hostess flow.",
-    ],
-    quote: "Our front desk moved from sticky notes to one screen. It changed service night to night.",
-    tokenFormat: "T## — table ticket for party tracking.",
+    name: "Government offices",
+    tagline: "Built for public-sector scale.",
+    body: "From passport offices to municipal services, AzQueue handles high foot traffic without chaos. Supports Arabic, English, and 4 more languages.",
+    features: ["Multilingual interface", "High-volume throughput", "Multi-counter routing", "Real-time occupancy tracking"],
+    stat: { value: "6", label: "languages supported out of the box" },
   },
   {
-    id: "professional",
-    title: "Professional",
-    tagline: "Clinics, law firms and finance desks. Quiet precision.",
-    token: "P012",
-    primary: "Ali Khan · Consultation",
-    hero: "Consultation, follow-up and intake — a soft, professional queue.",
-    upNext: [
-      ["P013", "Sara A.", "Follow-up"],
-      ["P014", "Yahya M.", "New"],
-      ["P015", "Hana B.", "Review"],
-    ],
-    labels: [
-      "Names stay private; teams stay aligned.",
-      "Appointment type and urgency at a glance.",
-      "One dashboard for reception, advisors and guests.",
-    ],
-    quote: "Reception feels calm again. Every client is expected at the right moment.",
-    tokenFormat: "P### — professional appointment token.",
+    name: "Banks & finance",
+    tagline: "A better experience for your members.",
+    body: "Replace the numbered ticket machine with a modern kiosk. Customers check in on their phone and wait comfortably — notified the moment they're next.",
+    features: ["Mobile check-in option", "Priority queuing", "Service type routing", "Loyalty punch cards"],
+    stat: { value: "92%", label: "customer satisfaction score" },
   },
   {
-    id: "fitness",
-    title: "Fitness",
-    tagline: "Gyms, yoga studios and PT rooms — clipboard chaos to schedule clarity.",
-    token: "07",
-    primary: "Ali Khan · PT — 60min",
-    hero: "Session starts, drop-ins and class flow on one screen.",
-    upNext: [
-      ["08", "Sara", "Yoga"],
-      ["09", "Mohammad", "PT"],
-      ["10", "Amina", "Spin"],
-    ],
-    labels: [
-      "Session type and coach assignment together.",
-      "Drop-ins, members and walk-ins balanced by real wait data.",
-      "Premium queue, even in a high-energy studio.",
-    ],
-    quote: "From warm-up to cool-down, we know who's next without yelling across the gym.",
-    tokenFormat: "## — studio session token.",
+    name: "Pharmacies",
+    tagline: "Keep prescriptions flowing.",
+    body: "Separate queues for collection, consultation, and over-the-counter. Staff see the full picture and can manage capacity in real time.",
+    features: ["Service-type separation", "Staff dashboard", "SMS notifications", "Queue hold & resume"],
+    stat: { value: "3x", label: "faster average service completion" },
   },
   {
-    id: "homecare",
-    title: "Home Care",
-    tagline: "Care agencies. Caregiver dispatch, visit tracking and compliance — in one operational queue.",
-    token: "HC042",
-    primary: "CLIENT-0042 · Personal Care",
-    hero: "Visits scheduled. Caregivers dispatched. Nothing falls through.",
-    upNext: [
-      ["HC043", "Fatima R.", "En route"],
-      ["HC044", "Yusuf A.", "Pending"],
-      ["HC045", "Amina K.", "Docs due"],
-    ],
-    labels: [
-      "Caregiver scheduling and visit tracking on one board — no clipboards.",
-      "Missing documentation flags surface automatically before they become compliance issues.",
-      "Late arrival alerts keep coordinators informed without chasing phones.",
-      "Denial tracking and approval queues so nothing gets lost in email threads.",
-    ],
-    quote: "We stopped losing visits in the cracks. AzQueue tells us what needs attention before it becomes a problem.",
-    tokenFormat: "HC### — home care visit token. Caregiver and client ref on one card.",
-    sage: true,
+    name: "Service centers",
+    tagline: "For workshops, showrooms, and repair shops.",
+    body: "Check in on arrival, wait in your car, and get called in via WhatsApp. No crowded waiting rooms, no frustration.",
+    features: ["Remote wait (wait in car)", "Two-way WhatsApp", "Appointment + walk-in mix", "Multi-bay routing"],
+    stat: { value: "8 min", label: "average wait time reduction" },
+  },
+  {
+    name: "Telecom providers",
+    tagline: "Match service time to demand.",
+    body: "Route customers to the right specialist instantly. Measure queue load per service type and staff accordingly.",
+    features: ["Specialist routing", "Peak hour analytics", "Staff allocation insights", "Customer satisfaction tracking"],
+    stat: { value: "28%", label: "improvement in staff utilization" },
   },
 ];
 
-function IndustryBlock({ industry }) {
-  const accent = industry.sage ? "text-[#9bbd9b]" : "text-gold-soft";
-  const border = industry.sage ? "border-[#506b50]" : "border-line";
+export default function Industries() {
   return (
-    <section id={industry.id} className={`border-t ${border}`}>
-      <div className="max-w-6xl mx-auto px-6 py-20">
-        {industry.sage && (
-          <div className="mb-6 inline-flex items-center gap-2 border border-[#506b50] bg-[rgba(80,107,80,0.06)] px-3 py-1.5">
-            <span className="pip breathe" />
-            <span className="ovline text-[9px] text-[#9bbd9b]">Operations module · Home Care</span>
-          </div>
-        )}
-        <div className="grid lg:grid-cols-[1fr_1fr] gap-6 items-start">
-          {/* Left — narrative */}
-          <div className={`bg-bg-elev border ${border} p-10 lg:p-12`}>
-            <div className={`ovline mb-3 ${accent}`}>{industry.title}</div>
-            <h2 className="font-display text-4xl font-light tracking-tightest leading-tight mb-5">
-              {industry.title}.
-            </h2>
-            <p className="text-ink-soft text-sm mb-3">{industry.tagline}</p>
-            <p className={`font-display text-base ${accent} italic mb-10`}>{industry.hero}</p>
+    <div style={{ background: C.void, color: C.ink, fontFamily: "'Inter', system-ui, sans-serif", overflowX: "hidden" }}>
+      <SiteNav solid />
+      <PageHero />
+      <IndustryGrid />
+      <UniversalFeatures />
+      <IndustriesCTA />
+    </div>
+  );
+}
 
-            <ul className="space-y-4 text-sm border-t border-line pt-6">
-              {industry.labels.map((item) => (
-                <li key={item} className="grid grid-cols-[16px_1fr] gap-3 items-start">
-                  <span className={`pip mt-2 ${industry.sage ? "bg-[#7fa37f]" : ""}`} />
-                  <span className="text-ink-soft">{item}</span>
-                </li>
-              ))}
-            </ul>
-
-            <div className="border-t border-line mt-10 pt-6">
-              <div className="ovline text-[9px] mb-3">{industry.sage ? "Agency note" : "Customer note"}</div>
-              <p className="text-ink text-sm italic font-display">"{industry.quote}"</p>
-            </div>
-          </div>
-
-          {/* Right — live panel */}
-          <LuxeFrame className="p-10 lg:p-12">
-            <div className="flex items-center justify-between mb-6">
-              <span className="ovline text-[9px]">{industry.sage ? "Visit in progress" : "Now Serving"}</span>
-              <span className="ovline text-[9px] text-[#9bbd9b] flex items-center">
-                <span className="pip breathe mr-1.5" /> Live
-              </span>
-            </div>
-            <div className={`${industry.sage ? "sage-text" : "gold-text"} font-display text-7xl font-light tracking-tightest leading-none`}>
-              {industry.token}
-            </div>
-            <div className="text-[10px] text-ink-mute mt-4 tracking-wide">{industry.primary}</div>
-
-            <div className="rule-ornament my-7 text-[8px]"><span>✦</span></div>
-
-            <div>
-              <div className="ovline text-[9px] mb-4">{industry.sage ? "Caregiver dispatch" : "Up next"}</div>
-              <div className="divide-y divide-line border-t border-b border-line">
-                {industry.upNext.map(([token, name, detail]) => (
-                  <div key={token} className="grid grid-cols-[60px_1fr_auto] gap-3 py-3 items-center">
-                    <span className={`font-display ${accent} text-xs`}>{token}</span>
-                    <span className="text-[12px]">{name}</span>
-                    <span className="text-[9px] uppercase tracking-[0.2em] text-ink-mute">{detail}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="rule-ornament my-6 text-[8px]"><span>·</span></div>
-
-            <div>
-              <div className="ovline text-[9px] mb-2">Token format</div>
-              <div className="text-ink-soft text-xs">{industry.tokenFormat}</div>
-            </div>
-          </LuxeFrame>
+function PageHero() {
+  return (
+    <section style={{ padding: "160px 48px 100px", background: C.card, borderBottom: `1px solid ${C.border}` }}>
+      <div style={{ maxWidth: 1160, margin: "0 auto" }}>
+        <div style={{ ...T.label, marginBottom: 24 }}>Industries</div>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 60, flexWrap: "wrap" }}>
+          <h1 style={{ ...T.display, color: C.ink, margin: 0, maxWidth: 520 }}>
+            Built for businesses<br />
+            <em style={{ color: C.gold, fontStyle: "italic" }}>where time matters.</em>
+          </h1>
+          <p style={{ ...T.body, maxWidth: 360, margin: 0 }}>
+            AzQueue adapts to the specific demands of your industry — from the waiting room to the workshop floor.
+          </p>
         </div>
       </div>
     </section>
   );
 }
 
-export default function Industries() {
+function IndustryGrid() {
+  const [ref, visible] = useInView(0.06);
   return (
-    <div className="min-h-screen bg-bg text-ink">
-      <SiteHeader />
-
-      <div className="max-w-6xl mx-auto px-6 pt-20 pb-10 text-center">
-        <div className="ovline text-gold-soft mb-3">Industries</div>
-        <h1 className="font-display text-5xl sm:text-6xl font-light tracking-tightest leading-[1.05] mb-5">
-          One engine.<br />
-          <em className="not-italic text-gold-soft">Every business type.</em>
-        </h1>
-        <p className="text-ink-soft text-sm max-w-md mx-auto">
-          Walk-ins and bookings, calibrated for your specific flow.
-        </p>
-      </div>
-
-      {/* Sharp tab strip */}
-      <div className="sticky top-0 z-20 bg-bg border-y border-line overflow-x-auto">
-        <div className="max-w-6xl mx-auto px-6 flex min-w-max mx-auto">
-          {INDUSTRIES.map((industry) => (
-            <a
-              key={industry.id}
-              href={`#${industry.id}`}
-              className={`px-5 py-4 text-[10px] tracking-[0.22em] uppercase transition border-r border-line last:border-r-0 whitespace-nowrap ${
-                industry.sage
-                  ? "text-[#506b50] hover:text-[#9bbd9b]"
-                  : "text-ink-mute hover:text-gold"
-              }`}
-            >
-              {industry.title}
-            </a>
+    <section ref={ref} style={{ padding: "120px 48px" }}>
+      <div style={{ maxWidth: 1160, margin: "0 auto" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1, background: C.border, borderRadius: 16, overflow: "hidden" }}>
+          {INDUSTRIES.map((ind, i) => (
+            <div key={i} style={{
+              background: C.card, padding: "48px 40px",
+              opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(16px)",
+              transition: `all 0.55s ease ${i * 0.08}s`,
+              display: "flex", flexDirection: "column",
+            }}
+              onMouseEnter={e => e.currentTarget.style.background = "#101010"}
+              onMouseLeave={e => e.currentTarget.style.background = C.card}>
+              <div style={{ marginBottom: "auto" }}>
+                <h3 style={{ ...T.h3, color: C.ink, margin: "0 0 6px" }}>{ind.name}</h3>
+                <div style={{ fontSize: 11, color: C.gold, letterSpacing: "0.04em", marginBottom: 20 }}>{ind.tagline}</div>
+                <p style={{ fontSize: 13, color: C.muted, lineHeight: 1.65, margin: "0 0 28px" }}>{ind.body}</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 32 }}>
+                  {ind.features.map(f => (
+                    <div key={f} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <div style={{ width: 3, height: 3, borderRadius: "50%", background: C.gold, flexShrink: 0, opacity: 0.6 }} />
+                      <span style={{ fontSize: 12, color: C.muted }}>{f}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 24, marginTop: 8 }}>
+                <div style={{ fontSize: 28, fontWeight: 400, color: C.ink, fontFamily: "Georgia, serif", letterSpacing: "-0.02em", lineHeight: 1 }}>{ind.stat.value}</div>
+                <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>{ind.stat.label}</div>
+              </div>
+            </div>
           ))}
         </div>
       </div>
+    </section>
+  );
+}
 
-      <div>
-        {INDUSTRIES.map((industry) => (
-          <IndustryBlock key={industry.id} industry={industry} />
-        ))}
-      </div>
-
-      <div className="border-t border-line">
-        <div className="max-w-3xl mx-auto px-6 py-24 text-center">
-          <div className="ovline text-gold-soft mb-3">Ready</div>
-          <h2 className="font-display text-4xl sm:text-5xl font-light tracking-tightest mb-5 leading-tight">
-            Match your industry.<br />
-            <em className="not-italic text-gold-soft">Start in under an hour.</em>
-          </h2>
-          <p className="text-ink-soft text-sm mb-8">14-day trial · no card · live in under an hour.</p>
-          <Link to="/select"><Button size="lg">Start free trial →</Button></Link>
+function UniversalFeatures() {
+  const [ref, visible] = useInView();
+  const items = [
+    { title: "Works in any language", body: "Arabic, English, Malay, Urdu, French, and more. Every customer sees the interface in their language." },
+    { title: "Prayer-time aware",     body: "Built-in prayer pause scheduling with automatic resume. Designed for Muslim-majority markets." },
+    { title: "No app. No friction.",  body: "Customers check in on the kiosk and get WhatsApp updates. Nothing to download, nothing to sign up for." },
+    { title: "One system, any scale", body: "From a single-room clinic to a 50-branch network — the same system, configured for your context." },
+  ];
+  return (
+    <section ref={ref} style={{ padding: "120px 48px", background: C.card }}>
+      <div style={{ maxWidth: 1160, margin: "0 auto" }}>
+        <div style={{ marginBottom: 72 }}>
+          <div style={{ ...T.label, marginBottom: 20 }}>Universal capabilities</div>
+          <h2 style={{ ...T.h2, color: C.ink, margin: 0 }}>The same system.<br />Adapted to your context.</h2>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 1, background: C.border, borderRadius: 14, overflow: "hidden" }}>
+          {items.map((item, i) => (
+            <div key={i} style={{ background: C.void, padding: "48px 44px", opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(12px)", transition: `all 0.5s ease ${i * 0.1}s` }}>
+              <div style={{ width: 28, height: 1, background: C.gold, marginBottom: 28, opacity: 0.4 }} />
+              <div style={{ fontSize: 15, fontWeight: 500, color: C.ink, marginBottom: 10, letterSpacing: "-0.01em" }}>{item.title}</div>
+              <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.7 }}>{item.body}</div>
+            </div>
+          ))}
         </div>
       </div>
+    </section>
+  );
+}
 
-      <SiteFooter />
-    </div>
+function IndustriesCTA() {
+  return (
+    <section style={{ padding: "120px 48px", background: C.void }}>
+      <div style={{ maxWidth: 640, margin: "0 auto", textAlign: "center" }}>
+        <div style={{ width: 36, height: 1, background: C.gold, margin: "0 auto 48px", opacity: 0.35 }} />
+        <h2 style={{ ...T.h2, color: C.ink, margin: "0 0 18px" }}>
+          Don't see your industry?
+        </h2>
+        <p style={{ ...T.body, margin: "0 0 40px" }}>
+          AzQueue is flexible enough for any service business. If customers wait in line, we can help.
+        </p>
+        <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+          <Link to="/signup" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: C.gold, color: C.void, padding: "12px 24px", borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: "none", transition: "all 0.2s ease" }}
+            onMouseEnter={e => e.currentTarget.style.opacity = "0.88"}
+            onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
+            Get early access <Ic.Arr />
+          </Link>
+          <a href="mailto:support@azqueue.io" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "transparent", color: C.muted, padding: "12px 24px", borderRadius: 8, fontSize: 13, fontWeight: 500, textDecoration: "none", border: `1px solid ${C.border}`, transition: "all 0.2s ease" }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = C.dim; e.currentTarget.style.color = C.ink; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.muted; }}>
+            Talk to us
+          </a>
+        </div>
+      </div>
+    </section>
   );
 }

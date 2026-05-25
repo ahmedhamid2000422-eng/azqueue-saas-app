@@ -2,17 +2,27 @@ import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth, userMode } from "../lib/AuthContext";
 import { supabase } from "../lib/supabase";
-import Button from "../components/Button";
+
+const C = {
+  void:   "#080807",
+  ink:    "#f0ede6",
+  gold:   "#b8955a",
+  muted:  "#60605a",
+  faint:  "#2a2926",
+  border: "rgba(255,255,255,0.07)",
+  card:   "#0c0c0b",
+  panel:  "#111110",
+};
 
 export default function Login() {
   const { signIn } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const navigate   = useNavigate();
+  const location   = useLocation();
 
-  const [email, setEmail] = useState("");
+  const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState(null);
-  const [busy, setBusy] = useState(false);
+  const [error,    setError]    = useState(null);
+  const [busy,     setBusy]     = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -28,8 +38,6 @@ export default function Login() {
     const mode = userMode(data?.user);
     if (mode === "personal") return navigate("/personal", { replace: true });
 
-    // Business path — owners go to /business, staff-only users go to /staff.
-    // Owner takes priority if the user is both.
     const userId = data?.user?.id;
     if (userId) {
       const [{ count: ownsCount }, { count: staffCount }] = await Promise.all([
@@ -44,56 +52,141 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-bg">
-      <header className="px-6 py-4 border-b border-line">
-        <Link to="/" className="flex items-center gap-2 w-fit">
-          <div className="w-5 h-5 bg-gold rounded-sm flex items-center justify-center font-display text-[#141410] text-xs">A</div>
-          <span className="font-display text-base">AzQueue</span>
+    <div style={{ minHeight: "100vh", display: "flex", background: C.void, fontFamily: "'Inter', system-ui, sans-serif" }}>
+
+      {/* Left panel */}
+      <div style={{
+        flex: "0 0 460px", background: C.card,
+        borderRight: `1px solid ${C.border}`,
+        display: "flex", flexDirection: "column",
+        padding: "48px 56px",
+      }}>
+        <Link to="/" style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none" }}>
+          <div style={{ width: 26, height: 26, background: C.gold, borderRadius: 5, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: C.void }}>A</div>
+          <span style={{ fontSize: 15, fontWeight: 500, color: C.ink, letterSpacing: "0.01em" }}>AzQueue</span>
         </Link>
-      </header>
 
-      <div className="flex-1 flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-sm">
-          <div className="text-center mb-10">
-            <div className="ovline mb-3 text-gold-soft">Sign in</div>
-            <h1 className="font-display text-4xl font-light tracking-tightest">
-              Welcome <em className="not-italic gold-text-soft">back.</em>
-            </h1>
-            <p className="text-ink-soft text-xs mt-3">We'll route you to the right dashboard automatically.</p>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", paddingBottom: 60 }}>
+          <div style={{ width: 28, height: 1, background: C.gold, marginBottom: 40, opacity: 0.4 }} />
+
+          <div style={{ fontSize: 10, color: C.gold, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 500, marginBottom: 24 }}>
+            Welcome back
           </div>
 
-          <div className="luxe-panel border border-line p-7">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <Field label="Email" type="email" value={email} onChange={setEmail} placeholder="you@example.com" required autoFocus />
-              <Field label="Password" type="password" value={password} onChange={setPassword} placeholder="••••••••" required />
+          <h1 style={{
+            fontSize: 36, fontWeight: 500, letterSpacing: "-0.01em", lineHeight: 1.15,
+            fontFamily: "Georgia, 'Times New Roman', serif",
+            color: C.ink, margin: "0 0 18px",
+          }}>
+            The smarter way<br />to manage your queue.
+          </h1>
 
-              {error && (
-                <div className="text-[11px] text-[#d49185] bg-[#b56b5f]/10 border border-[#b56b5f]/30 px-3 py-2">
-                  {error}
-                </div>
+          <p style={{ fontSize: 14, color: C.muted, lineHeight: 1.7, margin: "0 0 52px", maxWidth: 300 }}>
+            Sign in to access your dashboard, live queue, and customer notifications.
+          </p>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {[
+              "Real-time queue management",
+              "WhatsApp & SMS notifications",
+              "Prayer pause scheduling",
+              "Loyalty punch cards",
+            ].map(t => (
+              <div key={t} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 4, height: 4, borderRadius: "50%", background: C.gold, flexShrink: 0, opacity: 0.5 }} />
+                <span style={{ fontSize: 13, color: C.muted, letterSpacing: "-0.005em" }}>{t}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ fontSize: 11, color: C.muted }}>
+          New to AzQueue?{" "}
+          <Link to="/signup" style={{ color: C.gold, textDecoration: "none" }}>Create an account</Link>
+        </div>
+      </div>
+
+      {/* Right panel */}
+      <div style={{
+        flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "48px 40px",
+      }}>
+        <div style={{ width: "100%", maxWidth: 400 }}>
+
+          <div style={{ marginBottom: 52 }}>
+            <div style={{ fontSize: 10, color: C.muted, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 16 }}>Sign in</div>
+            <h2 style={{
+              fontSize: 30, fontWeight: 500, letterSpacing: "-0.01em", lineHeight: 1.2,
+              fontFamily: "Georgia, 'Times New Roman', serif", color: C.ink, margin: "0 0 10px",
+            }}>
+              Welcome{" "}
+              <em style={{ fontStyle: "italic", color: C.gold }}>back.</em>
+            </h2>
+            <p style={{ fontSize: 13, color: C.muted, lineHeight: 1.6, margin: 0 }}>
+              We'll route you to the right dashboard automatically.
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            <Field label="Email address" type="email" value={email} onChange={setEmail} placeholder="you@example.com" required autoFocus />
+            <Field label="Password" type="password" value={password} onChange={setPassword} placeholder="Your password" required />
+
+            {error && (
+              <div style={{
+                fontSize: 12, color: "#d49185",
+                background: "rgba(181,107,95,0.08)",
+                border: "1px solid rgba(181,107,95,0.25)",
+                borderRadius: 6, padding: "10px 14px", lineHeight: 1.5,
+              }}>
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={busy}
+              style={{
+                width: "100%", padding: "13px 0", borderRadius: 7, border: "none",
+                cursor: busy ? "not-allowed" : "pointer",
+                background: C.gold, color: C.void,
+                fontSize: 13, fontWeight: 600, letterSpacing: "0.01em",
+                opacity: busy ? 0.7 : 1, transition: "all 0.2s ease",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              }}>
+              {busy ? "Signing in..." : "Sign in"}
+              {!busy && (
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                </svg>
               )}
+            </button>
+          </form>
 
-              <Button type="submit" disabled={busy} className="w-full">
-                {busy ? "Signing in…" : "Sign in →"}
-              </Button>
-            </form>
-
-            <div className="rule-ornament my-5 text-[8px]"><span>·</span></div>
-
-            <div className="text-center text-xs text-ink-mute">
-              New to AzQueue?{" "}
-              <Link to="/signup" className="text-gold-soft hover:underline">Create an account</Link>
-            </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 16, margin: "36px 0" }}>
+            <div style={{ flex: 1, height: 1, background: C.border }} />
+            <span style={{ fontSize: 10, color: C.faint, letterSpacing: "0.1em" }}>OR</span>
+            <div style={{ flex: 1, height: 1, background: C.border }} />
           </div>
 
-          <div className="grid grid-cols-2 gap-px bg-line border border-line mt-3">
-            <Link to="/signup?mode=business" className="bg-bg-elev p-4 text-center hover:bg-[rgba(201,168,106,0.04)] transition">
-              <div className="ovline text-[8px] text-gold-soft mb-1">For businesses</div>
-              <div className="text-xs text-ink">Business signup →</div>
-            </Link>
-            <Link to="/signup?mode=personal" className="bg-bg-elev p-4 text-center hover:bg-[rgba(201,168,106,0.04)] transition">
-              <div className="ovline text-[8px] text-gold-soft mb-1">For individuals</div>
-              <div className="text-xs text-ink">Personal signup →</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {[
+              { to: "/signup?mode=business", label: "Business signup", sub: "Clinics, offices, centers" },
+              { to: "/signup?mode=personal", label: "Personal signup", sub: "For individuals" },
+            ].map(({ to, label, sub }) => (
+              <Link key={to} to={to} style={{
+                textDecoration: "none",
+                background: "transparent", border: `1px solid ${C.border}`,
+                borderRadius: 8, padding: "14px 16px", display: "block", transition: "all 0.15s",
+              }}>
+                <div style={{ fontSize: 12, fontWeight: 500, color: C.ink, marginBottom: 3 }}>{label}</div>
+                <div style={{ fontSize: 10.5, color: C.muted }}>{sub}</div>
+              </Link>
+            ))}
+          </div>
+
+          <div style={{ marginTop: 32, textAlign: "center" }}>
+            <Link to="/" style={{ fontSize: 11, color: C.muted, textDecoration: "none", letterSpacing: "-0.005em" }}>
+              Back to homepage
             </Link>
           </div>
         </div>
@@ -102,27 +195,39 @@ export default function Login() {
   );
 }
 
-function Field({ label, type, value, onChange, placeholder, required, autoFocus }) {
+function Field({ label, type = "text", value, onChange, placeholder, required, autoFocus }) {
+  const [focused, setFocused] = useState(false);
   return (
     <div>
-      <div className="ovline mb-1.5 text-[9px]">{label}</div>
+      <div style={{ fontSize: 10, color: C.muted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 9, fontWeight: 500 }}>{label}</div>
       <input
         type={type}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
         required={required}
         autoFocus={autoFocus}
-        className="w-full bg-bg border border-line focus:border-gold-deep outline-none text-sm px-4 py-2.5 transition text-ink placeholder:text-ink-mute"
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        style={{
+          width: "100%", boxSizing: "border-box",
+          background: C.card,
+          border: `1px solid ${focused ? C.gold : C.border}`,
+          borderRadius: 7, outline: "none",
+          fontSize: 14, color: C.ink,
+          padding: "12px 16px",
+          transition: "border-color 0.2s",
+          fontFamily: "'Inter', system-ui, sans-serif",
+          letterSpacing: "-0.005em",
+        }}
       />
     </div>
   );
 }
 
-// Friendlier error copy for the most common Supabase auth errors
 function prettifyAuthError(msg = "") {
-  if (/invalid login/i.test(msg))           return "That email and password don't match. Try again or reset your password.";
-  if (/email not confirmed/i.test(msg))     return "Please click the confirmation link in your email first.";
-  if (/email rate limit/i.test(msg))        return "Too many attempts. Wait a minute and try again.";
+  if (/invalid login/i.test(msg))       return "That email and password don't match. Try again.";
+  if (/email not confirmed/i.test(msg)) return "Please click the confirmation link in your email first.";
+  if (/email rate limit/i.test(msg))    return "Too many attempts. Please wait a moment and try again.";
   return msg;
 }
