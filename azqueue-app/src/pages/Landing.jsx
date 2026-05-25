@@ -12,8 +12,10 @@ export default function Landing() {
       <SiteHeader />
       <Hero />
       <TrustBar />
+      <WhoItsFor />
       <HowItWorks />
       <LeaveAndReturn />
+      <MultilingualShowcase />
       <OneEngine />
       <PersonaIntelligence />
       <SmartQueue />
@@ -24,7 +26,6 @@ export default function Landing() {
       <Autopilot />
       <IslamicMode />
       <SocialProof />
-      <IndustriesSection />
       <Pricing />
       <CTA />
       <SiteFooter />
@@ -34,33 +35,84 @@ export default function Landing() {
 function Hero() {
   return (
     <section className="atmosphere-hero max-w-6xl mx-auto px-6 pt-20 pb-24">
-      <div className="grid lg:grid-cols-[1.1fr_1fr] gap-12 items-center">
+      <div className="grid lg:grid-cols-[1.1fr_1fr] gap-14 items-center">
         <div>
           <div className="ovline mb-5 inline-flex items-center gap-2 border border-line px-3 py-1">
             <span className="pip breathe" />
-            Live · used by service businesses today
+            Queue management · built for walk-in businesses
           </div>
           <h1 className="font-display text-5xl sm:text-6xl font-light tracking-tightest leading-[1.05] mb-6">
-            Modern queue management<br />
-            for <em className="not-italic gold-text-soft">busy businesses.</em>
+            The operating system<br />
+            for <em className="not-italic gold-text-soft">walk-in businesses.</em>
           </h1>
-          <p className="text-ink-soft text-lg max-w-md mb-2 leading-relaxed">
-            Replace paper tickets and messy calendars with one system that handles walk-ins, bookings, and customer communication — automatically.
+          <p className="text-ink-soft text-lg max-w-md mb-4 leading-relaxed">
+            Walk-ins and bookings in one queue. Customers check in, leave, and come back when called. Staff see who's arriving before they reach the counter.
           </p>
-          <p className="text-ink-mute text-sm max-w-md mb-10">
-            Clinics · Salons · Law firms · Government offices · Repair shops
+          <p className="text-sm text-gold-soft mb-10 font-medium">
+            Built for multilingual, high-traffic service businesses.
           </p>
-          <div className="flex flex-wrap gap-3">
-            <Link to="/select"><Button>Start free — no card needed →</Button></Link>
+          <div className="flex flex-wrap gap-3 mb-6">
+            <Link to="/select"><Button>Start free trial — no card →</Button></Link>
             <a href="#how-it-works"><Button variant="ghost">See how it works</Button></a>
           </div>
-          <div className="text-xs text-ink-mute mt-5 tracking-wide">
-            Ready in 10 minutes · No hardware · Works on any device
+          <div className="flex flex-wrap gap-4 text-xs text-ink-mute">
+            <span>✓ Ready in 10 minutes</span>
+            <span>✓ No hardware needed</span>
+            <span>✓ Works on any device</span>
           </div>
         </div>
-        <LivePreview />
+        <KioskMockup />
       </div>
     </section>
+  );
+}
+
+function KioskMockup() {
+  return (
+    <div className="relative flex justify-center items-center">
+      {/* iPad frame */}
+      <div className="relative w-72 bg-[#1a1a1f] border-4 border-[#2e2e35] rounded-2xl shadow-2xl overflow-hidden">
+        {/* iPad top bar */}
+        <div className="bg-[#111113] px-4 py-2 flex items-center justify-between border-b border-[#26262a]">
+          <div className="w-1.5 h-1.5 rounded-full bg-[#3a3a40]" />
+          <div className="w-16 h-1 rounded-full bg-[#2a2a30]" />
+          <div className="text-[9px] text-ink-mute font-mono">AzQueue</div>
+        </div>
+        {/* Kiosk screen */}
+        <div className="bg-[#0b0b0c] px-6 py-8">
+          <div className="text-center mb-6">
+            <div className="font-display text-gold-soft text-xl mb-1">Welcome</div>
+            <div className="text-xs text-ink-mute">Select your language to begin</div>
+          </div>
+          <div className="grid grid-cols-2 gap-2 mb-6">
+            {[["🇬🇧","English"],["🇲🇾","Bahasa"],["🇸🇦","العربية"],["🇨🇳","中文"]].map(([flag,lang]) => (
+              <button key={lang} className="border border-line bg-surface px-3 py-2.5 text-center hover:border-gold-deep transition-colors">
+                <div className="text-lg mb-0.5">{flag}</div>
+                <div className="text-[10px] text-ink-soft">{lang}</div>
+              </button>
+            ))}
+          </div>
+          <div className="border border-gold-deep bg-gold-deep/10 px-4 py-3 text-center">
+            <div className="text-[11px] text-gold-soft">Tap to check in →</div>
+          </div>
+        </div>
+        {/* iPad home bar */}
+        <div className="bg-[#111113] px-4 py-3 flex justify-center border-t border-[#26262a]">
+          <div className="w-24 h-1 rounded-full bg-[#2a2a30]" />
+        </div>
+      </div>
+      {/* Floating SMS bubble */}
+      <div className="absolute -right-4 top-8 bg-[#11241b] border border-[#1f3a2a] rounded-2xl rounded-tr-sm px-3 py-2.5 max-w-[160px] shadow-lg">
+        <div className="text-[9px] text-[#9bbd9b] ovline mb-1">AzQueue SMS</div>
+        <div className="text-[10px] text-ink leading-relaxed">You're #3 in queue. Est. wait: 12 min. We'll text you when ready 👋</div>
+      </div>
+      {/* Floating ticket chip */}
+      <div className="absolute -left-4 bottom-12 bg-bg-elev border border-gold-deep px-3 py-2 shadow-lg">
+        <div className="ovline text-[8px] text-gold-soft mb-1">Your ticket</div>
+        <div className="font-display text-2xl gold-text-soft">A · 07</div>
+        <div className="text-[9px] text-ink-mute">Counter 2 · 12 min</div>
+      </div>
+    </div>
   );
 }
 
@@ -258,6 +310,100 @@ function SocialProof() {
               <div className="text-xs text-ink-mute">{label}</div>
             </div>
           ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function WhoItsFor() {
+  const industries = [
+    { icon: "🏥", name: "Clinics & Healthcare", desc: "Patient check-in, appointment merging, multilingual support for diverse communities." },
+    { icon: "🏛️", name: "Immigration Offices", desc: "Handle high-volume walk-ins across language barriers with zero paper." },
+    { icon: "⚖️", name: "Legal Firms", desc: "Document checklists auto-sent before appointments. Clients arrive prepared." },
+    { icon: "🏦", name: "Financial Services", desc: "Walk-ins and scheduled consultations in one fair, ordered queue." },
+    { icon: "🏢", name: "Government Services", desc: "Built for chaotic public-facing offices. Calm the lobby instantly." },
+    { icon: "✂️", name: "Salons & Beauty", desc: "AI profiles remember every client's preferences before they sit down." },
+  ];
+  return (
+    <section id="who" className="max-w-6xl mx-auto px-6 py-24 border-t border-line">
+      <div className="text-center mb-12">
+        <div className="ovline mb-3 text-gold-soft">Who it's for</div>
+        <h2 className="font-display text-4xl font-light tracking-tighter">
+          Built for businesses that deal with<br />
+          <em className="not-italic gold-text-soft">real people at the door.</em>
+        </h2>
+        <p className="text-ink-soft text-base mt-4 max-w-lg mx-auto leading-relaxed">
+          Especially businesses serving multilingual, immigrant-heavy communities — where clear communication isn't optional.
+        </p>
+      </div>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {industries.map(({ icon, name, desc }) => (
+          <div key={name} className="bg-bg-elev border border-line p-6 hover:border-gold-deep transition-colors group">
+            <div className="text-3xl mb-4">{icon}</div>
+            <h3 className="text-base font-medium text-ink mb-2 group-hover:text-gold-soft transition-colors">{name}</h3>
+            <p className="text-sm text-ink-soft leading-relaxed">{desc}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function MultilingualShowcase() {
+  const langs = [
+    { flag: "🇬🇧", name: "English", hello: "Welcome" },
+    { flag: "🇲🇾", name: "Bahasa Melayu", hello: "Selamat datang" },
+    { flag: "🇸🇦", name: "العربية", hello: "أهلاً وسهلاً" },
+    { flag: "🇨🇳", name: "中文", hello: "欢迎光临" },
+    { flag: "🇮🇳", name: "தமிழ்", hello: "வரவேற்கிறோம்" },
+    { flag: "🇵🇰", name: "اردو", hello: "خوش آمدید" },
+  ];
+  return (
+    <section className="max-w-6xl mx-auto px-6 py-24 border-t border-line">
+      <div className="grid md:grid-cols-[1fr_1.3fr] gap-12 items-center">
+        <div>
+          <div className="ovline mb-3 text-gold-soft">Feature · Multilingual Kiosk</div>
+          <h2 className="font-display text-4xl font-light tracking-tighter mb-5">
+            Serve every customer<br />
+            in their <em className="not-italic gold-text-soft">own language.</em>
+          </h2>
+          <p className="text-ink-soft text-base mb-6 leading-relaxed">
+            Your kiosk screen, SMS messages, and queue updates are delivered in the customer's chosen language — automatically. No staff intervention needed.
+          </p>
+          <ul className="space-y-3 text-sm mb-8">
+            {[
+              ["6 languages built in", "English, Malay, Arabic, Chinese, Tamil, Urdu — and growing."],
+              ["Customer chooses at check-in", "Language selector is the first screen they see."],
+              ["SMS sent in their language", "Every notification goes out in the right language."],
+            ].map(([t, d]) => (
+              <li key={t} className="flex gap-3">
+                <span className="pip mt-2 shrink-0" style={{ background: "#c9a86a" }} />
+                <div>
+                  <div className="text-ink font-medium">{t}</div>
+                  <div className="text-ink-soft text-xs mt-0.5 leading-relaxed">{d}</div>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <p className="text-sm text-gold-soft font-medium italic">
+            "The most important feature for high-traffic multicultural offices."
+          </p>
+        </div>
+        <div className="bg-bg-elev border border-line p-8">
+          <div className="ovline text-[9px] text-gold-soft mb-6 text-center">Select your language · اختر لغتك · 选择语言</div>
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            {langs.map(({ flag, name, hello }) => (
+              <div key={name} className="border border-line bg-bg p-4 hover:border-gold-deep transition-colors cursor-pointer group">
+                <div className="text-2xl mb-2">{flag}</div>
+                <div className="text-xs font-medium text-ink group-hover:text-gold-soft transition-colors">{name}</div>
+                <div className="text-[10px] text-ink-mute mt-0.5 italic">{hello}</div>
+              </div>
+            ))}
+          </div>
+          <div className="border border-gold-deep bg-gold-deep/10 px-4 py-3 text-center">
+            <div className="text-xs text-gold-soft">Customer selects once — everything follows in their language</div>
+          </div>
         </div>
       </div>
     </section>
@@ -818,38 +964,27 @@ function IslamicMode() {
 
 function Pricing() {
   const tiers = [
-    {
-      name:"Essential", price:29, tag:"For getting started", gold:false,
-      feats:["Queue management","Walk-ins + bookings combined","QR check-in","WhatsApp notifications","Up to 3 staff","Email support"],
-    },
-    {
-      name:"Professional", price:59, tag:"Most chosen", gold:true,
-      feats:["Everything in Essential","AI customer personas","New/returning detection","Document checklists (50+)","Islamic Mode + prayer blocks","Autopilot + smart pacing","Priority support"],
-    },
-    {
-      name:"Executive", price:99, tag:"For growing businesses", gold:false,
-      feats:["Everything in Pro","Satisfaction scores + history","Freshdesk integration","Smart queue + split lanes","Smart staff assignment","SLA escalations","White-glove setup"],
-    },
-    {
-      name:"Manager", price:149, tag:"People intelligence", gold:false, sage:true,
-      feats:["Everything in Executive","Manager dashboard","Break-pattern insights","Anomaly & wellness alerts","Performance reviews","Dedicated concierge"],
-    },
+    { name:"Essential", price:29, tag:"For getting started", gold:false,
+      feats:["Queue management","Walk-ins + bookings combined","QR check-in","WhatsApp notifications","Up to 3 staff","Email support"] },
+    { name:"Professional", price:59, tag:"Most chosen", gold:true,
+      feats:["Everything in Essential","AI customer personas","New/returning detection","Document checklists (50+)","Islamic Mode + prayer blocks","Autopilot + smart pacing","Priority support"] },
+    { name:"Executive", price:99, tag:"For growing businesses", gold:false,
+      feats:["Everything in Pro","Satisfaction scores + history","Freshdesk integration","Smart queue + split lanes","Smart staff assignment","SLA escalations","White-glove setup"] },
+    { name:"Manager", price:149, tag:"People intelligence", gold:false, sage:true,
+      feats:["Everything in Executive","Manager dashboard","Break-pattern insights","Anomaly & wellness alerts","Performance reviews","Dedicated concierge"] },
   ];
   return (
     <section id="pricing" className="max-w-6xl mx-auto px-6 py-24 border-t border-line">
-      <div className="text-center mb-10">
+      <div className="text-center mb-4">
         <div className="ovline mb-3 text-gold-soft">Pricing</div>
-        <h2 className="font-display text-4xl font-light tracking-tighter">Four tiers. <em className="not-italic gold-text-soft">No hidden fees.</em></h2>
+        <h2 className="font-display text-4xl font-light tracking-tighter">Simple pricing. <em className="not-italic gold-text-soft">No surprises.</em></h2>
+        <p className="text-ink-soft text-base mt-3">14-day free trial on all plans · No card required · Cancel any time</p>
       </div>
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-3 mt-10">
         {tiers.map(t => (
           <div key={t.name} className={`relative bg-bg-elev border p-6 ${t.gold?"border-gold-deep":t.sage?"border-[#506b50]":"border-line"}`}>
-            {t.gold && (
-              <div className="absolute -top-px left-4 bg-gold text-[#141410] px-2 py-0.5 text-[8px] tracking-[0.18em] uppercase font-bold">Most popular</div>
-            )}
-            {t.sage && (
-              <div className="absolute -top-px left-4 bg-[#506b50] text-[#e4f0e4] px-2 py-0.5 text-[8px] tracking-[0.18em] uppercase font-bold">People intel</div>
-            )}
+            {t.gold && <div className="absolute -top-px left-4 bg-gold text-[#141410] px-2 py-0.5 text-[8px] tracking-[0.18em] uppercase font-bold">Most popular</div>}
+            {t.sage && <div className="absolute -top-px left-4 bg-[#506b50] text-[#e4f0e4] px-2 py-0.5 text-[8px] tracking-[0.18em] uppercase font-bold">People intel</div>}
             <div className={`ovline text-[9px] mb-2 ${t.gold?"text-gold-soft":t.sage?"text-[#9bbd9b]":""}`}>{t.tag}</div>
             <div className="font-display text-lg">{t.name}</div>
             <div className="flex items-baseline gap-0.5 mt-4 mb-3">
@@ -858,11 +993,11 @@ function Pricing() {
               <span className="text-ink-mute text-[10px]">/mo</span>
             </div>
             <div className="h-px bg-line mb-3" />
-            <ul className="text-[11px] text-ink-soft space-y-1.5 mb-5">
+            <ul className="text-xs text-ink-soft space-y-1.5 mb-5">
               {t.feats.map(f => <li key={f}>✓ {f}</li>)}
             </ul>
             <Link to={`/signup?tier=${t.name.toLowerCase()}`} className="block">
-              <Button variant={t.gold?"gold":"ghost"} className="w-full">Start trial</Button>
+              <Button variant={t.gold?"gold":"ghost"} className="w-full">Start free trial</Button>
             </Link>
           </div>
         ))}
@@ -879,12 +1014,8 @@ function CTA() {
         A calmer lobby starts<br />
         <em className="not-italic text-gold-soft">in 10 minutes.</em>
       </h2>
-      <p className="text-ink-soft text-base mb-3 leading-relaxed">
-        No hardware. No contracts. No complicated setup.
-      </p>
-      <p className="text-ink-mute text-sm mb-8">
-        Join service businesses already running their queues with AzQueue.
-      </p>
+      <p className="text-ink-soft text-base mb-3 leading-relaxed">No hardware. No contracts. No complicated setup.</p>
+      <p className="text-ink-mute text-sm mb-8">Join service businesses already running their queues with AzQueue.</p>
       <Link to="/select"><Button size="lg">Start free trial — no card needed →</Button></Link>
       <div className="text-xs text-ink-mute mt-4">14-day trial · Cancel any time · Live support</div>
     </section>
