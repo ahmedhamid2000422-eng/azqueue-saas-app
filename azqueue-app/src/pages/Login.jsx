@@ -15,7 +15,7 @@ const C = {
 };
 
 export default function Login() {
-  const { signIn } = useAuth();
+  const { signIn, sendPasswordReset } = useAuth();
   const navigate   = useNavigate();
   const location   = useLocation();
 
@@ -23,6 +23,16 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error,    setError]    = useState(null);
   const [busy,     setBusy]     = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+
+  async function handleForgot(e) {
+    e.preventDefault();
+    if (!email) return setError("Enter your email above first, then click 'Forgot password?'");
+    setError(null);
+    const { error } = await sendPasswordReset(email);
+    if (error) return setError(prettifyAuthError(error.message));
+    setResetSent(true);
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -141,6 +151,32 @@ export default function Login() {
                 {error}
               </div>
             )}
+
+            {resetSent && (
+              <div style={{
+                fontSize: 12, color: "#9bbd9b",
+                background: "rgba(127,163,127,0.08)",
+                border: "1px solid rgba(127,163,127,0.25)",
+                borderRadius: 6, padding: "10px 14px", lineHeight: 1.5,
+              }}>
+                Check your inbox — we've sent a password reset link to <strong>{email}</strong>.
+              </div>
+            )}
+
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: -8 }}>
+              <button
+                type="button"
+                onClick={handleForgot}
+                style={{
+                  background: "none", border: "none", padding: 0, cursor: "pointer",
+                  fontSize: 11.5, color: C.muted, letterSpacing: "0.01em",
+                  textDecoration: "none", transition: "color 0.2s",
+                }}
+                onMouseEnter={e => e.currentTarget.style.color = C.gold}
+                onMouseLeave={e => e.currentTarget.style.color = C.muted}>
+                Forgot password?
+              </button>
+            </div>
 
             <button
               type="submit"

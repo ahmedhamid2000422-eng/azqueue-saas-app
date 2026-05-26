@@ -1,13 +1,27 @@
 import { useState, useMemo } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../lib/AuthContext";
-import Button from "../components/Button";
+
+const C = {
+  void:    "#080807",
+  ink:     "#f0ede6",
+  gold:    "#b8955a",
+  goldLit: "#d4b478",
+  sage:    "#9bbd9b",
+  muted:   "#60605a",
+  faint:   "#2a2926",
+  border:  "rgba(255,255,255,0.07)",
+  borderL: "rgba(255,255,255,0.12)",
+  card:    "#0c0c0b",
+  panel:   "#111110",
+  bad:     "#d49185",
+};
 
 const TIERS = [
-  { id: "essential",    name: "Essential",    price: 29,  tag: "For getting started",   feats: ["Queue management", "Basic scheduling", "Up to 3 staff", "Email support"] },
-  { id: "professional", name: "Professional", price: 59,  tag: "Most chosen",            feats: ["Everything in Essential", "Advanced analytics", "Islamic Mode", "Autopilot", "Priority support"], gold: true },
-  { id: "executive",    name: "Executive",    price: 99,  tag: "For growing businesses", feats: ["Everything in Pro", "AI insights", "Dedicated concierge", "SSO & security", "White-glove setup"] },
-  { id: "manager",      name: "Manager",      price: 149, tag: "People intelligence",    feats: ["Everything in Executive", "Manager dashboard", "Break-pattern insights", "Anomaly & wellness alerts", "Performance reviews"], sage: true },
+  { id: "essential",    name: "Starter",    price: 29,  tag: "Single location",       feats: ["1 branch", "1 kiosk", "WhatsApp notifications", "Basic analytics"] },
+  { id: "professional", name: "Growth",     price: 99,  tag: "Most popular",          feats: ["Up to 10 branches", "Unlimited kiosks", "Loyalty cards", "Prayer pause"], gold: true },
+  { id: "executive",    name: "Scale",      price: 199, tag: "Multi-region teams",    feats: ["Up to 25 branches", "API access", "Advanced analytics", "Priority support"] },
+  { id: "manager",      name: "Enterprise", price: null, tag: "Custom",               feats: ["Unlimited branches", "SSO & audit logs", "99.9% SLA", "Dedicated CSM"], sage: true },
 ];
 
 export default function Signup() {
@@ -15,11 +29,9 @@ export default function Signup() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
 
-  // Inline mode toggle — defaults to whatever's in ?mode= or ?tier=, else business
   const initialMode = useMemo(() => {
     const m = params.get("mode");
     if (m === "personal" || m === "business") return m;
-    if (params.get("tier")) return "business";
     return "business";
   }, [params]);
 
@@ -58,7 +70,6 @@ export default function Signup() {
 
     if (error) return setError(error.message);
 
-    // If Supabase has email-confirmation enabled, no session yet → show pending screen
     if (!data?.session) {
       setPendingConfirm(true);
       return;
@@ -72,36 +83,43 @@ export default function Signup() {
   const selected = TIERS.find((t) => t.id === tier) ?? TIERS[1];
 
   return (
-    <div className="min-h-screen flex flex-col bg-bg">
-      <header className="px-6 py-4 border-b border-line">
-        <Link to="/" className="flex items-center gap-2 w-fit">
-          <div className="w-5 h-5 bg-gold rounded-sm flex items-center justify-center font-display text-[#141410] text-xs">A</div>
-          <span className="font-display text-base">AzQueue</span>
+    <div style={{ minHeight: "100vh", background: C.void, color: C.ink, fontFamily: "'Inter', system-ui, sans-serif" }}>
+
+      {/* Top bar */}
+      <header style={{ padding: "20px 48px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <Link to="/" style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none" }}>
+          <div style={{ width: 24, height: 24, background: C.gold, borderRadius: 5, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: C.void }}>A</div>
+          <span style={{ fontSize: 14, fontWeight: 500, color: C.ink, letterSpacing: "0.01em" }}>AzQueue</span>
         </Link>
+        <div style={{ fontSize: 12, color: C.muted }}>
+          Already have an account?{" "}
+          <Link to="/login" style={{ color: C.goldLit, textDecoration: "none" }}>Sign in</Link>
+        </div>
       </header>
 
-      <div className="flex-1 px-6 py-12">
-        <div className="max-w-3xl mx-auto">
+      <main style={{ padding: "64px 48px 96px" }}>
+        <div style={{ maxWidth: 920, margin: "0 auto" }}>
+
           {/* Heading */}
-          <div className="text-center mb-10">
-            <div className="ovline mb-3 text-gold-soft">Create account</div>
-            <h1 className="font-display text-4xl sm:text-5xl font-light tracking-tightest">
-              Start your <em className="not-italic gold-text-soft">free trial.</em>
+          <div style={{ textAlign: "center", marginBottom: 56 }}>
+            <div style={{ fontSize: 10, color: C.gold, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 500, marginBottom: 18 }}>Create account</div>
+            <h1 style={{ fontSize: 44, fontWeight: 500, letterSpacing: "-0.015em", lineHeight: 1.1, fontFamily: "Georgia, 'Times New Roman', serif", margin: "0 0 14px" }}>
+              Start your <em style={{ color: C.gold, fontStyle: "italic" }}>free trial.</em>
             </h1>
-            <p className="text-ink-soft text-xs mt-3">14 days · no card required.</p>
+            <p style={{ fontSize: 14, color: C.muted, margin: 0, letterSpacing: "-0.005em" }}>14 days · no credit card required · cancel anytime.</p>
           </div>
 
-          {/* Mode toggle — the inline switch the user asked for */}
-          <div className="grid grid-cols-2 gap-px bg-line border border-line mb-8 max-w-md mx-auto">
+          {/* Mode toggle */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: C.border, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", maxWidth: 540, margin: "0 auto 40px" }}>
             <ModeButton
               label="Business"
-              caption="Queue + bookings for your shop"
+              caption="Queue + bookings for your shop or branch network"
               active={mode === "business"}
               onClick={() => setMode("business")}
             />
             <ModeButton
               label="Personal"
-              caption="Deep work + tasks for you"
+              caption="Deep work + tasks for your own day"
               active={mode === "personal"}
               onClick={() => setMode("personal")}
               variant="sage"
@@ -109,123 +127,167 @@ export default function Signup() {
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="max-w-md mx-auto space-y-5">
+          <form onSubmit={handleSubmit} style={{ maxWidth: 440, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20 }}>
             {mode === "business" ? (
-              <Field label="Business name" value={businessName} onChange={setBusinessName} placeholder="Khalifa Premier Services" required autoFocus />
+              <Field label="Business name"  value={businessName} onChange={setBusinessName} placeholder="Khalifa Premier Services" required autoFocus />
             ) : (
-              <Field label="Your name" value={displayName} onChange={setDisplayName} placeholder="Ahmed" required autoFocus />
+              <Field label="Your name"      value={displayName}  onChange={setDisplayName}  placeholder="Ahmed" required autoFocus />
             )}
-
-            <Field label="Email" type="email" value={email} onChange={setEmail} placeholder="you@example.com" required />
-            <Field label="Password" type="password" value={password} onChange={setPassword} placeholder="At least 6 characters" required />
+            <Field label="Email address" type="email"    value={email}    onChange={setEmail}    placeholder="you@example.com"     required />
+            <Field label="Password"      type="password" value={password} onChange={setPassword} placeholder="At least 6 characters" required />
 
             {error && (
-              <div className="text-[11px] text-[#d49185] bg-[#b56b5f]/10 border border-[#b56b5f]/30 px-3 py-2">
+              <div style={{ fontSize: 12, color: C.bad, background: "rgba(181,107,95,0.08)", border: "1px solid rgba(181,107,95,0.25)", borderRadius: 6, padding: "10px 14px", lineHeight: 1.5 }}>
                 {error}
               </div>
             )}
 
-            <Button type="submit" disabled={busy} className="w-full">
-              {busy ? "Creating account…" : `Create ${mode === "business" ? "business" : "personal"} account →`}
-            </Button>
+            <button
+              type="submit"
+              disabled={busy}
+              style={{
+                width: "100%", padding: "13px 0", borderRadius: 7, border: "none",
+                cursor: busy ? "not-allowed" : "pointer",
+                background: C.gold, color: C.void,
+                fontSize: 13, fontWeight: 600, letterSpacing: "0.02em",
+                opacity: busy ? 0.7 : 1, transition: "all 0.2s ease",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                boxShadow: "0 10px 30px -10px rgba(184,149,90,0.4)",
+                textTransform: "uppercase",
+              }}>
+              {busy ? "Creating account…" : `Create ${mode === "business" ? "business" : "personal"} account`}
+              {!busy && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>}
+            </button>
 
-            <div className="text-[10px] text-ink-mute text-center">
-              By continuing you agree to our terms and privacy policy.
+            <div style={{ fontSize: 10.5, color: C.muted, textAlign: "center", letterSpacing: "0.02em" }}>
+              By continuing you agree to our{" "}
+              <Link to="/legal/terms" style={{ color: C.muted, textDecoration: "underline", textUnderlineOffset: 2 }}>Terms</Link>
+              {" "}and{" "}
+              <Link to="/legal/privacy" style={{ color: C.muted, textDecoration: "underline", textUnderlineOffset: 2 }}>Privacy Policy</Link>.
             </div>
           </form>
 
-          {/* Tier picker shows only for business */}
+          {/* Tier picker (business only) */}
           {mode === "business" && (
-            <div className="max-w-3xl mx-auto mt-12">
-              <div className="text-center mb-5">
-                <div className="ovline text-gold-soft mb-2">Choose your plan</div>
-                <p className="text-ink-soft text-xs">Selecting <span className="text-ink">{selected.name}</span> · RM{selected.price}/mo · change anytime.</p>
+            <div style={{ marginTop: 80 }}>
+              <div style={{ textAlign: "center", marginBottom: 28 }}>
+                <div style={{ fontSize: 10, color: C.gold, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 500, marginBottom: 12 }}>Choose your plan</div>
+                <p style={{ fontSize: 13, color: C.muted, margin: 0 }}>
+                  Currently selecting <span style={{ color: C.ink }}>{selected.name}</span>
+                  {selected.price ? ` · $${selected.price}/mo` : " · Custom pricing"} · change anytime.
+                </p>
               </div>
-              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-px bg-line border border-line">
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 1, background: C.border, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden" }}>
                 {TIERS.map((t) => {
                   const isActive = tier === t.id;
-                  const ringColor = t.sage ? "ring-[#506b50]" : "ring-gold-deep";
+                  const accent = t.sage ? C.sage : C.gold;
                   return (
                     <button
                       key={t.id}
                       type="button"
                       onClick={() => setTier(t.id)}
-                      className={`relative bg-bg-elev p-5 text-left transition ${
-                        isActive ? `ring-1 ${ringColor} ring-inset` : "hover:bg-bg"
-                      }`}
-                    >
+                      style={{
+                        position: "relative", background: isActive ? C.panel : C.card,
+                        padding: "28px 22px", textAlign: "left", border: "none", cursor: "pointer",
+                        color: "inherit", transition: "all 0.2s",
+                        boxShadow: isActive ? `inset 0 0 0 1px ${accent}55` : "none",
+                      }}
+                      onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "#0f0f0e"; }}
+                      onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = C.card; }}>
                       {t.gold && (
-                        <div className="absolute -top-px left-3 bg-gold text-[#141410] px-2 py-0.5 text-[8px] tracking-[0.18em] uppercase font-bold">
+                        <div style={{ position: "absolute", top: -1, left: 16, background: C.gold, color: C.void, fontSize: 8, padding: "2px 8px", letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700, borderBottomLeftRadius: 4, borderBottomRightRadius: 4 }}>
                           Most popular
                         </div>
                       )}
                       {t.sage && (
-                        <div className="absolute -top-px left-3 bg-[#506b50] text-[#e4f0e4] px-2 py-0.5 text-[8px] tracking-[0.18em] uppercase font-bold">
-                          People intel
+                        <div style={{ position: "absolute", top: -1, left: 16, background: "#506b50", color: "#e4f0e4", fontSize: 8, padding: "2px 8px", letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 700, borderBottomLeftRadius: 4, borderBottomRightRadius: 4 }}>
+                          Enterprise
                         </div>
                       )}
-                      <div className={`ovline text-[9px] mb-2 ${isActive ? (t.sage ? "text-[#9bbd9b]" : "text-gold-soft") : ""}`}>{t.tag}</div>
-                      <div className="font-display text-base">{t.name}</div>
-                      <div className="flex items-baseline gap-0.5 mt-2 mb-3">
-                        <span className="text-ink-mute text-[9px]">RM</span>
-                        <span className={`font-display text-2xl font-light ${isActive ? "text-gold" : "text-ink"}`}>{t.price}</span>
-                        <span className="text-ink-mute text-[9px]">/mo</span>
+                      <div style={{ fontSize: 9, color: isActive ? accent : C.muted, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 500, marginTop: t.gold || t.sage ? 14 : 0, marginBottom: 10 }}>{t.tag}</div>
+                      <div style={{ fontSize: 16, color: C.ink, fontFamily: "Georgia, serif", marginBottom: 10 }}>{t.name}</div>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 2, marginBottom: 14 }}>
+                        {t.price ? (
+                          <>
+                            <span style={{ fontSize: 10, color: C.muted }}>$</span>
+                            <span style={{ fontSize: 26, fontWeight: 400, color: isActive ? accent : C.ink, fontFamily: "Georgia, serif", letterSpacing: "-0.02em" }}>{t.price}</span>
+                            <span style={{ fontSize: 10, color: C.muted, marginLeft: 2 }}>/mo</span>
+                          </>
+                        ) : (
+                          <span style={{ fontSize: 18, color: isActive ? accent : C.ink, fontFamily: "Georgia, serif", letterSpacing: "-0.01em" }}>Custom</span>
+                        )}
                       </div>
-                      <div className="h-px bg-line mb-2" />
-                      <ul className="text-[10px] text-ink-soft space-y-1">
-                        {t.feats.slice(0, 4).map((f) => <li key={f}>✓ {f}</li>)}
+                      <div style={{ height: 1, background: C.border, margin: "0 0 12px" }} />
+                      <ul style={{ listStyle: "none", margin: 0, padding: 0, fontSize: 11, color: C.muted, display: "flex", flexDirection: "column", gap: 6 }}>
+                        {t.feats.map(f => <li key={f} style={{ lineHeight: 1.5 }}>✓ {f}</li>)}
                       </ul>
-                      <div className={`text-[9px] tracking-[0.2em] uppercase mt-3 ${isActive ? (t.sage ? "text-[#9bbd9b]" : "text-gold-soft") : "text-ink-mute"}`}>
+                      <div style={{ fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", marginTop: 16, color: isActive ? accent : C.muted, fontWeight: 600 }}>
                         {isActive ? "Selected ✓" : "Select"}
                       </div>
                     </button>
                   );
                 })}
               </div>
+              <p style={{ fontSize: 11, color: C.muted, textAlign: "center", marginTop: 16, letterSpacing: "0.02em" }}>
+                Enterprise requires a quick chat — pick it here and we'll reach out, or{" "}
+                <a href="mailto:sales@azqueue.io?subject=AzQueue%20Enterprise%20inquiry" style={{ color: C.goldLit, textDecoration: "none" }}>email sales directly</a>.
+              </p>
             </div>
           )}
-
-          <div className="text-center mt-8 text-xs text-ink-mute">
-            Already have an account?{" "}
-            <Link to="/login" className="text-gold-soft hover:underline">Sign in</Link>
-          </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
 
 function ModeButton({ label, caption, active, onClick, variant = "gold" }) {
-  const accent = variant === "sage" ? "text-[#9bbd9b]" : "text-gold-soft";
+  const accent = variant === "sage" ? C.sage : C.gold;
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`bg-bg-elev p-5 text-left transition ${
-        active ? "ring-1 ring-inset ring-gold-deep" : "hover:bg-bg"
-      }`}
-    >
-      <div className={`ovline text-[9px] mb-1 ${active ? accent : ""}`}>
-        {active ? "Selected" : "Choose"}
+      style={{
+        background: active ? C.panel : C.card, padding: "26px 28px",
+        border: "none", cursor: "pointer", textAlign: "left", color: "inherit",
+        transition: "all 0.2s",
+        boxShadow: active ? `inset 0 0 0 1px ${accent}55` : "none",
+      }}
+      onMouseEnter={e => { if (!active) e.currentTarget.style.background = "#0f0f0e"; }}
+      onMouseLeave={e => { if (!active) e.currentTarget.style.background = C.card; }}>
+      <div style={{ fontSize: 9, color: active ? accent : C.muted, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 600, marginBottom: 8 }}>
+        {active ? "Selected ✓" : "Choose"}
       </div>
-      <div className="font-display text-lg">{label}</div>
-      <div className="text-[10px] text-ink-mute mt-1">{caption}</div>
+      <div style={{ fontSize: 18, color: C.ink, fontFamily: "Georgia, serif", marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.5 }}>{caption}</div>
     </button>
   );
 }
 
 function Field({ label, type = "text", value, onChange, placeholder, required, autoFocus }) {
+  const [focused, setFocused] = useState(false);
   return (
     <div>
-      <div className="ovline mb-1.5 text-[9px]">{label}</div>
+      <div style={{ fontSize: 10, color: C.muted, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 8, fontWeight: 500 }}>{label}</div>
       <input
         type={type}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
         required={required}
         autoFocus={autoFocus}
-        className="w-full bg-bg-elev border border-line focus:border-gold-deep outline-none text-sm px-4 py-2.5 transition text-ink placeholder:text-ink-mute"
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        style={{
+          width: "100%", boxSizing: "border-box",
+          background: C.card,
+          border: `1px solid ${focused ? C.gold : C.border}`,
+          borderRadius: 7, outline: "none",
+          fontSize: 14, color: C.ink,
+          padding: "12px 16px",
+          transition: "border-color 0.2s",
+          fontFamily: "'Inter', system-ui, sans-serif",
+          letterSpacing: "-0.005em",
+        }}
       />
     </div>
   );
@@ -234,38 +296,42 @@ function Field({ label, type = "text", value, onChange, placeholder, required, a
 /* ── Email confirmation pending screen ─────────────────────────────── */
 function PendingConfirm({ email, mode }) {
   return (
-    <div className="min-h-screen flex flex-col bg-bg">
-      <header className="px-6 py-4 border-b border-line">
-        <Link to="/" className="flex items-center gap-2 w-fit">
-          <div className="w-5 h-5 bg-gold rounded-sm flex items-center justify-center font-display text-[#141410] text-xs">A</div>
-          <span className="font-display text-base">AzQueue</span>
+    <div style={{ minHeight: "100vh", background: C.void, color: C.ink, fontFamily: "'Inter', system-ui, sans-serif", display: "flex", flexDirection: "column" }}>
+      <header style={{ padding: "20px 48px", borderBottom: `1px solid ${C.border}` }}>
+        <Link to="/" style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none", width: "fit-content" }}>
+          <div style={{ width: 24, height: 24, background: C.gold, borderRadius: 5, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: C.void }}>A</div>
+          <span style={{ fontSize: 14, fontWeight: 500, color: C.ink, letterSpacing: "0.01em" }}>AzQueue</span>
         </Link>
       </header>
 
-      <div className="flex-1 flex items-center justify-center px-6 py-12">
-        <div className="max-w-md w-full text-center luxe-panel border border-line p-10">
-          <div className="ovline mb-3 text-gold-soft">Almost there</div>
-          <h1 className="font-display text-3xl font-light tracking-tightest mb-4">
-            Confirm your <em className="not-italic gold-text-soft">email.</em>
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "48px 24px" }}>
+        <div style={{ maxWidth: 460, width: "100%", textAlign: "center", padding: "48px 40px", border: `1px solid ${C.border}`, borderRadius: 14, background: C.card, boxShadow: "0 40px 80px -40px rgba(0,0,0,0.7)" }}>
+          <div style={{ fontSize: 10, color: C.gold, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 500, marginBottom: 18 }}>Almost there</div>
+          <h1 style={{ fontSize: 32, fontWeight: 500, letterSpacing: "-0.01em", lineHeight: 1.15, fontFamily: "Georgia, 'Times New Roman', serif", margin: "0 0 18px" }}>
+            Confirm your <em style={{ color: C.gold, fontStyle: "italic" }}>email.</em>
           </h1>
-          <p className="text-ink-soft text-sm mb-2">
-            We sent a confirmation link to <span className="text-ink">{email}</span>.
+          <p style={{ fontSize: 14, color: C.muted, margin: "0 0 8px", lineHeight: 1.65 }}>
+            We sent a confirmation link to <span style={{ color: C.ink }}>{email}</span>.
           </p>
-          <p className="text-ink-mute text-xs leading-relaxed">
-            Click the link in your inbox, then come back and sign in. Once confirmed, you'll land in the {mode === "personal" ? "Personal Flow" : "Business"} dashboard.
+          <p style={{ fontSize: 12.5, color: C.muted, margin: 0, lineHeight: 1.65 }}>
+            Click the link in your inbox, then sign in. Once confirmed, you'll land in the {mode === "personal" ? "Personal Flow" : "Business"} dashboard.
           </p>
 
-          <div className="rule-ornament my-6 text-[8px]"><span>·</span></div>
+          <div style={{ height: 1, background: C.border, margin: "32px 0" }} />
 
-          <Link to="/login">
-            <Button className="w-full">Go to sign in</Button>
+          <Link to="/login" style={{
+            display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
+            background: C.gold, color: C.void, padding: "12px 28px", borderRadius: 7,
+            fontSize: 12, fontWeight: 600, letterSpacing: "0.02em", textDecoration: "none",
+            textTransform: "uppercase", width: "100%",
+          }}>
+            Go to sign in →
           </Link>
 
-          <div className="text-[10px] text-ink-mute mt-6 leading-relaxed">
-            Didn't get it? Check your spam folder. Or{" "}
-            <span className="text-gold-soft">turn off email confirmation</span> in Supabase
-            Dashboard → Authentication → Providers → Email → "Confirm email" off — for instant sign-up.
-          </div>
+          <p style={{ fontSize: 10.5, color: C.muted, marginTop: 24, lineHeight: 1.6 }}>
+            Didn't get the email? Check your spam folder, or contact{" "}
+            <a href="mailto:support@azqueue.io" style={{ color: C.goldLit, textDecoration: "none" }}>support@azqueue.io</a>.
+          </p>
         </div>
       </div>
     </div>

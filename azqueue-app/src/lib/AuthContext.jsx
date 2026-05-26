@@ -34,10 +34,21 @@ export function AuthProvider({ children }) {
       } else {
         meta.display_name = displayName ?? null;
       }
+      // IMPORTANT: pin the email-confirmation link to the current deployed origin.
+      // Without this, Supabase falls back to its dashboard "Site URL" which is
+      // often still http://localhost:3000 — causing the link in the email (and
+      // any subsequent /auth/v1/* fetch) to land on the wrong host in production.
+      const origin = typeof window !== "undefined"
+        ? window.location.origin
+        : (import.meta.env.VITE_SITE_URL ?? "https://azqueue.io");
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: meta },
+        options: {
+          data: meta,
+          emailRedirectTo: `${origin}/login`,
+        },
       });
       return { data, error };
     },
@@ -47,6 +58,15 @@ export function AuthProvider({ children }) {
         password,
       });
       return { data, error };
+    },
+    sendPasswordReset: async (email) => {
+      const origin = typeof window !== "undefined"
+        ? window.location.origin
+        : (import.meta.env.VITE_SITE_URL ?? "https://azqueue.io");
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${origin}/login`,
+      });
+      return { error };
     },
     signOut: async () => {
       const { error } = await supabase.auth.signOut();

@@ -474,19 +474,27 @@ function fmtAgo(iso) {
 function Shell({ children }) {
   const { t } = useTranslation();
   return (
-    <div className="min-h-screen bg-bg text-ink flex flex-col">
-      <header className="px-6 py-4 border-b border-line flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-5 h-5 bg-gold rounded-sm flex items-center justify-center font-display text-[#141410] text-xs shadow-[0_0_18px_rgba(201,168,106,0.25)]">A</div>
+    <div className="min-h-screen bg-bg text-ink flex flex-col relative overflow-hidden">
+      <div
+        aria-hidden
+        className="absolute inset-x-0 top-0 h-[420px] pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(60% 80% at 50% 0%, rgba(184,149,90,0.07), transparent 70%)",
+        }}
+      />
+      <header className="relative px-6 py-4 border-b border-line/70 flex items-center justify-between backdrop-blur-sm bg-bg/60">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 bg-gold rounded-sm flex items-center justify-center font-display text-[#141410] text-[10px] shadow-[0_0_24px_rgba(201,168,106,0.3)]">A</div>
           <span className="font-display text-base">AzQueue</span>
         </div>
         <LanguagePicker />
       </header>
-      <main className="flex-1 max-w-md w-full mx-auto px-6 py-8">
+      <main className="relative flex-1 max-w-md w-full mx-auto px-6 py-8">
         {children}
       </main>
-      <footer className="px-6 py-5 border-t border-line text-[9px] text-ink-mute tracking-[0.2em] uppercase text-center">
-        {t("common.powered_by")} · azqueue.io
+      <footer className="relative px-6 py-4 border-t border-line/70 text-[9px] text-ink-mute tracking-[0.2em] uppercase text-center bg-bg/60">
+        {t("common.powered_by", { defaultValue: "Powered by" })} · azqueue.io · secured by 256-bit encryption
       </footer>
     </div>
   );
