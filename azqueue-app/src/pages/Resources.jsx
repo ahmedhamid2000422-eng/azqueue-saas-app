@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import SiteNav from "../components/SiteNav";
+import usePageMeta from "../lib/usePageMeta";
 
 const C = {
   void:   "#080807",
@@ -57,6 +58,11 @@ const GUIDES = [
 ];
 
 export default function Resources() {
+  usePageMeta({
+    title: "Resources — AzQueue Documentation, Guides & API",
+    description: "Setup guides, API reference, integration playbooks, and operations resources for AzQueue. Deploy in under an hour. Connect AzQueue to your booking system, BI tools, or accounting stack.",
+    canonical: "/resources",
+  });
   return (
     <div style={{ background: C.void, color: C.ink, fontFamily: "'Inter', system-ui, sans-serif", overflowX: "hidden" }}>
       <SiteNav solid />

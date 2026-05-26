@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import SiteNav from "../components/SiteNav";
+import usePageMeta from "../lib/usePageMeta";
 
 const C = {
   void:   "#080807",
@@ -54,6 +55,11 @@ const WaIcon = () => (
 );
 
 export default function Product() {
+  usePageMeta({
+    title: "Product — Kiosk, Dashboard, WhatsApp & Loyalty · AzQueue",
+    description: "See the full AzQueue product: self-service check-in kiosk, live staff dashboard, WhatsApp & SMS notifications, loyalty punch cards, prayer-aware scheduling, and multi-branch management. Works on any tablet.",
+    canonical: "/product",
+  });
   return (
     <div style={{ background: C.void, color: C.ink, fontFamily: "'Inter', system-ui, sans-serif", overflowX: "hidden" }}>
       <SiteNav solid />

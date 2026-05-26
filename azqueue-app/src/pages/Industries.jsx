@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import SiteNav from "../components/SiteNav";
+import usePageMeta from "../lib/usePageMeta";
 
 const C = {
   void:   "#080807",
@@ -85,6 +86,11 @@ const INDUSTRIES = [
 ];
 
 export default function Industries() {
+  usePageMeta({
+    title: "Industries — Queue Software for Clinics, Banks, Salons & More · AzQueue",
+    description: "AzQueue is built for high-traffic service businesses: medical clinics, banks, government offices, pharmacies, service centers, telecom, and salons. See how each industry uses AzQueue.",
+    canonical: "/industries",
+  });
   return (
     <div style={{ background: C.void, color: C.ink, fontFamily: "'Inter', system-ui, sans-serif", overflowX: "hidden" }}>
       <SiteNav solid />

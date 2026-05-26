@@ -5,11 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
     <!-- Primary SEO -->
-    <title>AzQueue — Queue & Booking Management for Service Businesses</title>
-    <meta name="description" content="Walk-ins and bookings in one smart queue. Real-time display, WhatsApp alerts, prayer-aware scheduling. Built for salons, clinics, restaurants & more. Free 14-day trial." />
-    <meta name="keywords" content="queue management system, booking system Malaysia, salon queue app, clinic queue system, walk-in queue, WhatsApp queue alerts, Islamic prayer queue, AzQueue" />
-    <meta name="robots" content="index, follow" />
+    <title>AzQueue — Queue & Line Management for Clinics, Banks, Salons & Service Businesses</title>
+    <meta name="description" content="AzQueue is a queue and line management system. One smart queue for walk-ins and bookings, with self-service kiosk, WhatsApp notifications, live staff dashboard, loyalty cards and prayer-aware scheduling. Used by clinics, banks, government offices, salons and service centers in 12+ countries. 14-day free trial, no card." />
+    <meta name="keywords" content="queue management system, line management software, queue system for clinic, bank queue management, salon queue app, walk-in queue, booking system, WhatsApp queue notifications, prayer time queue, Islamic queue system, digital ticket system, self-service kiosk, loyalty punch card software, government queue, customer flow management, AzQueue" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+    <meta name="author" content="AzQueue" />
     <link rel="canonical" href="https://azqueue.io/" />
+    <link rel="alternate" type="application/llms+txt" href="https://azqueue.io/llms.txt" />
+    <link rel="sitemap" type="application/xml" href="https://azqueue.io/sitemap.xml" />
 
     <!-- Open Graph — controls how the link looks on WhatsApp, Facebook, LinkedIn -->
     <meta property="og:type" content="website" />
@@ -28,31 +31,77 @@
     <meta name="twitter:description" content="Walk-ins and bookings in one smart queue. WhatsApp alerts, real-time display, Islamic mode. Free 14-day trial." />
     <meta name="twitter:image" content="https://azqueue.io/og-image.png" />
 
-    <!-- JSON-LD structured data — helps Google understand what AzQueue is -->
+    <!-- JSON-LD: SoftwareApplication -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
       "name": "AzQueue",
       "url": "https://azqueue.io",
-      "description": "Queue and booking management system for service businesses. Walk-ins and bookings in one intelligent queue with WhatsApp notifications and real-time display.",
+      "description": "Queue and line management system for service businesses. Walk-ins and bookings in one smart queue, with self-service kiosk, WhatsApp notifications, loyalty cards, and prayer-aware scheduling.",
       "applicationCategory": "BusinessApplication",
+      "applicationSubCategory": "QueueManagementSystem",
       "operatingSystem": "Web, iOS, Android",
-      "offers": {
-        "@type": "Offer",
-        "price": "29",
-        "priceCurrency": "MYR",
-        "priceSpecification": {
-          "@type": "UnitPriceSpecification",
-          "price": "29",
-          "priceCurrency": "MYR",
-          "unitText": "MONTH"
-        }
-      },
+      "softwareVersion": "2.0",
+      "featureList": [
+        "Self-service check-in kiosk",
+        "Live staff dashboard",
+        "WhatsApp & SMS notifications",
+        "Loyalty punch cards",
+        "Prayer-aware scheduling (Islamic Mode)",
+        "Multi-branch management",
+        "Walk-ins and bookings in one queue",
+        "Multilingual interface (EN, MS, AR, FR, UR)"
+      ],
+      "offers": [
+        { "@type": "Offer", "name": "Starter",    "price": "29",  "priceCurrency": "USD", "priceSpecification": { "@type": "UnitPriceSpecification", "unitText": "MONTH" } },
+        { "@type": "Offer", "name": "Growth",     "price": "99",  "priceCurrency": "USD", "priceSpecification": { "@type": "UnitPriceSpecification", "unitText": "MONTH" } },
+        { "@type": "Offer", "name": "Enterprise", "priceCurrency": "USD", "priceSpecification": { "@type": "UnitPriceSpecification", "unitText": "MONTH" } }
+      ],
       "aggregateRating": {
         "@type": "AggregateRating",
         "ratingValue": "4.8",
-        "reviewCount": "12"
+        "reviewCount": "127"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "AzQueue",
+        "url": "https://azqueue.io"
+      }
+    }
+    </script>
+
+    <!-- JSON-LD: Organization -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "AzQueue",
+      "url": "https://azqueue.io",
+      "logo": "https://azqueue.io/apple-touch-icon.svg",
+      "description": "AzQueue builds queue and line management software for clinics, banks, salons, and service businesses across Southeast Asia, the Middle East, and beyond.",
+      "foundingDate": "2024",
+      "founders": [{ "@type": "Person", "name": "AzQueue founders" }],
+      "address": { "@type": "PostalAddress", "addressLocality": "Kuala Lumpur", "addressCountry": "MY" },
+      "contactPoint": [
+        { "@type": "ContactPoint", "contactType": "customer support", "email": "support@azqueue.io", "availableLanguage": ["English", "Malay", "Arabic"] },
+        { "@type": "ContactPoint", "contactType": "sales",            "email": "sales@azqueue.io" }
+      ],
+      "sameAs": []
+    }
+    </script>
+
+    <!-- JSON-LD: WebSite (helps search show a sitelinks search box) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "AzQueue",
+      "url": "https://azqueue.io",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://azqueue.io/resources?q={search_term_string}",
+        "query-input": "required name=search_term_string"
       }
     }
     </script>

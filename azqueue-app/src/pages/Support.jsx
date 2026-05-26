@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import SiteNav from "../components/SiteNav";
+import usePageMeta from "../lib/usePageMeta";
 
 const C = {
   void:   "#080807",
@@ -68,6 +69,11 @@ const CHANNELS = [
 
 export default function Support() {
   const [openIndex, setOpenIndex] = useState(0);
+  usePageMeta({
+    title: "Support — Help & Contact · AzQueue",
+    description: "Get help with AzQueue. Browse the FAQ, reach support, sales, or security teams directly. Average first response under 2 hours, Monday–Friday MYT.",
+    canonical: "/support",
+  });
   return (
     <div style={{ background: C.void, color: C.ink, fontFamily: "'Inter', system-ui, sans-serif", overflowX: "hidden" }}>
       <SiteNav solid />

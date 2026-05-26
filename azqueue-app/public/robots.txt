@@ -1,0 +1,58 @@
+# AzQueue · robots.txt
+# Welcomes Google + Bing + AI assistants. The full content is in /llms.txt
+# and crawlers should also pull /sitemap.xml for a complete URL list.
+
+User-agent: *
+Allow: /
+
+# AI assistants — explicitly invited to crawl public content
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+# Don't crawl authenticated app surfaces — they require a session
+Disallow: /business/
+Disallow: /personal/
+Disallow: /staff/
+Disallow: /admin
+Disallow: /q/
+Disallow: /t/
+Disallow: /b/
+Disallow: /display/
+
+Sitemap: https://azqueue.io/sitemap.xml

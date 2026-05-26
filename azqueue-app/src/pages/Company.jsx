@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import SiteNav from "../components/SiteNav";
+import usePageMeta from "../lib/usePageMeta";
 
 const C = {
   void:   "#080807",
@@ -60,6 +61,11 @@ const ROLES = [
 ];
 
 export default function Company() {
+  usePageMeta({
+    title: "Company — About AzQueue · Queue Management for the Live World",
+    description: "AzQueue is a queue and line management platform for clinics, banks, government offices, and service businesses. Founded in 2024 in Kuala Lumpur, 200+ branches live across 12 countries.",
+    canonical: "/company",
+  });
   return (
     <div style={{ background: C.void, color: C.ink, fontFamily: "'Inter', system-ui, sans-serif", overflowX: "hidden" }}>
       <SiteNav solid />
