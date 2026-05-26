@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Button from "../components/Button";
-import SiteHeader from "../components/SiteHeader";
+import SiteNav from "../components/SiteNav";
 import SiteFooter from "../components/SiteFooter";
 import LuxeFrame from "../components/LuxeFrame";
 import { CountUp } from "../components/LiveTicker";
+import usePageMeta from "../lib/usePageMeta";
 
 const TOOLS = [
   {
@@ -45,9 +46,14 @@ const TOOLS = [
 ];
 
 export default function PersonalFlow() {
+  usePageMeta({
+    title: "Personal Flow — Focus & Tasks for People · AzQueue",
+    description: "Personal Flow is AzQueue for individuals — deep work sessions, intelligently ordered tasks, prayer-aware scheduling. The same calm queue thinking, applied to your day.",
+    canonical: "/personal-flow",
+  });
   return (
-    <div className="min-h-screen bg-bg text-ink">
-      <SiteHeader />
+    <div className="min-h-screen bg-bg text-ink pt-[60px]">
+      <SiteNav solid />
       <Hero />
       <Promise />
       <ToolGrid />

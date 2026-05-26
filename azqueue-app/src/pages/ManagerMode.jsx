@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
 import Button from "../components/Button";
-import SiteHeader from "../components/SiteHeader";
+import SiteNav from "../components/SiteNav";
 import SiteFooter from "../components/SiteFooter";
 import LuxeFrame from "../components/LuxeFrame";
 import { CountUp } from "../components/LiveTicker";
+import usePageMeta from "../lib/usePageMeta";
 
 const ALERTS = [
   { tag: "Long task", who: "Mohammad U.", body: "Haircut · 32 min · usually 18 min", level: "warn" },
@@ -36,9 +37,14 @@ const PILLARS = [
 ];
 
 export default function ManagerMode() {
+  usePageMeta({
+    title: "Manager Mode — Staff Patterns & Wellness · AzQueue",
+    description: "Manager Mode brings break-pattern intelligence, anomaly detection, and wellness signals to multi-branch managers — pulled from real queue data, surfaced gently.",
+    canonical: "/manager-mode",
+  });
   return (
-    <div className="min-h-screen bg-bg text-ink">
-      <SiteHeader />
+    <div className="min-h-screen bg-bg text-ink pt-[60px]">
+      <SiteNav solid />
       <Hero />
       <Promise />
       <PillarGrid />

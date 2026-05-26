@@ -5,6 +5,8 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Product from "./pages/Product";
 import Resources from "./pages/Resources";
+import ResourceArticle from "./pages/ResourceArticle";
+import CaseStudy from "./pages/CaseStudy";
 import Support from "./pages/Support";
 import Company from "./pages/Company";
 import Industries from "./pages/Industries";
@@ -31,6 +33,8 @@ export default function App() {
       <Route path="/select"  element={<ModeSelect />} />
       <Route path="/product" element={<Product />} />
       <Route path="/resources" element={<Resources />} />
+      <Route path="/resources/:slug" element={<ResourceArticle />} />
+      <Route path="/case-studies/:slug" element={<CaseStudy />} />
       <Route path="/support" element={<Support />} />
       <Route path="/company" element={<Company />} />
       <Route path="/industries" element={<Industries />} />

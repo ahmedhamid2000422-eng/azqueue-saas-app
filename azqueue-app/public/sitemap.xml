@@ -70,4 +70,16 @@
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
+
+  <!-- Guides — in-site articles -->
+  <url><loc>https://azqueue.io/resources/science-of-waiting</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://azqueue.io/resources/setup-guide</loc>        <changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://azqueue.io/resources/multi-branch</loc>       <changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://azqueue.io/resources/prayer-pause</loc>       <changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://azqueue.io/resources/queue-analytics</loc>    <changefreq>monthly</changefreq><priority>0.7</priority></url>
+
+  <!-- Case studies -->
+  <url><loc>https://azqueue.io/case-studies/meridian-health</loc> <changefreq>yearly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://azqueue.io/case-studies/nordic-bank</loc>     <changefreq>yearly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://azqueue.io/case-studies/caelum-salons</loc>   <changefreq>yearly</changefreq><priority>0.7</priority></url>
 </urlset>

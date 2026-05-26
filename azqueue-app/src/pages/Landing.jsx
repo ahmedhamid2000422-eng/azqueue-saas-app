@@ -734,6 +734,7 @@ function CaseStudies() {
   const [ref, visible] = useInView(0.08);
   const studies = [
     {
+      slug: "meridian-health",
       tag: "Healthcare",
       org: "Meridian Health · 14 clinics",
       headline: "Cut perceived wait time by 70%",
@@ -741,6 +742,7 @@ function CaseStudies() {
       stat: { value: "70%", label: "Drop in complaints" },
     },
     {
+      slug: "nordic-bank",
       tag: "Banking",
       org: "Nordic Bank · 9 branches",
       headline: "Prayer pause was the deal-maker",
@@ -748,6 +750,7 @@ function CaseStudies() {
       stat: { value: "2 wks", label: "Full rollout" },
     },
     {
+      slug: "caelum-salons",
       tag: "Salon",
       org: "Caelum Salons · 6 locations",
       headline: "Loyalty card lifted repeats 38%",
@@ -764,18 +767,21 @@ function CaseStudies() {
             What changed when these teams switched to AzQueue.
           </h2>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1, background: C.border, borderRadius: 14, overflow: "hidden" }}>
+        <div id="case-studies" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1, background: C.border, borderRadius: 14, overflow: "hidden" }}>
           {studies.map((s, i) => (
-            <article key={i} style={{ background: C.card, padding: "36px 32px", display: "flex", flexDirection: "column", opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(12px)", transition: `all 0.55s ease ${i * 0.1}s` }}>
+            <Link key={i} to={`/case-studies/${s.slug}`} style={{ background: C.card, padding: "36px 32px", display: "flex", flexDirection: "column", textDecoration: "none", opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(12px)", transition: `all 0.55s ease ${i * 0.1}s` }}
+              onMouseEnter={e => e.currentTarget.style.background = "#0f0f0e"}
+              onMouseLeave={e => e.currentTarget.style.background = C.card}>
               <div style={{ fontSize: 9, color: C.gold, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 600, marginBottom: 14 }}>{s.tag}</div>
               <div style={{ fontSize: 11, color: C.muted, letterSpacing: "0.04em", marginBottom: 18 }}>{s.org}</div>
               <h3 style={{ fontSize: 22, color: C.ink, fontFamily: "Georgia, serif", letterSpacing: "-0.01em", lineHeight: 1.25, margin: "0 0 16px" }}>{s.headline}</h3>
-              <p style={{ fontSize: 13, color: C.muted, lineHeight: 1.7, margin: "0 0 28px", flex: 1 }}>{s.body}</p>
+              <p style={{ fontSize: 13, color: C.muted, lineHeight: 1.7, margin: "0 0 24px", flex: 1 }}>{s.body}</p>
               <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 18, display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                 <span style={{ fontSize: 28, color: C.ink, fontFamily: "Georgia, serif", letterSpacing: "-0.02em", lineHeight: 1, background: "linear-gradient(180deg, #f0ede6, #b8955a 140%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>{s.stat.value}</span>
                 <span style={{ fontSize: 10.5, color: C.muted, letterSpacing: "0.04em" }}>{s.stat.label}</span>
               </div>
-            </article>
+              <div style={{ marginTop: 14, fontSize: 11, color: C.goldLit, letterSpacing: "0.02em" }}>Read full case →</div>
+            </Link>
           ))}
         </div>
         <div style={{ textAlign: "center", marginTop: 28 }}>
@@ -981,18 +987,18 @@ function Footer() {
       ["FAQ",           "/#faq"],
     ]},
     { heading: "Solutions",   links: [
-      ["Personal Flow",  "/personal-flow"],
-      ["Islamic Mode",   "/islamic-mode"],
-      ["Manager Mode",   "/manager-mode"],
-      ["For salons",     "/industries"],
-      ["For clinics",    "/industries"],
+      ["For clinics",       "/industries"],
+      ["For banks",         "/industries"],
+      ["For salons",        "/industries"],
+      ["Islamic Mode",      "/resources/prayer-pause"],
+      ["Multi-branch",      "/resources/multi-branch"],
     ]},
     { heading: "Resources",   links: [
-      ["Documentation",  "/resources"],
-      ["Setup guides",   "/resources"],
-      ["Case studies",   "/#case-studies"],
-      ["Support",        "/support"],
-      ["Contact sales",  "/support"],
+      ["All guides",            "/resources"],
+      ["Science of waiting",    "/resources/science-of-waiting"],
+      ["Setup guide",           "/resources/setup-guide"],
+      ["Case studies",          "/resources#case-studies"],
+      ["Support",               "/support"],
     ]},
     { heading: "Company",     links: [
       ["About",          "/company"],

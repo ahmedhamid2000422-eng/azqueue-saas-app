@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
 import Button from "../components/Button";
-import SiteHeader from "../components/SiteHeader";
+import SiteNav from "../components/SiteNav";
 import SiteFooter from "../components/SiteFooter";
 import LuxeFrame from "../components/LuxeFrame";
 import { CountUp } from "../components/LiveTicker";
+import usePageMeta from "../lib/usePageMeta";
 
 const PRAYERS = [
   { name: "Fajr", time: "05:42", note: "Pre-dawn pause · gentle resume." },
@@ -33,9 +34,14 @@ const SCRIPTURE_INTENT =
   "Indeed, prayer has been decreed upon the believers a decree of specified times. — Qur'an 4:103";
 
 export default function IslamicMode() {
+  usePageMeta({
+    title: "Islamic Mode — Prayer-Aware Queue Scheduling · AzQueue",
+    description: "Islamic Mode pauses the queue automatically for each daily prayer, notifies customers in line, and resumes from the same position. Built for businesses in Muslim-majority markets.",
+    canonical: "/islamic-mode",
+  });
   return (
-    <div className="min-h-screen bg-bg text-ink">
-      <SiteHeader />
+    <div className="min-h-screen bg-bg text-ink pt-[60px]">
+      <SiteNav solid />
       <Hero />
       <Promise />
       <PrayerGrid />
