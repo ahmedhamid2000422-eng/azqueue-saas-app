@@ -342,7 +342,7 @@ const GUIDES = {
         <H3>Prayer times</H3>
         <P>Prayer times come from a public reference table per city. Set your branch's city in Settings → Branch and the times update automatically every day. If your branch follows a specific masjid's iqamah times instead of the city average, you can override.</P>
 
-        <H3>Pause windows</H>
+        <H3>Pause windows</H3>
         <P>For each prayer you can set:</P>
         <UL items={[
           <><strong>Pre-pause buffer</strong> — default 10 minutes. How long before the prayer time the queue stops accepting new tickets.</>,
@@ -350,7 +350,7 @@ const GUIDES = {
           <><strong>Jumu'ah override</strong> — Friday Dhuhr is typically longer (45–60 minutes) to accommodate the khutbah and prayer.</>,
         ]}/>
 
-        <H3>Walk-in handling during pause</H>
+        <H3>Walk-in handling during pause</H3>
         <P>Two options for customers who arrive during a pause:</P>
         <UL items={[
           <><strong>Hold tickets</strong> (default) — kiosk accepts the customer's number and queues them, but doesn't issue a ticket number until resume. Customer is told via WhatsApp.</>,
