@@ -7,6 +7,7 @@ import { scheduleReflow, autoFixSchedule, enrichStaffLoad, pickBestStaff } from 
 import { findOrCreateCustomer, generatePersona } from "../../lib/customers";
 import Button from "../../components/Button";
 import Card from "../../components/Card";
+import ShadowSlots from "./ShadowSlots";
 
 const SLOTS = ["09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00"];
 
@@ -402,6 +403,9 @@ export default function Schedule() {
           )}
         </div>
       )}
+
+      {/* Shadow Slots — walk-in buffer manager */}
+      <ShadowSlots />
     </div>
   );
 }
