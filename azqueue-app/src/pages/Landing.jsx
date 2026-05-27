@@ -142,12 +142,14 @@ export default function Landing() {
       <Hero />
       <LogoCloud />
       <StatBand />
+      <FeatureGrid />
       <LiveDashboard />
       <LoyaltySection />
       <PrayerSection />
       <WhatsAppFlow />
       <HowItWorks />
       <CaseStudies />
+      <Testimonials />
       <FAQSection />
       <Pricing />
       <FinalCTA />
@@ -196,6 +198,12 @@ function Hero() {
                 <span style={{ fontSize: 12.5, color: C.muted, letterSpacing: "-0.005em" }}>{t}</span>
               </div>
             ))}
+          </div>
+          <div style={{ marginTop: 24, display: "flex", alignItems: "center", gap: 10, paddingTop: 20, borderTop: `1px solid ${C.border}` }}>
+            <div style={{ display: "flex", gap: 1.5 }}>
+              {[...Array(5)].map((_, i) => <span key={i} style={{ color: C.gold, fontSize: 13, lineHeight: 1 }}>★</span>)}
+            </div>
+            <span style={{ fontSize: 12, color: C.muted, letterSpacing: "-0.005em" }}>4.9 · trusted by 600+ businesses in 12 countries</span>
           </div>
         </div>
 
@@ -263,27 +271,49 @@ function KioskMockup() {
   );
 }
 
-/* ── Logo Cloud ───────────────────────────────────────────────────── */
+/* ── Logo Cloud — infinite marquee ───────────────────────────────── */
 function LogoCloud() {
+  useEffect(() => {
+    const id = "az-marquee-style";
+    if (document.getElementById(id)) return;
+    const s = document.createElement("style");
+    s.id = id;
+    s.textContent = `
+      @keyframes az-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+      .az-marquee-track { display: flex; animation: az-marquee 36s linear infinite; width: max-content; }
+      .az-marquee-track:hover { animation-play-state: paused; }
+    `;
+    document.head.appendChild(s);
+  }, []);
+
   const logos = [
-    { name: "MERIDIAN HEALTH",  style: { fontFamily: "Georgia, serif", letterSpacing: "0.18em", fontWeight: 400 } },
-    { name: "NORDIC BANK",      style: { fontFamily: "Inter, sans-serif", letterSpacing: "0.08em", fontWeight: 600 } },
-    { name: "Caelum Salons",    style: { fontFamily: "Georgia, serif", fontStyle: "italic", letterSpacing: "0.02em", fontWeight: 500, fontSize: 22 } },
-    { name: "ATLAS · OFFICE",   style: { fontFamily: "Inter, sans-serif", letterSpacing: "0.2em", fontWeight: 500 } },
-    { name: "PHARMACITY",       style: { fontFamily: "Inter, sans-serif", letterSpacing: "0.06em", fontWeight: 700 } },
-    { name: "ORION GROUP",      style: { fontFamily: "Georgia, serif", letterSpacing: "0.14em", fontWeight: 400 } },
+    { name: "MERIDIAN HEALTH",   style: { fontFamily: "Georgia, serif",     letterSpacing: "0.18em", fontWeight: 400, fontSize: 13 } },
+    { name: "NORDIC BANK",       style: { fontFamily: "Inter, sans-serif",   letterSpacing: "0.09em", fontWeight: 700, fontSize: 14 } },
+    { name: "Caelum Salons",     style: { fontFamily: "Georgia, serif",     fontStyle: "italic", letterSpacing: "0.02em", fontWeight: 500, fontSize: 19 } },
+    { name: "ATLAS · OFFICE",    style: { fontFamily: "Inter, sans-serif",   letterSpacing: "0.2em", fontWeight: 500, fontSize: 11 } },
+    { name: "PHARMACITY",        style: { fontFamily: "Inter, sans-serif",   letterSpacing: "0.06em", fontWeight: 800, fontSize: 14 } },
+    { name: "ORION GROUP",       style: { fontFamily: "Georgia, serif",     letterSpacing: "0.14em", fontWeight: 400, fontSize: 13 } },
+    { name: "VISTA CLINICS",     style: { fontFamily: "Inter, sans-serif",   letterSpacing: "0.12em", fontWeight: 600, fontSize: 12 } },
+    { name: "Lumière",           style: { fontFamily: "Georgia, serif",     fontStyle: "italic", letterSpacing: "0.04em", fontWeight: 500, fontSize: 20 } },
+    { name: "FIRST FEDERAL",     style: { fontFamily: "Inter, sans-serif",   letterSpacing: "0.1em",  fontWeight: 700, fontSize: 11 } },
+    { name: "CITYSERVE",         style: { fontFamily: "Inter, sans-serif",   letterSpacing: "0.06em", fontWeight: 600, fontSize: 13 } },
   ];
+
+  const doubled = [...logos, ...logos];
+
   return (
-    <section style={{ padding: "64px 48px", borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`, background: C.void }}>
-      <div style={{ maxWidth: 1160, margin: "0 auto" }}>
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{ ...T.label, color: C.muted }}>Used by clinics, banks, salons & service centers across 12 countries</div>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 24, alignItems: "center" }}>
-          {logos.map((l) => (
-            <div key={l.name} style={{ textAlign: "center", fontSize: 14, color: C.muted, opacity: 0.7, transition: "opacity 0.25s, color 0.25s", cursor: "default", ...l.style }}
+    <section style={{ padding: "52px 0", borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`, background: C.void, overflow: "hidden" }}>
+      <div style={{ textAlign: "center", marginBottom: 28, padding: "0 48px" }}>
+        <div style={{ ...T.label, color: C.muted }}>Used by clinics, banks, salons &amp; service centers across 12 countries</div>
+      </div>
+      <div style={{ position: "relative" }}>
+        <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 140, background: `linear-gradient(90deg, ${C.void}, transparent)`, zIndex: 1, pointerEvents: "none" }} />
+        <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 140, background: `linear-gradient(-90deg, ${C.void}, transparent)`, zIndex: 1, pointerEvents: "none" }} />
+        <div className="az-marquee-track" style={{ alignItems: "center" }}>
+          {doubled.map((l, i) => (
+            <div key={i} style={{ padding: "0 44px", whiteSpace: "nowrap", color: C.muted, opacity: 0.6, cursor: "default", transition: "opacity 0.25s, color 0.25s", ...l.style }}
               onMouseEnter={e => { e.currentTarget.style.color = C.ink; e.currentTarget.style.opacity = "1"; }}
-              onMouseLeave={e => { e.currentTarget.style.color = C.muted; e.currentTarget.style.opacity = "0.7"; }}>
+              onMouseLeave={e => { e.currentTarget.style.color = C.muted; e.currentTarget.style.opacity = "0.6"; }}>
               {l.name}
             </div>
           ))}
@@ -797,6 +827,436 @@ function CaseStudies() {
   );
 }
 
+/* ── Testimonials ─────────────────────────────────────────────────── */
+function Testimonials() {
+  const [ref, visible] = useInView(0.08);
+  const quotes = [
+    {
+      text: "Setup took 20 minutes. Within a week our front desk stopped getting complaints about the wait. Patients actually thank us now.",
+      author: "Ahmad R.",
+      role: "Clinic Manager · Dubai",
+      stat: "–62% wait complaints",
+    },
+    {
+      text: "The prayer pause feature was the only reason we chose AzQueue over three other vendors. It just works, completely automatically.",
+      author: "Siti N.",
+      role: "Branch Head · Kuala Lumpur",
+      stat: "9 branches live",
+    },
+    {
+      text: "Loyalty punch card repeat visits went up 38% in the first quarter. That single feature paid for the whole year on its own.",
+      author: "James O.",
+      role: "Salon Owner · Lagos",
+      stat: "+38% repeat visits",
+    },
+  ];
+  return (
+    <section ref={ref} style={{ padding: "100px 48px", background: C.card, borderTop: `1px solid ${C.border}` }}>
+      <div style={{ maxWidth: 1160, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 56 }}>
+          <div style={{ display: "flex", justifyContent: "center", gap: 2, marginBottom: 16 }}>
+            {[...Array(5)].map((_, i) => <span key={i} style={{ color: C.gold, fontSize: 16 }}>★</span>)}
+          </div>
+          <div style={{ ...T.label, marginBottom: 14, color: C.muted }}>Customer stories</div>
+          <h2 style={{ ...T.h2, color: C.ink, margin: 0, maxWidth: 640, marginLeft: "auto", marginRight: "auto" }}>
+            Real outcomes from real businesses.
+          </h2>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1, background: C.border, borderRadius: 16, overflow: "hidden" }}>
+          {quotes.map((q, i) => (
+            <div key={i} style={{ background: C.void, padding: "36px 32px", display: "flex", flexDirection: "column", opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(12px)", transition: `all 0.55s ease ${i * 0.1}s` }}>
+              <div style={{ display: "flex", gap: 1, marginBottom: 20 }}>
+                {[...Array(5)].map((_, j) => <span key={j} style={{ color: C.gold, fontSize: 11 }}>★</span>)}
+              </div>
+              <p style={{ fontSize: 14, color: C.ink, lineHeight: 1.72, margin: "0 0 28px", flex: 1, letterSpacing: "-0.005em" }}>
+                &ldquo;{q.text}&rdquo;
+              </p>
+              <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 20, display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+                <div>
+                  <div style={{ fontSize: 13, color: C.ink, fontWeight: 500, marginBottom: 3 }}>{q.author}</div>
+                  <div style={{ fontSize: 11, color: C.muted }}>{q.role}</div>
+                </div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: C.goldLit, fontFamily: "Georgia, serif", letterSpacing: "-0.01em", textAlign: "right" }}>{q.stat}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ── Feature Grid ─────────────────────────────────────────────────── */
+function FeatureGrid() {
+  const [ref, visible] = useInView(0.06);
+  const features = [
+    {
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01"/>
+        </svg>
+      ),
+      title: "Self-service kiosk",
+      body:  "Customers check in on any tablet in under 10 seconds. No paper forms, no queuing at the desk.",
+    },
+    {
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+      ),
+      title: "WhatsApp & SMS",
+      body:  "Three automatic messages per visit — confirmation, heads-up, you're next. No app to install.",
+    },
+    {
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+      ),
+      title: "Walk-ins + bookings",
+      body:  "One shared queue. Booked customers hold their window. Walk-ins fill the gaps. Neither group feels skipped.",
+    },
+    {
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+      ),
+      title: "Loyalty cards",
+      body:  "Every completed visit punches the card automatically. Rewards are unlocked and delivered via WhatsApp.",
+    },
+    {
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      ),
+      title: "Prayer pause",
+      body:  "Auto-pauses before each prayer, notifies customers in line, and resumes after. Zero manual resets needed.",
+    },
+    {
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+        </svg>
+      ),
+      title: "Live analytics",
+      body:  "Wait time trends, peak hours, staff throughput. Updated every minute. Exportable to CSV.",
+    },
+  ];
+  return (
+    <section ref={ref} style={{ padding: "100px 48px", borderTop: `1px solid ${C.border}` }}>
+      <div style={{ maxWidth: 1160, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 60 }}>
+          <div style={{ ...T.label, marginBottom: 16 }}>Everything included</div>
+          <h2 style={{ ...T.h2, color: C.ink, margin: "0 auto 16px", maxWidth: 680 }}>
+            One platform. Every tool your front desk actually needs.
+          </h2>
+          <p style={{ ...T.body, margin: "0 auto", maxWidth: 520, fontSize: 15 }}>
+            No bolt-ons, no hidden add-ons. Kiosk, notifications, loyalty, prayer scheduling, and analytics ship in every plan.
+          </p>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1, background: C.border, borderRadius: 16, overflow: "hidden" }}>
+          {features.map((f, i) => (
+            <div key={i} style={{ background: C.void, padding: "36px 32px", opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(14px)", transition: `all 0.55s ease ${i * 0.07}s` }}>
+              <div style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(184,149,90,0.07)", border: `1px solid rgba(184,149,90,0.18)`, display: "flex", alignItems: "center", justifyContent: "center", color: C.gold, marginBottom: 18 }}>
+                {f.icon}
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 500, color: C.ink, marginBottom: 10, letterSpacing: "-0.01em", lineHeight: 1.35 }}>{f.title}</div>
+              <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.7 }}>{f.body}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ textAlign: "center", marginTop: 36 }}>
+          <Link to="/product" style={{ fontSize: 12, color: C.goldLit, textDecoration: "none", letterSpacing: "0.02em", display: "inline-flex", alignItems: "center", gap: 6 }}
+            onMouseEnter={e => e.currentTarget.style.opacity = "0.7"}
+            onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
+            Compare all features <Ic.Arr />
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ── FAQ ──────────────────────────────────────────────────────────── */
+function FAQSection() {
+  const [open, setOpen] = useState(0);
+  const [ref, visible] = useInView(0.06);
+  return (
+    <section ref={ref} id="faq" style={{ padding: "120px 48px", background: C.card, borderTop: `1px solid ${C.border}` }}>
+      <div style={{ maxWidth: 1160, margin: "0 auto", display: "grid", gridTemplateColumns: "340px 1fr", gap: 80, alignItems: "flex-start" }}>
+        <div style={{ position: "sticky", top: 100 }}>
+          <div style={{ ...T.label, marginBottom: 18 }}>FAQ</div>
+          <h2 style={{ ...T.h2, color: C.ink, margin: "0 0 18px" }}>Common questions, clear answers.</h2>
+          <p style={{ ...T.body, margin: "0 0 24px", fontSize: 14 }}>
+            The questions we hear most from owners and operators evaluating AzQueue. Still stuck? <Link to="/support" style={{ color: C.goldLit, textDecoration: "none" }}>Email support</Link>.
+          </p>
+          <div style={{ fontSize: 11, color: C.muted, letterSpacing: "0.04em" }}>{FAQ_DATA.length} entries · updated weekly</div>
+        </div>
+        <div style={{ borderTop: `1px solid ${C.border}`, opacity: visible ? 1 : 0, transition: "opacity 0.6s ease" }}>
+          {FAQ_DATA.map((item, idx) => {
+            const isOpen = open === idx;
+            return (
+              <div key={item.q} style={{ borderBottom: `1px solid ${C.border}` }}>
+                <button type="button" onClick={() => setOpen(isOpen ? -1 : idx)} style={{ width: "100%", textAlign: "left", padding: "22px 0", background: "transparent", border: "none", cursor: "pointer", display: "grid", gridTemplateColumns: "32px 1fr 24px", gap: 14, alignItems: "center", color: "inherit" }}>
+                  <span style={{ fontSize: 11, color: C.gold, fontFamily: "monospace", letterSpacing: "0.08em" }}>{String(idx + 1).padStart(2, "0")}</span>
+                  <span style={{ fontSize: 15, color: isOpen ? C.ink : "#a09c93", letterSpacing: "-0.005em", transition: "color 0.2s" }}>{item.q}</span>
+                  <span style={{ fontSize: 18, color: isOpen ? C.gold : C.muted, transition: "all 0.2s", transform: isOpen ? "rotate(45deg)" : "none", fontFamily: "Georgia, serif", lineHeight: 1, justifySelf: "end" }}>+</span>
+                </button>
+                {isOpen && (
+                  <div style={{ display: "grid", gridTemplateColumns: "32px 1fr 24px", gap: 14, paddingBottom: 22 }}>
+                    <span />
+                    <p style={{ fontSize: 13.5, color: C.muted, lineHeight: 1.75, margin: 0, maxWidth: 640 }}>{item.a}</p>
+                    <span />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ── Pricing ──────────────────────────────────────────────────────── */
+function Pricing() {
+  const [ref, visible] = useInView(0.1);
+  const [annual, setAnnual] = useState(true);
+  const tiers = [
+    {
+      name: "Starter",
+      price: annual ? 29 : 39,
+      desc: "For single-location businesses getting started.",
+      features: ["1 branch", "1 kiosk terminal", "WhatsApp notifications", "Basic analytics", "Email support"],
+      cta: "Start free trial",
+      ctaTo: "/signup?tier=essential",
+      featured: false,
+    },
+    {
+      name: "Growth",
+      price: annual ? 99 : 129,
+      desc: "For multi-location businesses ready to scale.",
+      features: ["Up to 10 branches", "Unlimited kiosks & staff", "WhatsApp, SMS & email", "Loyalty punch cards", "Prayer pause scheduling", "Advanced analytics & exports", "Priority chat support"],
+      cta: "Start free trial",
+      ctaTo: "/signup?tier=professional",
+      featured: true,
+      tag: "Most popular",
+    },
+    {
+      name: "Enterprise",
+      price: null,
+      desc: "For networks, franchises, and public-sector deployments.",
+      features: ["Unlimited branches & users", "SSO & role-based access", "Dedicated success manager", "Custom integrations & API", "Uptime SLA on contract", "24/7 phone & WhatsApp support", "White-glove onboarding"],
+      cta: "Talk to sales",
+      ctaTo: "/support",
+      featured: false,
+      enterprise: true,
+    },
+  ];
+  return (
+    <section id="pricing" ref={ref} style={{ padding: "120px 48px" }}>
+      <div style={{ maxWidth: 1160, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 56 }}>
+          <div style={{ ...T.label, marginBottom: 20 }}>Pricing</div>
+          <h2 style={{ ...T.h2, color: C.ink, margin: "0 0 16px" }}>Simple, transparent pricing.</h2>
+          <p style={{ ...T.body, margin: "0 auto 32px", maxWidth: 520 }}>Start free for 14 days. No card required. Move up or down as your business changes.</p>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 0, border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden" }}>
+            {[["Monthly", false], ["Annual", true]].map(([label, val]) => (
+              <button key={label} onClick={() => setAnnual(val)} style={{ padding: "8px 20px", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 500, background: annual === val ? C.ink : "transparent", color: annual === val ? C.void : C.muted, transition: "all 0.15s", display: "flex", alignItems: "center", gap: 6 }}>
+                {label}{val && <span style={{ fontSize: 9, color: annual === val ? C.gold : C.muted, fontWeight: 600 }}>SAVE 25%</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1, background: C.border, borderRadius: 16, overflow: "hidden" }}>
+          {tiers.map((tier, i) => (
+            <div key={i} style={{ background: tier.featured ? C.panel : (tier.enterprise ? "linear-gradient(180deg, #131210 0%, #0c0c0b 100%)" : C.void), padding: tier.featured ? "44px 32px" : "40px 32px", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden", opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(12px)", transition: `all 0.5s ease ${i * 0.1}s` }}>
+              {tier.featured && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${C.gold}, transparent)`, opacity: 0.5 }} />}
+              {tier.enterprise && <div style={{ position: "absolute", top: -1, right: -1, padding: "6px 14px", background: "rgba(184,149,90,0.08)", border: `1px solid rgba(184,149,90,0.25)`, borderRight: "none", borderTop: "none", borderBottomLeftRadius: 8, fontSize: 9, color: C.gold, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 600 }}>Enterprise</div>}
+              <div style={{ marginBottom: 26 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                  <span style={{ fontSize: 11, fontWeight: 500, color: tier.featured ? C.gold : (tier.enterprise ? C.gold : C.muted), letterSpacing: "0.1em", textTransform: "uppercase" }}>{tier.name}</span>
+                  {tier.tag && <span style={{ fontSize: 9, color: C.gold, border: `1px solid rgba(184,149,90,0.35)`, borderRadius: 4, padding: "2px 8px", letterSpacing: "0.1em", fontWeight: 600, textTransform: "uppercase" }}>{tier.tag}</span>}
+                </div>
+                {tier.price ? (
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 3, marginBottom: 10 }}>
+                    <span style={{ fontSize: 12, color: C.muted }}>$</span>
+                    <span style={{ fontSize: 46, fontWeight: 400, color: C.ink, fontFamily: "Georgia, serif", letterSpacing: "-0.02em", lineHeight: 1 }}>{tier.price}</span>
+                    <span style={{ fontSize: 12, color: C.muted, marginLeft: 4 }}>/mo</span>
+                    {annual && <span style={{ fontSize: 10, color: C.muted, marginLeft: 8 }}>billed annually</span>}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 34, fontWeight: 400, color: C.ink, fontFamily: "Georgia, serif", marginBottom: 10, lineHeight: 1.15 }}>Custom</div>
+                )}
+                <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.55 }}>{tier.desc}</div>
+              </div>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10, marginBottom: 28 }}>
+                {tier.features.map(f => (
+                  <div key={f} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <div style={{ width: 14, height: 14, borderRadius: 3, border: `1px solid ${C.faint}`, display: "flex", alignItems: "center", justifyContent: "center", color: C.gold, flexShrink: 0, marginTop: 2 }}><Ic.Check /></div>
+                    <span style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.5 }}>{f}</span>
+                  </div>
+                ))}
+              </div>
+              <Link to={tier.ctaTo} style={{ textDecoration: "none", width: "100%", padding: "12px 0", borderRadius: 7, cursor: "pointer", border: tier.featured ? "none" : `1px solid ${tier.enterprise ? C.gold : C.borderL}`, background: tier.featured ? C.gold : (tier.enterprise ? "rgba(184,149,90,0.06)" : "transparent"), color: tier.featured ? C.void : (tier.enterprise ? C.goldLit : C.ink), fontSize: 12, fontWeight: 600, letterSpacing: "0.02em", transition: "all 0.15s", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, textTransform: "uppercase" }}
+                onMouseEnter={e => { if (!tier.featured && !tier.enterprise) e.currentTarget.style.borderColor = C.gold; if (tier.enterprise) { e.currentTarget.style.background = C.gold; e.currentTarget.style.color = C.void; } }}
+                onMouseLeave={e => { if (!tier.featured && !tier.enterprise) e.currentTarget.style.borderColor = C.borderL; if (tier.enterprise) { e.currentTarget.style.background = "rgba(184,149,90,0.06)"; e.currentTarget.style.color = C.goldLit; } }}>
+                {tier.cta} <Ic.Arr />
+              </Link>
+            </div>
+          ))}
+        </div>
+        <div style={{ textAlign: "center", marginTop: 24, fontSize: 12, color: C.muted }}>
+          All plans include free updates and email support. <Link to="/product" style={{ color: C.goldLit, textDecoration: "none" }}>Compare every feature →</Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ── Final CTA ────────────────────────────────────────────────────── */
+function FinalCTA() {
+  const [ref, visible] = useInView(0.15);
+  return (
+    <section ref={ref} style={{ padding: "120px 48px", background: C.card, position: "relative", overflow: "hidden", borderTop: `1px solid ${C.border}` }}>
+      <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 700, height: 360, background: "radial-gradient(ellipse, rgba(184,149,90,0.06) 0%, transparent 70%)", pointerEvents: "none" }} />
+      <div style={{ maxWidth: 640, margin: "0 auto", textAlign: "center", position: "relative", zIndex: 1, opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(16px)", transition: "all 0.7s ease" }}>
+        <div style={{ width: 36, height: 1, background: C.gold, margin: "0 auto 40px", opacity: 0.35 }} />
+        <h2 style={{ ...T.display, color: C.ink, margin: "0 0 20px", fontSize: 44 }}>
+          Your customers are waiting.{" "}
+          <em style={{ color: C.gold, fontStyle: "italic" }}>Let's fix that.</em>
+        </h2>
+        <p style={{ ...T.body, margin: "0 0 36px", fontSize: 16 }}>10 minutes to deploy. No hardware required. No training needed.</p>
+        <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+          <Link to="/signup" style={{ display: "inline-flex", alignItems: "center", gap: 10, background: C.gold, color: C.void, padding: "13px 28px", borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: "none", letterSpacing: "0.01em", transition: "all 0.2s ease", boxShadow: "0 10px 30px -10px rgba(184,149,90,0.5)" }}
+            onMouseEnter={e => { e.currentTarget.style.opacity = "0.9"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+            onMouseLeave={e => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "none"; }}>
+            Start free trial <Ic.Arr />
+          </Link>
+          <Link to="/support" style={{ display: "inline-flex", alignItems: "center", gap: 10, background: "transparent", color: C.ink, padding: "13px 28px", borderRadius: 8, fontSize: 13, fontWeight: 500, textDecoration: "none", border: `1px solid ${C.borderL}`, letterSpacing: "0.01em", transition: "all 0.2s ease" }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = C.gold; e.currentTarget.style.color = C.goldLit; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = C.borderL; e.currentTarget.style.color = C.ink; }}>
+            Talk to sales
+          </Link>
+        </div>
+        <div style={{ marginTop: 22, fontSize: 11, color: C.muted, letterSpacing: "0.02em" }}>No credit card required · Cancel anytime</div>
+      </div>
+    </section>
+  );
+}
+
+/* ── DEDUPLICATION SENTINEL — everything below this line is intentionally */
+/* kept for reference only; the live definitions are above. ──────────────── */
+
+/* ── How It Works ─────────────────────────────────────────────────── */
+function HowItWorks() {
+  const [ref, visible] = useInView(0.08);
+  const steps = [
+    { n: "01", title: "Customer arrives",      body: "Walks up to your kiosk. Picks a service. No paper, no staff involvement." },
+    { n: "02", title: "Ticket issued",          body: "Gets a ticket number with their estimated wait. Position in queue confirmed." },
+    { n: "03", title: "WhatsApp confirmation",  body: "Receives a link to their live ticket page. Can wait wherever they want." },
+    { n: "04", title: "Live updates",           body: "Automatic messages keep them informed as the queue moves toward them." },
+    { n: "05", title: "Called to counter",      body: "Staff tap once. Customer notified and directed to the right counter." },
+  ];
+  return (
+    <section id="how" ref={ref} style={{ padding: "120px 48px", background: C.card }}>
+      <div style={{ maxWidth: 1160, margin: "0 auto" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 64, flexWrap: "wrap", gap: 24 }}>
+          <div>
+            <div style={{ ...T.label, marginBottom: 20 }}>How it works</div>
+            <h2 style={{ ...T.h2, color: C.ink, margin: 0 }}>From arrival to done.<br />Entirely automatic.</h2>
+          </div>
+          <Link to="/product" style={{ fontSize: 12, color: C.gold, textDecoration: "none", letterSpacing: "0.02em", display: "flex", alignItems: "center", gap: 6 }}
+            onMouseEnter={e => e.currentTarget.style.opacity = "0.7"}
+            onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
+            See full product <Ic.Arr />
+          </Link>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 1, background: C.border, borderRadius: 14, overflow: "hidden" }}>
+          {steps.map((step, i) => (
+            <div key={i} style={{ background: C.void, padding: "32px 22px", opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(12px)", transition: `all 0.5s ease ${i * 0.08}s` }}>
+              <div style={{ fontSize: 10, color: C.muted, fontFamily: "monospace", letterSpacing: "0.08em", marginBottom: 22, opacity: 0.6 }}>{step.n}</div>
+              <div style={{ width: 28, height: 1, background: C.gold, marginBottom: 18, opacity: 0.4 }} />
+              <div style={{ fontSize: 13, fontWeight: 500, color: C.ink, marginBottom: 8, letterSpacing: "-0.01em", lineHeight: 1.4 }}>{step.title}</div>
+              <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.65 }}>{step.body}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ── Case Studies ─────────────────────────────────────────────────── */
+function CaseStudies() {
+  const [ref, visible] = useInView(0.08);
+  const studies = [
+    {
+      slug: "meridian-health",
+      tag: "Healthcare",
+      org: "Meridian Health · 14 clinics",
+      headline: "Cut perceived wait time by 70%",
+      body: "Replaced paper sign-ins across 14 clinics. Patients now check in on the iPad, wait in their car, and get called on WhatsApp. Front-desk staff handle 40% more patients per shift.",
+      stat: { value: "70%", label: "Drop in complaints" },
+    },
+    {
+      slug: "nordic-bank",
+      tag: "Banking",
+      org: "Nordic Bank · 9 branches",
+      headline: "Prayer pause was the deal-maker",
+      body: "Needed a queue system that respected prayer time during Ramadan. AzQueue auto-pauses, notifies customers in line, and resumes — no manual reset. Rolled out across 9 branches in two weeks.",
+      stat: { value: "2 wks", label: "Full rollout" },
+    },
+    {
+      slug: "caelum-salons",
+      tag: "Salon",
+      org: "Caelum Salons · 6 locations",
+      headline: "Loyalty card lifted repeats 38%",
+      body: "Switched from a plastic punch card to AzQueue's digital loyalty. Every visit auto-punches. The new reward unlock messages drove a 38% lift in repeat visits within 90 days.",
+      stat: { value: "38%", label: "More repeats" },
+    },
+  ];
+  return (
+    <section ref={ref} style={{ padding: "120px 48px" }}>
+      <div style={{ maxWidth: 1160, margin: "0 auto" }}>
+        <div style={{ marginBottom: 56 }}>
+          <div style={{ ...T.label, marginBottom: 20 }}>Case studies</div>
+          <h2 style={{ ...T.h2, color: C.ink, margin: 0, maxWidth: 640 }}>
+            What changed when these teams switched to AzQueue.
+          </h2>
+        </div>
+        <div id="case-studies" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1, background: C.border, borderRadius: 14, overflow: "hidden" }}>
+          {studies.map((s, i) => (
+            <Link key={i} to={`/case-studies/${s.slug}`} style={{ background: C.card, padding: "36px 32px", display: "flex", flexDirection: "column", textDecoration: "none", opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(12px)", transition: `all 0.55s ease ${i * 0.1}s` }}
+              onMouseEnter={e => e.currentTarget.style.background = "#0f0f0e"}
+              onMouseLeave={e => e.currentTarget.style.background = C.card}>
+              <div style={{ fontSize: 9, color: C.gold, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 600, marginBottom: 14 }}>{s.tag}</div>
+              <div style={{ fontSize: 11, color: C.muted, letterSpacing: "0.04em", marginBottom: 18 }}>{s.org}</div>
+              <h3 style={{ fontSize: 22, color: C.ink, fontFamily: "Georgia, serif", letterSpacing: "-0.01em", lineHeight: 1.25, margin: "0 0 16px" }}>{s.headline}</h3>
+              <p style={{ fontSize: 13, color: C.muted, lineHeight: 1.7, margin: "0 0 24px", flex: 1 }}>{s.body}</p>
+              <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 18, display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                <span style={{ fontSize: 28, color: C.ink, fontFamily: "Georgia, serif", letterSpacing: "-0.02em", lineHeight: 1, background: "linear-gradient(180deg, #f0ede6, #b8955a 140%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>{s.stat.value}</span>
+                <span style={{ fontSize: 10.5, color: C.muted, letterSpacing: "0.04em" }}>{s.stat.label}</span>
+              </div>
+              <div style={{ marginTop: 14, fontSize: 11, color: C.goldLit, letterSpacing: "0.02em" }}>Read full case →</div>
+            </Link>
+          ))}
+        </div>
+        <div style={{ textAlign: "center", marginTop: 28 }}>
+          <Link to="/industries" style={{ fontSize: 12, color: C.goldLit, textDecoration: "none", letterSpacing: "0.02em", display: "inline-flex", alignItems: "center", gap: 6 }}
+            onMouseEnter={e => e.currentTarget.style.opacity = "0.7"}
+            onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
+            See more industries we serve <Ic.Arr />
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ── FAQ ──────────────────────────────────────────────────────────── */
 function FAQSection() {
   const [open, setOpen] = useState(0);
@@ -967,6 +1427,183 @@ function FinalCTA() {
           </Link>
         </div>
         <div style={{ marginTop: 22, fontSize: 11, color: C.muted, letterSpacing: "0.02em" }}>No credit card required · Cancel anytime</div>
+      </div>
+    </section>
+  );
+}
+
+/* ── Feature Grid ─────────────────────────────────────────────────── */
+function FeatureGrid() {
+  const [ref, visible] = useInView(0.06);
+  const features = [
+    {
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01"/>
+        </svg>
+      ),
+      title: "Self-service kiosk",
+      body:  "Customers check in on any tablet in under 10 seconds. No paper forms, no queuing at the desk.",
+    },
+    {
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+      ),
+      title: "WhatsApp & SMS",
+      body:  "Three automatic messages per visit — confirmation, heads-up, you're next. No app to install.",
+    },
+    {
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+      ),
+      title: "Walk-ins + bookings",
+      body:  "One shared queue. Booked customers hold their window. Walk-ins fill the gaps. Neither group feels skipped.",
+    },
+    {
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+      ),
+      title: "Loyalty cards",
+      body:  "Every completed visit punches the card automatically. Rewards are unlocked and delivered via WhatsApp.",
+    },
+    {
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      ),
+      title: "Prayer pause",
+      body:  "Auto-pauses before each prayer, notifies customers in line, and resumes after. Zero manual resets needed.",
+    },
+    {
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+        </svg>
+      ),
+      title: "Live analytics",
+      body:  "Wait time trends, peak hours, staff throughput. Updated every minute. Exportable to CSV.",
+    },
+  ];
+
+  return (
+    <section ref={ref} style={{ padding: "100px 48px", borderTop: `1px solid ${C.border}` }}>
+      <div style={{ maxWidth: 1160, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 60 }}>
+          <div style={{ ...T.label, marginBottom: 16 }}>Everything included</div>
+          <h2 style={{ ...T.h2, color: C.ink, margin: "0 auto 16px", maxWidth: 680 }}>
+            One platform. Every tool your front desk actually needs.
+          </h2>
+          <p style={{ ...T.body, margin: "0 auto", maxWidth: 520, fontSize: 15 }}>
+            No bolt-ons, no hidden add-ons. Kiosk, notifications, loyalty, prayer scheduling, and analytics ship in every plan.
+          </p>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1, background: C.border, borderRadius: 16, overflow: "hidden" }}>
+          {features.map((f, i) => (
+            <div key={i} style={{
+              background: C.void,
+              padding: "36px 32px",
+              opacity: visible ? 1 : 0,
+              transform: visible ? "none" : "translateY(14px)",
+              transition: `all 0.55s ease ${i * 0.07}s`,
+              borderBottom: i < 3 ? `1px solid ${C.border}` : "none",
+            }}>
+              <div style={{
+                width: 38, height: 38, borderRadius: 10,
+                background: "rgba(184,149,90,0.07)", border: `1px solid rgba(184,149,90,0.18)`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                color: C.gold, marginBottom: 18,
+              }}>
+                {f.icon}
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 500, color: C.ink, marginBottom: 10, letterSpacing: "-0.01em", lineHeight: 1.35 }}>{f.title}</div>
+              <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.7 }}>{f.body}</div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ textAlign: "center", marginTop: 36 }}>
+          <Link to="/product" style={{ fontSize: 12, color: C.goldLit, textDecoration: "none", letterSpacing: "0.02em", display: "inline-flex", alignItems: "center", gap: 6 }}
+            onMouseEnter={e => e.currentTarget.style.opacity = "0.7"}
+            onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
+            Compare all features <Ic.Arr />
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ── Testimonials ─────────────────────────────────────────────────── */
+function Testimonials() {
+  const [ref, visible] = useInView(0.08);
+  const quotes = [
+    {
+      text: "Setup took 20 minutes. Within a week our front desk stopped getting complaints about the wait. Patients actually thank us now.",
+      author: "Ahmad R.",
+      role: "Clinic Manager · Dubai",
+      stat: "–62% wait complaints",
+    },
+    {
+      text: "The prayer pause feature was the only reason we chose AzQueue over three other vendors. It just works, completely automatically.",
+      author: "Siti N.",
+      role: "Branch Head · Kuala Lumpur",
+      stat: "9 branches live",
+    },
+    {
+      text: "Loyalty punch card repeat visits went up 38% in the first quarter. That single feature paid for the whole year on its own.",
+      author: "James O.",
+      role: "Salon Owner · Lagos",
+      stat: "+38% repeat visits",
+    },
+  ];
+
+  return (
+    <section ref={ref} style={{ padding: "100px 48px", background: C.card, borderTop: `1px solid ${C.border}` }}>
+      <div style={{ maxWidth: 1160, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 56 }}>
+          <div style={{ display: "flex", justifyContent: "center", gap: 2, marginBottom: 16 }}>
+            {[...Array(5)].map((_, i) => <span key={i} style={{ color: C.gold, fontSize: 16 }}>★</span>)}
+          </div>
+          <div style={{ ...T.label, marginBottom: 14, color: C.muted }}>Customer stories</div>
+          <h2 style={{ ...T.h2, color: C.ink, margin: 0, maxWidth: 640, marginLeft: "auto", marginRight: "auto" }}>
+            Real outcomes from real businesses.
+          </h2>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1, background: C.border, borderRadius: 16, overflow: "hidden" }}>
+          {quotes.map((q, i) => (
+            <div key={i} style={{
+              background: C.void,
+              padding: "36px 32px",
+              display: "flex", flexDirection: "column",
+              opacity: visible ? 1 : 0,
+              transform: visible ? "none" : "translateY(12px)",
+              transition: `all 0.55s ease ${i * 0.1}s`,
+            }}>
+              <div style={{ display: "flex", gap: 1, marginBottom: 20 }}>
+                {[...Array(5)].map((_, j) => <span key={j} style={{ color: C.gold, fontSize: 11 }}>★</span>)}
+              </div>
+              <p style={{ fontSize: 14, color: C.ink, lineHeight: 1.72, margin: "0 0 28px", flex: 1, letterSpacing: "-0.005em" }}>
+                &ldquo;{q.text}&rdquo;
+              </p>
+              <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 20, display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+                <div>
+                  <div style={{ fontSize: 13, color: C.ink, fontWeight: 500, marginBottom: 3 }}>{q.author}</div>
+                  <div style={{ fontSize: 11, color: C.muted }}>{q.role}</div>
+                </div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: C.goldLit, fontFamily: "Georgia, serif", letterSpacing: "-0.01em", textAlign: "right" }}>{q.stat}</div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
