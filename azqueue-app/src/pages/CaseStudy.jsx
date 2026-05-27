@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Link, useParams, Navigate } from "react-router-dom";
 import SiteNav from "../components/SiteNav";
+import SiteFooter from "../components/SiteFooter";
 import usePageMeta from "../lib/usePageMeta";
 
 /* ──────────────────────────────────────────────────────────────────────
@@ -319,6 +320,7 @@ export default function CaseStudy() {
           </Link>
         </div>
       </section>
+      <SiteFooter />
     </div>
   );
 }

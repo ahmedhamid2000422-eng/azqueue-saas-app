@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import SiteNav from "../components/SiteNav";
+import SiteFooter from "../components/SiteFooter";
 import usePageMeta from "../lib/usePageMeta";
 
 const C = {
@@ -98,6 +99,7 @@ export default function Industries() {
       <IndustryGrid />
       <UniversalFeatures />
       <IndustriesCTA />
+      <SiteFooter />
     </div>
   );
 }
@@ -207,11 +209,11 @@ function IndustriesCTA() {
             onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
             Try for free <Ic.Arr />
           </Link>
-          <a href="mailto:support@azqueue.io" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "transparent", color: C.muted, padding: "12px 24px", borderRadius: 8, fontSize: 13, fontWeight: 500, textDecoration: "none", border: `1px solid ${C.border}`, transition: "all 0.2s ease" }}
+          <Link to="/support" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "transparent", color: C.muted, padding: "12px 24px", borderRadius: 8, fontSize: 13, fontWeight: 500, textDecoration: "none", border: `1px solid ${C.border}`, transition: "all 0.2s ease" }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = C.dim; e.currentTarget.style.color = C.ink; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.muted; }}>
             Talk to us
-          </a>
+          </Link>
         </div>
       </div>
     </section>

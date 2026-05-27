@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import SiteNav from "../components/SiteNav";
+import SiteFooter from "../components/SiteFooter";
 
 /* ──────────────────────────────────────────────────────────────────────
  * AzQueue · Landing
@@ -150,7 +151,7 @@ export default function Landing() {
       <FAQSection />
       <Pricing />
       <FinalCTA />
-      <Footer />
+      <SiteFooter />
     </div>
   );
 }

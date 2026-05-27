@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import SiteNav from "../components/SiteNav";
+import SiteFooter from "../components/SiteFooter";
 import usePageMeta from "../lib/usePageMeta";
 
 const C = {
@@ -70,6 +71,7 @@ export default function Resources() {
       <GuidesGrid />
       <CaseStudiesGrid />
       <IntegrationCTA />
+      <SiteFooter />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import SiteHeader from "../components/SiteHeader";
+import SiteNav from "../components/SiteNav";
 import SiteFooter from "../components/SiteFooter";
 
 /**
@@ -128,8 +128,8 @@ export default function Legal() {
   useEffect(() => { window.scrollTo(0, 0); }, [doc]);
 
   return (
-    <div className="min-h-screen bg-bg text-ink">
-      <SiteHeader />
+    <div className="min-h-screen bg-bg text-ink pt-[60px]">
+      <SiteNav solid />
 
       <main className="max-w-3xl mx-auto px-6 pt-20 pb-20">
         <div className="ovline text-gold-soft mb-3">{meta.eyebrow}</div>
