@@ -72,14 +72,14 @@ function useCounter(target, active, duration = 1800) {
 // ── Page meta + FAQ schema for SEO + AI assistants ──────────────────
 function usePageMeta() {
   useEffect(() => {
-    document.title = "AzQueue — Queue & Line Management for Clinics, Banks, Salons & Service Businesses";
+    document.title = "AzQueue — Customer Flow Infrastructure for Clinics, Banks, Salons & Service Businesses";
     const set = (selector, attr, value) => {
       let el = document.head.querySelector(selector);
       if (!el) return;
       el.setAttribute(attr, value);
     };
     set('meta[name="description"]', "content",
-      "AzQueue is a modern queue and line management system. One smart queue for walk-ins and bookings, with self-service kiosk, WhatsApp notifications, live staff dashboard, loyalty cards and prayer-aware scheduling. Used by clinics, banks, government offices, salons and service centers."
+      "AzQueue keeps every customer informed and every queue under control — automatically. Self-service check-in, WhatsApp updates, live staff dashboard, loyalty cards, and prayer-aware scheduling. We handle the setup. You run your business."
     );
   }, []);
 }
@@ -101,7 +101,7 @@ const WaIcon = () => (
 // ── FAQ data ────────────────────────────────────────────────────────
 const FAQ_DATA = [
   { q: "What is AzQueue?",
-    a: "AzQueue is a queue and line management system for service businesses. It combines a self-service check-in kiosk, live staff dashboard, WhatsApp notifications, loyalty cards, and prayer-aware scheduling into one platform. Customers check in once, then wait wherever they want — they get notified on WhatsApp when they're next." },
+    a: "AzQueue is customer flow infrastructure for service businesses. It keeps every customer informed and every queue under control — automatically. Customers check in at a kiosk, wait wherever they want, and get WhatsApp updates as they move up the queue. Your staff sees everything live. We handle the setup so you're running the same day." },
   { q: "Who uses AzQueue?",
     a: "Clinics and hospitals, banks, government offices, pharmacies, service centers, salons, barbershops, and any business where customers wait in line. The system supports both walk-ins and bookings in the same queue." },
   { q: "How does the self-service kiosk work?",
@@ -117,7 +117,7 @@ const FAQ_DATA = [
   { q: "How much does AzQueue cost?",
     a: "Starter is $29/month for single-location businesses. Growth is $99/month for up to 10 branches with WhatsApp, SMS, loyalty cards and prayer pause. Enterprise is custom-priced for larger networks. All plans include a 14-day free trial — no credit card required." },
   { q: "How long does setup take?",
-    a: "Most single-branch businesses are live in under an hour. Multi-branch rollouts typically take one to two weeks. We help you import existing customer data and configure your services." },
+    a: "Most single-branch businesses are live within 15 minutes. Our team connects your WhatsApp Business account, configures your kiosk, and sets up your notification templates — you don't need to touch any technical settings. Multi-branch rollouts typically take one to two weeks." },
   { q: "What languages does AzQueue support?",
     a: "The customer-facing interface ships in English, Bahasa Malaysia, Arabic, French, and Urdu. Staff dashboard adds more on request. Custom translations are available on Enterprise plans." },
 ];
@@ -168,29 +168,29 @@ function Hero() {
         <div style={{ flex: "0 0 500px", opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(16px)", transition: "all 0.8s ease" }}>
           <div style={{ ...T.label, marginBottom: 28, display: "inline-flex", alignItems: "center", gap: 10, padding: "6px 12px", border: `1px solid ${C.border}`, borderRadius: 999, background: "rgba(184,149,90,0.04)" }}>
             <div style={{ width: 5, height: 5, borderRadius: "50%", background: C.live }} />
-            Now serving 200+ businesses
+            Live in 200+ businesses · 12 countries
           </div>
           <h1 style={{ ...T.display, color: C.ink, margin: "0 0 22px", maxWidth: 500 }}>
-            One smart queue for walk-ins{" "}
-            <em style={{ color: C.gold, fontStyle: "italic" }}>and bookings.</em>
+            Every customer informed.{" "}
+            <em style={{ color: C.gold, fontStyle: "italic" }}>Every queue under control.</em>
           </h1>
           <p style={{ ...T.body, margin: "0 0 36px", maxWidth: 440, fontSize: 16 }}>
-            Replace paper sign-ins with a self-service kiosk, WhatsApp updates, and a live staff dashboard. Built for clinics, banks, salons, and any business where people wait in line.
+            Customers check in once and wait wherever they want. Your team sees everything live. We connect WhatsApp, set up your kiosk, and configure your notifications — no technical setup required.
           </p>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             <Link to="/signup" style={{ display: "inline-flex", alignItems: "center", gap: 10, background: C.gold, color: C.void, padding: "13px 26px", borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: "none", letterSpacing: "0.01em", transition: "all 0.2s ease", boxShadow: "0 10px 30px -10px rgba(184,149,90,0.5)" }}
               onMouseEnter={e => { e.currentTarget.style.opacity = "0.92"; e.currentTarget.style.transform = "translateY(-1px)"; }}
               onMouseLeave={e => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "none"; }}>
-              Start free trial <Ic.Arr />
+              Get started free <Ic.Arr />
             </Link>
-            <Link to="/product" style={{ display: "inline-flex", alignItems: "center", gap: 10, background: "transparent", color: C.ink, padding: "13px 26px", borderRadius: 8, fontSize: 13, fontWeight: 500, textDecoration: "none", border: `1px solid ${C.borderL}`, letterSpacing: "0.01em", transition: "all 0.2s ease" }}
+            <Link to="/support" style={{ display: "inline-flex", alignItems: "center", gap: 10, background: "transparent", color: C.ink, padding: "13px 26px", borderRadius: 8, fontSize: 13, fontWeight: 500, textDecoration: "none", border: `1px solid ${C.borderL}`, letterSpacing: "0.01em", transition: "all 0.2s ease" }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = C.gold; e.currentTarget.style.color = C.goldLit; }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = C.borderL; e.currentTarget.style.color = C.ink; }}>
-              See the product
+              Book a setup call
             </Link>
           </div>
           <div style={{ marginTop: 32, display: "flex", flexDirection: "column", gap: 9 }}>
-            {["14-day free trial · no card needed", "Set up in under 10 minutes", "Works on any tablet or phone"].map(t => (
+            {["14-day free trial · no card needed", "Live in under 15 minutes", "We handle WhatsApp setup for you"].map(t => (
               <div key={t} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ width: 14, height: 14, borderRadius: 3, border: `1px solid ${C.faint}`, display: "flex", alignItems: "center", justifyContent: "center", color: C.gold, flexShrink: 0 }}><Ic.Check /></div>
                 <span style={{ fontSize: 12.5, color: C.muted, letterSpacing: "-0.005em" }}>{t}</span>
@@ -201,7 +201,7 @@ function Hero() {
             <div style={{ display: "flex", gap: 1.5 }}>
               {[...Array(5)].map((_, i) => <span key={i} style={{ color: C.gold, fontSize: 13, lineHeight: 1 }}>★</span>)}
             </div>
-            <span style={{ fontSize: 12, color: C.muted, letterSpacing: "-0.005em" }}>4.9 · trusted by 600+ businesses in 12 countries</span>
+            <span style={{ fontSize: 12, color: C.muted, letterSpacing: "-0.005em" }}>4.9 · 600+ businesses trust AzQueue to run their front desk</span>
           </div>
         </div>
 
@@ -302,7 +302,7 @@ function LogoCloud() {
   return (
     <section style={{ padding: "52px 0", borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`, background: C.void, overflow: "hidden" }}>
       <div style={{ textAlign: "center", marginBottom: 28, padding: "0 48px" }}>
-        <div style={{ ...T.label, color: C.muted }}>Used by clinics, banks, salons &amp; service centers across 12 countries</div>
+        <div style={{ ...T.label, color: C.muted }}>Trusted by clinics, banks, salons &amp; service centers in 12 countries</div>
       </div>
       <div style={{ position: "relative" }}>
         <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 140, background: `linear-gradient(90deg, ${C.void}, transparent)`, zIndex: 1, pointerEvents: "none" }} />
@@ -338,8 +338,8 @@ function StatBand() {
     <section ref={ref} style={{ padding: "100px 48px" }}>
       <div style={{ maxWidth: 1160, margin: "0 auto" }}>
         <div style={{ textAlign: "center", marginBottom: 48 }}>
-          <div style={{ ...T.label, marginBottom: 16 }}>By the numbers</div>
-          <h2 style={{ ...T.h2, color: C.ink, margin: 0, maxWidth: 720, marginLeft: "auto", marginRight: "auto" }}>The kind of numbers your customers actually notice.</h2>
+          <div style={{ ...T.label, marginBottom: 16 }}>The results</div>
+          <h2 style={{ ...T.h2, color: C.ink, margin: 0, maxWidth: 720, marginLeft: "auto", marginRight: "auto" }}>What businesses see after switching to AzQueue.</h2>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 1, background: C.border, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
           {stats.map((stat) => (
@@ -365,8 +365,8 @@ function FeatureGrid() {
           <rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01"/>
         </svg>
       ),
-      title: "Self-service kiosk",
-      body:  "Customers check in on any tablet in under 10 seconds. No paper forms, no queuing at the desk.",
+      title: "Self-service check-in",
+      body:  "Customers tap once and join the queue. No paper, no waiting at the front desk, no staff involvement.",
     },
     {
       icon: (
@@ -375,7 +375,7 @@ function FeatureGrid() {
         </svg>
       ),
       title: "WhatsApp & SMS",
-      body:  "Three automatic messages per visit — confirmation, heads-up, you're next. No app to install.",
+      body:  "Customers stay informed automatically — no app, no guessing. We connect your WhatsApp Business account for you.",
     },
     {
       icon: (
@@ -384,7 +384,7 @@ function FeatureGrid() {
         </svg>
       ),
       title: "Walk-ins + bookings",
-      body:  "One shared queue. Booked customers hold their window. Walk-ins fill the gaps. Neither group feels skipped.",
+      body:  "One queue handles both. Booked customers hold their slot. Walk-ins fill the gaps. Nobody feels skipped.",
     },
     {
       icon: (
@@ -393,7 +393,7 @@ function FeatureGrid() {
         </svg>
       ),
       title: "Loyalty cards",
-      body:  "Every completed visit punches the card automatically. Rewards are unlocked and delivered via WhatsApp.",
+      body:  "Visits punch the card automatically. Rewards unlock and land in the customer's WhatsApp. No plastic card needed.",
     },
     {
       icon: (
@@ -402,7 +402,7 @@ function FeatureGrid() {
         </svg>
       ),
       title: "Prayer pause",
-      body:  "Auto-pauses before each prayer, notifies customers in line, and resumes after. Zero manual resets needed.",
+      body:  "The queue pauses before each prayer and resumes after. Customers get notified automatically. Nothing to manage.",
     },
     {
       icon: (
@@ -411,19 +411,19 @@ function FeatureGrid() {
         </svg>
       ),
       title: "Live analytics",
-      body:  "Wait time trends, peak hours, staff throughput. Updated every minute. Exportable to CSV.",
+      body:  "See peak hours, wait trends, and staff throughput live. Know exactly where your operation needs attention.",
     },
   ];
   return (
     <section ref={ref} style={{ padding: "100px 48px", borderTop: `1px solid ${C.border}` }}>
       <div style={{ maxWidth: 1160, margin: "0 auto" }}>
         <div style={{ textAlign: "center", marginBottom: 60 }}>
-          <div style={{ ...T.label, marginBottom: 16 }}>Everything included</div>
+          <div style={{ ...T.label, marginBottom: 16 }}>We handle the setup</div>
           <h2 style={{ ...T.h2, color: C.ink, margin: "0 auto 16px", maxWidth: 680 }}>
-            One platform. Every tool your front desk actually needs.
+            Everything your front desk needs. Ready in minutes.
           </h2>
           <p style={{ ...T.body, margin: "0 auto", maxWidth: 520, fontSize: 15 }}>
-            No bolt-ons, no hidden add-ons. Kiosk, notifications, loyalty, prayer scheduling, and analytics ship in every plan.
+            We connect WhatsApp, configure your kiosk, and set up notifications. You don't touch a single API key. Everything below ships in every plan.
           </p>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1, background: C.border, borderRadius: 16, overflow: "hidden" }}>
@@ -441,7 +441,7 @@ function FeatureGrid() {
           <Link to="/product" style={{ fontSize: 12, color: C.goldLit, textDecoration: "none", letterSpacing: "0.02em", display: "inline-flex", alignItems: "center", gap: 6 }}
             onMouseEnter={e => e.currentTarget.style.opacity = "0.7"}
             onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
-            Compare all features <Ic.Arr />
+            See everything that's included <Ic.Arr />
           </Link>
         </div>
       </div>
@@ -456,17 +456,17 @@ function LiveDashboard() {
     <section ref={ref} style={{ padding: "120px 48px", background: C.card }}>
       <div style={{ maxWidth: 1160, margin: "0 auto", display: "grid", gridTemplateColumns: "380px 1fr", gap: 80, alignItems: "center" }}>
         <div style={{ opacity: visible ? 1 : 0, transform: visible ? "none" : "translateX(-16px)", transition: "all 0.7s ease" }}>
-          <div style={{ ...T.label, marginBottom: 18 }}>Staff dashboard</div>
-          <h2 style={{ ...T.h2, color: C.ink, margin: "0 0 22px" }}>What your front desk sees.</h2>
+          <div style={{ ...T.label, marginBottom: 18 }}>One view. Total control.</div>
+          <h2 style={{ ...T.h2, color: C.ink, margin: "0 0 22px" }}>Your entire front desk, visible at a glance.</h2>
           <p style={{ ...T.body, margin: "0 0 24px" }}>
-            One live view of every customer in the building. Who's being served, who's next, what they're here for, and how long they've been waiting.
+            Every customer in the building, live — who's being served, who's next, how long they've waited. Your team stops guessing and starts moving.
           </p>
           <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 11 }}>
             {[
-              "One tap to call the next customer",
-              "See wait time per service, live",
-              "Reassign across counters in a click",
-              "Notes stay on the customer record",
+              "Call the next customer with one tap",
+              "Live wait time by service type",
+              "Reassign customers across counters instantly",
+              "Customer notes follow them through every visit",
             ].map(t => (
               <li key={t} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: C.muted }}>
                 <div style={{ width: 14, height: 14, borderRadius: 3, border: `1px solid ${C.faint}`, display: "flex", alignItems: "center", justifyContent: "center", color: C.gold, flexShrink: 0 }}><Ic.Check /></div>
@@ -550,16 +550,16 @@ function LoyaltySection() {
         </div>
         <div style={{ opacity: visible ? 1 : 0, transform: visible ? "none" : "translateX(16px)", transition: "all 0.7s ease 0.15s" }}>
           <div style={{ ...T.label, marginBottom: 18 }}>Loyalty cards</div>
-          <h2 style={{ ...T.h2, color: C.ink, margin: "0 0 22px" }}>Reward regulars without a card to carry.</h2>
+          <h2 style={{ ...T.h2, color: C.ink, margin: "0 0 22px" }}>Turn one-time visitors into regulars. Automatically.</h2>
           <p style={{ ...T.body, margin: "0 0 24px" }}>
-            Every completed visit punches the customer's card automatically. After the number of visits you set, they unlock a reward — sent via WhatsApp. No separate app, no plastic card.
+            Every visit punches the card. When they hit the reward, a WhatsApp message goes out automatically. No app for customers to download, no card for them to carry.
           </p>
           <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 11 }}>
             {[
-              "Tied to their phone number — works across all branches",
-              "You choose the threshold and the reward",
-              "Customers see their progress on every receipt",
-              "Repeat-visit rate goes up — most customers reach the reward",
+              "Tied to their phone number — works across all your branches",
+              "You set the reward and the number of visits to unlock it",
+              "Customers see their progress after every visit",
+              "Most customers hit the reward — repeat rates go up",
             ].map(t => (
               <li key={t} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: C.muted }}>
                 <div style={{ width: 14, height: 14, borderRadius: 3, border: `1px solid ${C.faint}`, display: "flex", alignItems: "center", justifyContent: "center", color: C.gold, flexShrink: 0 }}><Ic.Check /></div>
@@ -626,16 +626,16 @@ function PrayerSection() {
       <div style={{ maxWidth: 1160, margin: "0 auto", display: "grid", gridTemplateColumns: "380px 1fr", gap: 80, alignItems: "center" }}>
         <div style={{ opacity: visible ? 1 : 0, transform: visible ? "none" : "translateX(-16px)", transition: "all 0.7s ease" }}>
           <div style={{ ...T.label, marginBottom: 18, color: C.sage }}>Islamic mode</div>
-          <h2 style={{ ...T.h2, color: C.ink, margin: "0 0 22px" }}>Queues that respect prayer time.</h2>
+          <h2 style={{ ...T.h2, color: C.ink, margin: "0 0 22px" }}>Your queue respects prayer time. Automatically.</h2>
           <p style={{ ...T.body, margin: "0 0 24px" }}>
-            For businesses in Muslim-majority markets. The queue auto-pauses ten minutes before each prayer and resumes after. Customers in line receive an automatic WhatsApp note with the resume time.
+            The queue pauses before each prayer and resumes after — with no manual intervention. Every customer in line gets a WhatsApp message with the resume time so they know exactly when to come back.
           </p>
           <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 11 }}>
             {[
-              "Prayer times by city — Mecca, Cairo, KL, Jakarta, anywhere",
-              "Custom pre-pause and resume buffers",
-              "Walk-ins held in place — no one loses their spot",
-              "Optional Ramadan hours that swap in automatically",
+              "Prayer times for every city — Mecca, Cairo, KL, Jakarta, Dubai",
+              "Pause and resume buffers you control",
+              "No customer loses their spot",
+              "Ramadan hours that activate and deactivate on their own",
             ].map(t => (
               <li key={t} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: C.muted }}>
                 <div style={{ width: 14, height: 14, borderRadius: 3, border: `1px solid ${C.faint}`, display: "flex", alignItems: "center", justifyContent: "center", color: C.sage, flexShrink: 0 }}><Ic.Check /></div>
@@ -706,16 +706,16 @@ function WhatsAppFlow() {
         </div>
         <div style={{ opacity: visible ? 1 : 0, transform: visible ? "none" : "translateX(16px)", transition: "all 0.7s ease 0.15s" }}>
           <div style={{ ...T.label, marginBottom: 18 }}>WhatsApp &amp; SMS</div>
-          <h2 style={{ ...T.h2, color: C.ink, margin: "0 0 22px" }}>Updates the customer actually reads.</h2>
+          <h2 style={{ ...T.h2, color: C.ink, margin: "0 0 22px" }}>We connect WhatsApp for you. You just set the rules.</h2>
           <p style={{ ...T.body, margin: "0 0 24px" }}>
-            Three messages per visit, sent automatically: confirmation, five-minutes-out, you're-next. No app to install. Works on every phone. SMS and email available as fallback.
+            No API keys. No Meta Business Manager. No webhook configuration. Our team connects your WhatsApp Business account and sets up your message templates. Customers start getting updates the same day.
           </p>
           <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 11 }}>
             {[
-              "Templates in English, Malay, Arabic, French, Urdu",
-              "Customer replies route to your support inbox",
-              "Mass-message wait-time updates if you fall behind",
-              "Two-way: customers can cancel by replying 'CANCEL'",
+              "We handle the full WhatsApp Business setup for you",
+              "Three automatic messages per visit — check-in, heads-up, you're next",
+              "Works in English, Malay, Arabic, French, and Urdu",
+              "Customers can reply CANCEL — no staff involvement needed",
             ].map(t => (
               <li key={t} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: C.muted }}>
                 <div style={{ width: 14, height: 14, borderRadius: 3, border: `1px solid ${C.faint}`, display: "flex", alignItems: "center", justifyContent: "center", color: C.gold, flexShrink: 0 }}><Ic.Check /></div>
@@ -766,11 +766,11 @@ function WhatsAppMockup() {
 function HowItWorks() {
   const [ref, visible] = useInView(0.08);
   const steps = [
-    { n: "01", title: "Customer arrives",     body: "Walks up to your kiosk. Picks a service. No paper, no staff involvement." },
-    { n: "02", title: "Ticket issued",         body: "Gets a ticket number with their estimated wait. Position in queue confirmed." },
-    { n: "03", title: "WhatsApp confirmation", body: "Receives a link to their live ticket page. Can wait wherever they want." },
-    { n: "04", title: "Live updates",          body: "Automatic messages keep them informed as the queue moves toward them." },
-    { n: "05", title: "Called to counter",     body: "Staff tap once. Customer notified and directed to the right counter." },
+    { n: "01", title: "Customer checks in",    body: "Taps the kiosk, picks a service, done. No paper, no waiting at the desk." },
+    { n: "02", title: "Ticket issued",         body: "They get a ticket number and their estimated wait time. Queue position confirmed." },
+    { n: "03", title: "WhatsApp sent",         body: "A message lands in their WhatsApp. They can leave, grab a coffee, wait wherever." },
+    { n: "04", title: "Kept informed",         body: "Automatic updates as the queue moves. No refreshing, no asking staff." },
+    { n: "05", title: "Called to counter",     body: "One tap from your team. Customer gets notified and walks straight to the right counter." },
   ];
   return (
     <section id="how" ref={ref} style={{ padding: "120px 48px", background: C.card }}>
@@ -778,7 +778,7 @@ function HowItWorks() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 64, flexWrap: "wrap", gap: 24 }}>
           <div>
             <div style={{ ...T.label, marginBottom: 20 }}>How it works</div>
-            <h2 style={{ ...T.h2, color: C.ink, margin: 0 }}>From arrival to done.<br />Entirely automatic.</h2>
+            <h2 style={{ ...T.h2, color: C.ink, margin: 0 }}>Customer arrives. Queue runs itself.<br />You stay in control.</h2>
           </div>
           <Link to="/product" style={{ fontSize: 12, color: C.gold, textDecoration: "none", letterSpacing: "0.02em", display: "flex", alignItems: "center", gap: 6 }}
             onMouseEnter={e => e.currentTarget.style.opacity = "0.7"}
@@ -834,9 +834,9 @@ function CaseStudies() {
     <section ref={ref} style={{ padding: "120px 48px" }}>
       <div style={{ maxWidth: 1160, margin: "0 auto" }}>
         <div style={{ marginBottom: 56 }}>
-          <div style={{ ...T.label, marginBottom: 20 }}>Case studies</div>
+          <div style={{ ...T.label, marginBottom: 20 }}>Real outcomes</div>
           <h2 style={{ ...T.h2, color: C.ink, margin: 0, maxWidth: 640 }}>
-            What changed when these teams switched to AzQueue.
+            What these businesses stopped dealing with after switching.
           </h2>
         </div>
         <div id="case-studies" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1, background: C.border, borderRadius: 14, overflow: "hidden" }}>
@@ -1057,7 +1057,7 @@ function Pricing() {
           ))}
         </div>
         <div style={{ textAlign: "center", marginTop: 24, fontSize: 12, color: C.muted }}>
-          All plans include free updates and email support. <Link to="/product" style={{ color: C.goldLit, textDecoration: "none" }}>Compare every feature →</Link>
+          All plans include free updates and onboarding support. <Link to="/product" style={{ color: C.goldLit, textDecoration: "none" }}>See what's included in each plan →</Link>
         </div>
       </div>
     </section>
@@ -1073,20 +1073,20 @@ function FinalCTA() {
       <div style={{ maxWidth: 640, margin: "0 auto", textAlign: "center", position: "relative", zIndex: 1, opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(16px)", transition: "all 0.7s ease" }}>
         <div style={{ width: 36, height: 1, background: C.gold, margin: "0 auto 40px", opacity: 0.35 }} />
         <h2 style={{ ...T.display, color: C.ink, margin: "0 0 20px", fontSize: 44 }}>
-          Your customers are waiting.{" "}
-          <em style={{ color: C.gold, fontStyle: "italic" }}>Let's fix that.</em>
+          Stop losing customers{" "}
+          <em style={{ color: C.gold, fontStyle: "italic" }}>to the waiting room.</em>
         </h2>
-        <p style={{ ...T.body, margin: "0 0 36px", fontSize: 16 }}>10 minutes to deploy. No hardware required. No training needed.</p>
+        <p style={{ ...T.body, margin: "0 0 36px", fontSize: 16 }}>We handle setup. You're live in 15 minutes. No hardware, no training, no API keys.</p>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
           <Link to="/signup" style={{ display: "inline-flex", alignItems: "center", gap: 10, background: C.gold, color: C.void, padding: "13px 28px", borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: "none", letterSpacing: "0.01em", transition: "all 0.2s ease", boxShadow: "0 10px 30px -10px rgba(184,149,90,0.5)" }}
             onMouseEnter={e => { e.currentTarget.style.opacity = "0.9"; e.currentTarget.style.transform = "translateY(-1px)"; }}
             onMouseLeave={e => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "none"; }}>
-            Start free trial <Ic.Arr />
+            Get started free <Ic.Arr />
           </Link>
           <Link to="/support" style={{ display: "inline-flex", alignItems: "center", gap: 10, background: "transparent", color: C.ink, padding: "13px 28px", borderRadius: 8, fontSize: 13, fontWeight: 500, textDecoration: "none", border: `1px solid ${C.borderL}`, letterSpacing: "0.01em", transition: "all 0.2s ease" }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = C.gold; e.currentTarget.style.color = C.goldLit; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = C.borderL; e.currentTarget.style.color = C.ink; }}>
-            Talk to sales
+            Book a setup call
           </Link>
         </div>
         <div style={{ marginTop: 22, fontSize: 11, color: C.muted, letterSpacing: "0.02em" }}>No credit card required · Cancel anytime</div>
