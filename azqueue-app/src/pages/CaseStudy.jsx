@@ -180,7 +180,7 @@ const STUDIES = {
         <P>Caelum Salons had a plastic punch card loyalty program for years. Sign up, get a card, stylist stamps it on every visit, ninth visit is free. The mechanic worked — when customers remembered the card. Most didn't.</P>
         <UL items={[
           "Roughly 35% of customers either lost the card or forgot it on the day.",
-          "Stylists spent time on the awkward "Do you have your card?" conversation.",
+          'Stylists spent time on the awkward "Do you have your card?" conversation.',
           "Caelum had no idea how loyal each customer actually was — the data lived on plastic.",
           "Reaching the reward took an average of 5 months because of missed punches.",
         ]}/>
@@ -205,7 +205,7 @@ const STUDIES = {
         <UL items={[
           "Auto-punched. No customer action needed, no stylist forgetting.",
           "Worked across all six salons. A customer's card filled up no matter which location they visited.",
-          "Sent the reward message proactively. Customers didn't have to ask — they got an unprompted 'You've unlocked a free cut. Use it on your next visit.'",
+          "Sent the reward message proactively. Customers didn't have to ask — they got an unprompted \"You've unlocked a free cut. Use it on your next visit.\"",
         ]}/>
 
         <H>What's next</H>
