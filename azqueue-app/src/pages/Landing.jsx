@@ -1,7 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import SiteNav from "../components/SiteNav";
 import SiteFooter from "../components/SiteFooter";
+import useIsMobile from "../lib/useIsMobile";
+
+// Shared mobile context so every section can read `mob` without prop-drilling
+const MobCtx = createContext(false);
+const useMob = () => useContext(MobCtx);
 
 /* ──────────────────────────────────────────────────────────────────────
  * AzQueue · Landing
@@ -124,7 +129,9 @@ const FAQ_DATA = [
 
 export default function Landing() {
   usePageMeta();
+  const mob = useIsMobile();
   return (
+    <MobCtx.Provider value={mob}>
     <div style={{ background: C.void, color: C.ink, fontFamily: "'Inter', system-ui, sans-serif", overflowX: "hidden" }}>
       {/* Schema.org FAQPage for AI assistants and Google rich snippets */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
@@ -153,24 +160,26 @@ export default function Landing() {
       <FinalCTA />
       <SiteFooter />
     </div>
+    </MobCtx.Provider>
   );
 }
 
 /* ── Hero ─────────────────────────────────────────────────────────── */
 function Hero() {
   const [ref, visible] = useInView(0.05);
+  const mob = useMob();
   return (
-    <section ref={ref} style={{ minHeight: "100vh", display: "flex", alignItems: "center", padding: "120px 48px 100px", position: "relative", overflow: "hidden" }}>
+    <section ref={ref} style={{ minHeight: mob ? "auto" : "100vh", display: "flex", alignItems: "center", padding: mob ? "100px 20px 60px" : "120px 48px 100px", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", inset: 0, zIndex: 0, backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px)", backgroundSize: "40px 40px", maskImage: "radial-gradient(ellipse 70% 80% at 60% 40%, black 30%, transparent 100%)", WebkitMaskImage: "radial-gradient(ellipse 70% 80% at 60% 40%, black 30%, transparent 100%)" }} />
       <div style={{ position: "absolute", top: "35%", left: "58%", transform: "translate(-50%,-50%)", width: 560, height: 560, borderRadius: "50%", background: "radial-gradient(circle, rgba(184,149,90,0.05) 0%, transparent 65%)", pointerEvents: "none", zIndex: 0 }} />
 
-      <div style={{ maxWidth: 1180, margin: "0 auto", width: "100%", display: "flex", alignItems: "center", gap: 100, position: "relative", zIndex: 1 }}>
-        <div style={{ flex: "0 0 500px", opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(16px)", transition: "all 0.8s ease" }}>
+      <div style={{ maxWidth: 1180, margin: "0 auto", width: "100%", display: "flex", flexDirection: mob ? "column" : "row", alignItems: mob ? "flex-start" : "center", gap: mob ? 48 : 100, position: "relative", zIndex: 1 }}>
+        <div style={{ flex: mob ? "none" : "0 0 500px", width: mob ? "100%" : "auto", opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(16px)", transition: "all 0.8s ease" }}>
           <div style={{ ...T.label, marginBottom: 28, display: "inline-flex", alignItems: "center", gap: 10, padding: "6px 12px", border: `1px solid ${C.border}`, borderRadius: 999, background: "rgba(184,149,90,0.04)" }}>
             <div style={{ width: 5, height: 5, borderRadius: "50%", background: C.live }} />
             Live in 200+ businesses · 12 countries
           </div>
-          <h1 style={{ ...T.display, color: C.ink, margin: "0 0 22px", maxWidth: 500 }}>
+          <h1 style={{ ...T.display, fontSize: mob ? 36 : 50, color: C.ink, margin: "0 0 22px", maxWidth: 500 }}>
             Every customer informed.{" "}
             <em style={{ color: C.gold, fontStyle: "italic" }}>Every queue under control.</em>
           </h1>
@@ -205,9 +214,11 @@ function Hero() {
           </div>
         </div>
 
-        <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", position: "relative", minHeight: 480, opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(20px)", transition: "all 1s ease 0.2s" }}>
-          <KioskMockup />
-        </div>
+        {!mob && (
+          <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", position: "relative", minHeight: 480, opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(20px)", transition: "all 1s ease 0.2s" }}>
+            <KioskMockup />
+          </div>
+        )}
       </div>
     </section>
   );
@@ -324,6 +335,7 @@ function LogoCloud() {
 /* ── Stat Band ────────────────────────────────────────────────────── */
 function StatBand() {
   const [ref, visible] = useInView();
+  const mob = useMob();
   const tickets  = useCounter(250000, visible, 2000);
   const branches = useCounter(200, visible, 1600);
   const wait     = useCounter(8, visible, 1200);
@@ -335,13 +347,13 @@ function StatBand() {
     { value: visible ? sat + "%" : "—",                       label: "Customer satisfaction", sub: "Verified post-visit ratings" },
   ];
   return (
-    <section ref={ref} style={{ padding: "100px 48px" }}>
+    <section ref={ref} style={{ padding: mob ? "60px 20px" : "100px 48px" }}>
       <div style={{ maxWidth: 1160, margin: "0 auto" }}>
         <div style={{ textAlign: "center", marginBottom: 48 }}>
           <div style={{ ...T.label, marginBottom: 16 }}>The results</div>
-          <h2 style={{ ...T.h2, color: C.ink, margin: 0, maxWidth: 720, marginLeft: "auto", marginRight: "auto" }}>What businesses see after switching to AzQueue.</h2>
+          <h2 style={{ ...T.h2, fontSize: mob ? 26 : 34, color: C.ink, margin: 0, maxWidth: 720, marginLeft: "auto", marginRight: "auto" }}>What businesses see after switching to AzQueue.</h2>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 1, background: C.border, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
+        <div style={{ display: "grid", gridTemplateColumns: mob ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap: 1, background: C.border, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
           {stats.map((stat) => (
             <div key={stat.label} style={{ padding: "40px 28px", textAlign: "center", background: C.void }}>
               <div style={{ fontSize: 42, fontWeight: 400, color: C.ink, letterSpacing: "-0.02em", fontFamily: "Georgia, serif", lineHeight: 1, marginBottom: 12, background: "linear-gradient(180deg,#f0ede6 0%, #b8955a 130%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>{stat.value}</div>
@@ -358,6 +370,7 @@ function StatBand() {
 /* ── Feature Grid ─────────────────────────────────────────────────── */
 function FeatureGrid() {
   const [ref, visible] = useInView(0.06);
+  const mob = useMob();
   const features = [
     {
       icon: (
@@ -415,18 +428,18 @@ function FeatureGrid() {
     },
   ];
   return (
-    <section ref={ref} style={{ padding: "100px 48px", borderTop: `1px solid ${C.border}` }}>
+    <section ref={ref} style={{ padding: mob ? "60px 20px" : "100px 48px", borderTop: `1px solid ${C.border}` }}>
       <div style={{ maxWidth: 1160, margin: "0 auto" }}>
         <div style={{ textAlign: "center", marginBottom: 60 }}>
           <div style={{ ...T.label, marginBottom: 16 }}>We handle the setup</div>
-          <h2 style={{ ...T.h2, color: C.ink, margin: "0 auto 16px", maxWidth: 680 }}>
+          <h2 style={{ ...T.h2, fontSize: mob ? 26 : 34, color: C.ink, margin: "0 auto 16px", maxWidth: 680 }}>
             Everything your front desk needs. Ready in minutes.
           </h2>
           <p style={{ ...T.body, margin: "0 auto", maxWidth: 520, fontSize: 15 }}>
             We connect WhatsApp, configure your kiosk, and set up notifications. You don't touch a single API key. Everything below ships in every plan.
           </p>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1, background: C.border, borderRadius: 16, overflow: "hidden" }}>
+        <div style={{ display: "grid", gridTemplateColumns: mob ? "1fr" : "repeat(3, 1fr)", gap: 1, background: C.border, borderRadius: 16, overflow: "hidden" }}>
           {features.map((f, i) => (
             <div key={i} style={{ background: C.void, padding: "36px 32px", opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(14px)", transition: `all 0.55s ease ${i * 0.07}s` }}>
               <div style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(184,149,90,0.07)", border: `1px solid rgba(184,149,90,0.18)`, display: "flex", alignItems: "center", justifyContent: "center", color: C.gold, marginBottom: 18 }}>
@@ -452,12 +465,13 @@ function FeatureGrid() {
 /* ── Live Dashboard (real product preview) ────────────────────────── */
 function LiveDashboard() {
   const [ref, visible] = useInView(0.1);
+  const mob = useMob();
   return (
-    <section ref={ref} style={{ padding: "120px 48px", background: C.card }}>
-      <div style={{ maxWidth: 1160, margin: "0 auto", display: "grid", gridTemplateColumns: "380px 1fr", gap: 80, alignItems: "center" }}>
+    <section ref={ref} style={{ padding: mob ? "60px 20px" : "120px 48px", background: C.card }}>
+      <div style={{ maxWidth: 1160, margin: "0 auto", display: "grid", gridTemplateColumns: mob ? "1fr" : "380px 1fr", gap: mob ? 36 : 80, alignItems: "center" }}>
         <div style={{ opacity: visible ? 1 : 0, transform: visible ? "none" : "translateX(-16px)", transition: "all 0.7s ease" }}>
           <div style={{ ...T.label, marginBottom: 18 }}>One view. Total control.</div>
-          <h2 style={{ ...T.h2, color: C.ink, margin: "0 0 22px" }}>Your entire front desk, visible at a glance.</h2>
+          <h2 style={{ ...T.h2, fontSize: mob ? 26 : 34, color: C.ink, margin: "0 0 22px" }}>Your entire front desk, visible at a glance.</h2>
           <p style={{ ...T.body, margin: "0 0 24px" }}>
             Every customer in the building, live — who's being served, who's next, how long they've waited. Your team stops guessing and starts moving.
           </p>
@@ -542,15 +556,16 @@ function DashboardMockup() {
 /* ── Loyalty Section ──────────────────────────────────────────────── */
 function LoyaltySection() {
   const [ref, visible] = useInView(0.1);
+  const mob = useMob();
   return (
-    <section ref={ref} style={{ padding: "120px 48px" }}>
-      <div style={{ maxWidth: 1160, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 380px", gap: 80, alignItems: "center" }}>
+    <section ref={ref} style={{ padding: mob ? "60px 20px" : "120px 48px" }}>
+      <div style={{ maxWidth: 1160, margin: "0 auto", display: "grid", gridTemplateColumns: mob ? "1fr" : "1fr 380px", gap: mob ? 36 : 80, alignItems: "center" }}>
         <div style={{ opacity: visible ? 1 : 0, transform: visible ? "none" : "translateX(-16px)", transition: "all 0.7s ease" }}>
           <LoyaltyMockup />
         </div>
         <div style={{ opacity: visible ? 1 : 0, transform: visible ? "none" : "translateX(16px)", transition: "all 0.7s ease 0.15s" }}>
           <div style={{ ...T.label, marginBottom: 18 }}>Loyalty cards</div>
-          <h2 style={{ ...T.h2, color: C.ink, margin: "0 0 22px" }}>Turn one-time visitors into regulars. Automatically.</h2>
+          <h2 style={{ ...T.h2, fontSize: mob ? 26 : 34, color: C.ink, margin: "0 0 22px" }}>Turn one-time visitors into regulars. Automatically.</h2>
           <p style={{ ...T.body, margin: "0 0 24px" }}>
             Every visit punches the card. When they hit the reward, a WhatsApp message goes out automatically. No app for customers to download, no card for them to carry.
           </p>
@@ -621,12 +636,13 @@ function LoyaltyMockup() {
 /* ── Prayer Pause Section ─────────────────────────────────────────── */
 function PrayerSection() {
   const [ref, visible] = useInView(0.1);
+  const mob = useMob();
   return (
-    <section ref={ref} style={{ padding: "120px 48px", background: C.card }}>
-      <div style={{ maxWidth: 1160, margin: "0 auto", display: "grid", gridTemplateColumns: "380px 1fr", gap: 80, alignItems: "center" }}>
+    <section ref={ref} style={{ padding: mob ? "60px 20px" : "120px 48px", background: C.card }}>
+      <div style={{ maxWidth: 1160, margin: "0 auto", display: "grid", gridTemplateColumns: mob ? "1fr" : "380px 1fr", gap: mob ? 36 : 80, alignItems: "center" }}>
         <div style={{ opacity: visible ? 1 : 0, transform: visible ? "none" : "translateX(-16px)", transition: "all 0.7s ease" }}>
           <div style={{ ...T.label, marginBottom: 18, color: C.sage }}>Islamic mode</div>
-          <h2 style={{ ...T.h2, color: C.ink, margin: "0 0 22px" }}>Your queue respects prayer time. Automatically.</h2>
+          <h2 style={{ ...T.h2, fontSize: mob ? 26 : 34, color: C.ink, margin: "0 0 22px" }}>Your queue respects prayer time. Automatically.</h2>
           <p style={{ ...T.body, margin: "0 0 24px" }}>
             The queue pauses before each prayer and resumes after — with no manual intervention. Every customer in line gets a WhatsApp message with the resume time so they know exactly when to come back.
           </p>
@@ -698,15 +714,16 @@ function PrayerMockup() {
 /* ── WhatsApp Flow ────────────────────────────────────────────────── */
 function WhatsAppFlow() {
   const [ref, visible] = useInView(0.1);
+  const mob = useMob();
   return (
-    <section ref={ref} style={{ padding: "120px 48px" }}>
-      <div style={{ maxWidth: 1160, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 380px", gap: 80, alignItems: "center" }}>
-        <div style={{ opacity: visible ? 1 : 0, transform: visible ? "none" : "translateX(-16px)", transition: "all 0.7s ease" }}>
+    <section ref={ref} style={{ padding: mob ? "60px 20px" : "120px 48px" }}>
+      <div style={{ maxWidth: 1160, margin: "0 auto", display: "grid", gridTemplateColumns: mob ? "1fr" : "1fr 380px", gap: mob ? 36 : 80, alignItems: "center" }}>
+        <div style={{ opacity: visible ? 1 : 0, transform: visible ? "none" : "translateX(-16px)", transition: "all 0.7s ease", order: mob ? 2 : 1 }}>
           <WhatsAppMockup />
         </div>
-        <div style={{ opacity: visible ? 1 : 0, transform: visible ? "none" : "translateX(16px)", transition: "all 0.7s ease 0.15s" }}>
+        <div style={{ opacity: visible ? 1 : 0, transform: visible ? "none" : "translateX(16px)", transition: "all 0.7s ease 0.15s", order: mob ? 1 : 2 }}>
           <div style={{ ...T.label, marginBottom: 18 }}>WhatsApp &amp; SMS</div>
-          <h2 style={{ ...T.h2, color: C.ink, margin: "0 0 22px" }}>We connect WhatsApp for you. You just set the rules.</h2>
+          <h2 style={{ ...T.h2, fontSize: mob ? 26 : 34, color: C.ink, margin: "0 0 22px" }}>We connect WhatsApp for you. You just set the rules.</h2>
           <p style={{ ...T.body, margin: "0 0 24px" }}>
             No API keys. No Meta Business Manager. No webhook configuration. Our team connects your WhatsApp Business account and sets up your message templates. Customers start getting updates the same day.
           </p>
@@ -765,6 +782,7 @@ function WhatsAppMockup() {
 /* ── How It Works ─────────────────────────────────────────────────── */
 function HowItWorks() {
   const [ref, visible] = useInView(0.08);
+  const mob = useMob();
   const steps = [
     { n: "01", title: "Customer checks in",    body: "Taps the kiosk, picks a service, done. No paper, no waiting at the desk." },
     { n: "02", title: "Ticket issued",         body: "They get a ticket number and their estimated wait time. Queue position confirmed." },
@@ -773,12 +791,12 @@ function HowItWorks() {
     { n: "05", title: "Called to counter",     body: "One tap from your team. Customer gets notified and walks straight to the right counter." },
   ];
   return (
-    <section id="how" ref={ref} style={{ padding: "120px 48px", background: C.card }}>
+    <section id="how" ref={ref} style={{ padding: mob ? "60px 20px" : "120px 48px", background: C.card }}>
       <div style={{ maxWidth: 1160, margin: "0 auto" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 64, flexWrap: "wrap", gap: 24 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: mob ? 36 : 64, flexWrap: "wrap", gap: 24 }}>
           <div>
             <div style={{ ...T.label, marginBottom: 20 }}>How it works</div>
-            <h2 style={{ ...T.h2, color: C.ink, margin: 0 }}>Customer arrives. Queue runs itself.<br />You stay in control.</h2>
+            <h2 style={{ ...T.h2, fontSize: mob ? 26 : 34, color: C.ink, margin: 0 }}>Customer arrives. Queue runs itself.<br />You stay in control.</h2>
           </div>
           <Link to="/product" style={{ fontSize: 12, color: C.gold, textDecoration: "none", letterSpacing: "0.02em", display: "flex", alignItems: "center", gap: 6 }}
             onMouseEnter={e => e.currentTarget.style.opacity = "0.7"}
@@ -786,7 +804,7 @@ function HowItWorks() {
             See full product <Ic.Arr />
           </Link>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 1, background: C.border, borderRadius: 14, overflow: "hidden" }}>
+        <div style={{ display: "grid", gridTemplateColumns: mob ? "repeat(2, 1fr)" : "repeat(5, 1fr)", gap: 1, background: C.border, borderRadius: 14, overflow: "hidden" }}>
           {steps.map((step, i) => (
             <div key={i} style={{ background: C.void, padding: "32px 22px", opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(12px)", transition: `all 0.5s ease ${i * 0.08}s` }}>
               <div style={{ fontSize: 10, color: C.muted, fontFamily: "monospace", letterSpacing: "0.08em", marginBottom: 22, opacity: 0.6 }}>{step.n}</div>
@@ -804,6 +822,7 @@ function HowItWorks() {
 /* ── Case Studies ─────────────────────────────────────────────────── */
 function CaseStudies() {
   const [ref, visible] = useInView(0.08);
+  const mob = useMob();
   const studies = [
     {
       slug: "meridian-health",
@@ -831,15 +850,15 @@ function CaseStudies() {
     },
   ];
   return (
-    <section ref={ref} style={{ padding: "120px 48px" }}>
+    <section ref={ref} style={{ padding: mob ? "60px 20px" : "120px 48px" }}>
       <div style={{ maxWidth: 1160, margin: "0 auto" }}>
-        <div style={{ marginBottom: 56 }}>
+        <div style={{ marginBottom: mob ? 36 : 56 }}>
           <div style={{ ...T.label, marginBottom: 20 }}>Real outcomes</div>
-          <h2 style={{ ...T.h2, color: C.ink, margin: 0, maxWidth: 640 }}>
+          <h2 style={{ ...T.h2, fontSize: mob ? 26 : 34, color: C.ink, margin: 0, maxWidth: 640 }}>
             What these businesses stopped dealing with after switching.
           </h2>
         </div>
-        <div id="case-studies" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1, background: C.border, borderRadius: 14, overflow: "hidden" }}>
+        <div id="case-studies" style={{ display: "grid", gridTemplateColumns: mob ? "1fr" : "repeat(3, 1fr)", gap: 1, background: C.border, borderRadius: 14, overflow: "hidden" }}>
           {studies.map((s, i) => (
             <Link key={i} to={`/case-studies/${s.slug}`} style={{ background: C.card, padding: "36px 32px", display: "flex", flexDirection: "column", textDecoration: "none", opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(12px)", transition: `all 0.55s ease ${i * 0.1}s` }}
               onMouseEnter={e => e.currentTarget.style.background = "#0f0f0e"}
@@ -871,6 +890,7 @@ function CaseStudies() {
 /* ── Testimonials ─────────────────────────────────────────────────── */
 function Testimonials() {
   const [ref, visible] = useInView(0.08);
+  const mob = useMob();
   const quotes = [
     {
       text: "Setup took 20 minutes. Within a week our front desk stopped getting complaints about the wait. Patients actually thank us now.",
@@ -892,18 +912,18 @@ function Testimonials() {
     },
   ];
   return (
-    <section ref={ref} style={{ padding: "100px 48px", background: C.card, borderTop: `1px solid ${C.border}` }}>
+    <section ref={ref} style={{ padding: mob ? "60px 20px" : "100px 48px", background: C.card, borderTop: `1px solid ${C.border}` }}>
       <div style={{ maxWidth: 1160, margin: "0 auto" }}>
-        <div style={{ textAlign: "center", marginBottom: 56 }}>
+        <div style={{ textAlign: "center", marginBottom: mob ? 36 : 56 }}>
           <div style={{ display: "flex", justifyContent: "center", gap: 2, marginBottom: 16 }}>
             {[...Array(5)].map((_, i) => <span key={i} style={{ color: C.gold, fontSize: 16 }}>★</span>)}
           </div>
           <div style={{ ...T.label, marginBottom: 14, color: C.muted }}>Customer stories</div>
-          <h2 style={{ ...T.h2, color: C.ink, margin: 0, maxWidth: 640, marginLeft: "auto", marginRight: "auto" }}>
+          <h2 style={{ ...T.h2, fontSize: mob ? 26 : 34, color: C.ink, margin: 0, maxWidth: 640, marginLeft: "auto", marginRight: "auto" }}>
             Real outcomes from real businesses.
           </h2>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1, background: C.border, borderRadius: 16, overflow: "hidden" }}>
+        <div style={{ display: "grid", gridTemplateColumns: mob ? "1fr" : "repeat(3, 1fr)", gap: 1, background: C.border, borderRadius: 16, overflow: "hidden" }}>
           {quotes.map((q, i) => (
             <div key={i} style={{ background: C.void, padding: "36px 32px", display: "flex", flexDirection: "column", opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(12px)", transition: `all 0.55s ease ${i * 0.1}s` }}>
               <div style={{ display: "flex", gap: 1, marginBottom: 20 }}>
@@ -931,12 +951,13 @@ function Testimonials() {
 function FAQSection() {
   const [open, setOpen] = useState(0);
   const [ref, visible] = useInView(0.06);
+  const mob = useMob();
   return (
-    <section ref={ref} id="faq" style={{ padding: "120px 48px", background: C.card, borderTop: `1px solid ${C.border}` }}>
-      <div style={{ maxWidth: 1160, margin: "0 auto", display: "grid", gridTemplateColumns: "340px 1fr", gap: 80, alignItems: "flex-start" }}>
-        <div style={{ position: "sticky", top: 100 }}>
+    <section ref={ref} id="faq" style={{ padding: mob ? "60px 20px" : "120px 48px", background: C.card, borderTop: `1px solid ${C.border}` }}>
+      <div style={{ maxWidth: 1160, margin: "0 auto", display: "grid", gridTemplateColumns: mob ? "1fr" : "340px 1fr", gap: mob ? 32 : 80, alignItems: "flex-start" }}>
+        <div style={mob ? {} : { position: "sticky", top: 100 }}>
           <div style={{ ...T.label, marginBottom: 18 }}>FAQ</div>
-          <h2 style={{ ...T.h2, color: C.ink, margin: "0 0 18px" }}>Common questions, clear answers.</h2>
+          <h2 style={{ ...T.h2, fontSize: mob ? 26 : 34, color: C.ink, margin: "0 0 18px" }}>Common questions, clear answers.</h2>
           <p style={{ ...T.body, margin: "0 0 24px", fontSize: 14 }}>
             The questions we hear most from owners and operators evaluating AzQueue. Still stuck? <Link to="/support" style={{ color: C.goldLit, textDecoration: "none" }}>Email support</Link>.
           </p>
@@ -972,6 +993,7 @@ function FAQSection() {
 function Pricing() {
   const [ref, visible] = useInView(0.1);
   const [annual, setAnnual] = useState(true);
+  const mob = useMob();
   const tiers = [
     {
       name: "Starter",
@@ -1004,11 +1026,11 @@ function Pricing() {
     },
   ];
   return (
-    <section id="pricing" ref={ref} style={{ padding: "120px 48px" }}>
+    <section id="pricing" ref={ref} style={{ padding: mob ? "60px 20px" : "120px 48px" }}>
       <div style={{ maxWidth: 1160, margin: "0 auto" }}>
-        <div style={{ textAlign: "center", marginBottom: 56 }}>
+        <div style={{ textAlign: "center", marginBottom: mob ? 36 : 56 }}>
           <div style={{ ...T.label, marginBottom: 20 }}>Pricing</div>
-          <h2 style={{ ...T.h2, color: C.ink, margin: "0 0 16px" }}>Simple, transparent pricing.</h2>
+          <h2 style={{ ...T.h2, fontSize: mob ? 26 : 34, color: C.ink, margin: "0 0 16px" }}>Simple, transparent pricing.</h2>
           <p style={{ ...T.body, margin: "0 auto 32px", maxWidth: 520 }}>Start free for 14 days. No card required. Move up or down as your business changes.</p>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 0, border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden" }}>
             {[["Monthly", false], ["Annual", true]].map(([label, val]) => (
@@ -1018,7 +1040,7 @@ function Pricing() {
             ))}
           </div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1, background: C.border, borderRadius: 16, overflow: "hidden" }}>
+        <div style={{ display: "grid", gridTemplateColumns: mob ? "1fr" : "repeat(3, 1fr)", gap: 1, background: C.border, borderRadius: 16, overflow: "hidden" }}>
           {tiers.map((tier, i) => (
             <div key={i} style={{ background: tier.featured ? C.panel : (tier.enterprise ? "linear-gradient(180deg, #131210 0%, #0c0c0b 100%)" : C.void), padding: tier.featured ? "44px 32px" : "40px 32px", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden", opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(12px)", transition: `all 0.5s ease ${i * 0.1}s` }}>
               {tier.featured && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${C.gold}, transparent)`, opacity: 0.5 }} />}
@@ -1067,12 +1089,13 @@ function Pricing() {
 /* ── Final CTA ────────────────────────────────────────────────────── */
 function FinalCTA() {
   const [ref, visible] = useInView(0.15);
+  const mob = useMob();
   return (
-    <section ref={ref} style={{ padding: "120px 48px", background: C.card, position: "relative", overflow: "hidden", borderTop: `1px solid ${C.border}` }}>
+    <section ref={ref} style={{ padding: mob ? "60px 20px" : "120px 48px", background: C.card, position: "relative", overflow: "hidden", borderTop: `1px solid ${C.border}` }}>
       <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 700, height: 360, background: "radial-gradient(ellipse, rgba(184,149,90,0.06) 0%, transparent 70%)", pointerEvents: "none" }} />
       <div style={{ maxWidth: 640, margin: "0 auto", textAlign: "center", position: "relative", zIndex: 1, opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(16px)", transition: "all 0.7s ease" }}>
         <div style={{ width: 36, height: 1, background: C.gold, margin: "0 auto 40px", opacity: 0.35 }} />
-        <h2 style={{ ...T.display, color: C.ink, margin: "0 0 20px", fontSize: 44 }}>
+        <h2 style={{ ...T.display, color: C.ink, margin: "0 0 20px", fontSize: mob ? 32 : 44 }}>
           Stop losing customers{" "}
           <em style={{ color: C.gold, fontStyle: "italic" }}>to the waiting room.</em>
         </h2>

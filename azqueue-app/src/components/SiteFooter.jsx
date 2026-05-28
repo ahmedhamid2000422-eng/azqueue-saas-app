@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import useIsMobile from "../lib/useIsMobile";
 
 /* ──────────────────────────────────────────────────────────────────────
  * SiteFooter — the single footer used on every marketing / info page.
@@ -53,13 +54,14 @@ const COLS = [
 ];
 
 export default function SiteFooter() {
+  const mob = useIsMobile();
   return (
-    <footer style={{ borderTop: `1px solid ${C.border}`, padding: "72px 48px 36px", background: C.void, fontFamily: "'Inter', system-ui, sans-serif" }}>
+    <footer style={{ borderTop: `1px solid ${C.border}`, padding: mob ? "48px 20px 32px" : "72px 48px 36px", background: C.void, fontFamily: "'Inter', system-ui, sans-serif" }}>
       <div style={{ maxWidth: 1160, margin: "0 auto" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr 1fr 1fr", gap: 40, marginBottom: 64 }}>
+        <div style={{ display: "grid", gridTemplateColumns: mob ? "1fr 1fr" : "1.5fr 1fr 1fr 1fr 1fr", gap: mob ? 32 : 40, marginBottom: mob ? 40 : 64 }}>
 
-          {/* Brand column */}
-          <div>
+          {/* Brand column — full width on mobile */}
+          <div style={mob ? { gridColumn: "1 / -1" } : {}}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
               <div style={{ width: 24, height: 24, background: C.gold, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: C.void }}>A</div>
               <span style={{ fontSize: 14, fontWeight: 500, color: C.ink, letterSpacing: "0.01em" }}>AzQueue</span>
@@ -98,7 +100,7 @@ export default function SiteFooter() {
         </div>
 
         {/* Bottom rule */}
-        <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 28, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+        <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 28, display: "flex", flexDirection: mob ? "column" : "row", justifyContent: "space-between", alignItems: mob ? "flex-start" : "center", gap: 12 }}>
           <div style={{ fontSize: 11, color: C.dim }}>© 2026 AzQueue. All rights reserved.</div>
           <div style={{ display: "flex", gap: 24 }}>
             {[["Privacy", "/legal/privacy"], ["Terms", "/legal/terms"], ["Refunds", "/legal/refund"], ["Support", "/support"]].map(([label, to]) => (
