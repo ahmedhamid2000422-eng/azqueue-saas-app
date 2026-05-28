@@ -4,6 +4,7 @@
 
 @layer base {
   html, body, #root { background: #0b0b0c; min-height: 100vh; }
+  html, body { overflow-x: hidden; max-width: 100%; }
   body {
     font-family: 'Inter', system-ui, sans-serif;
     font-size: 15px;
