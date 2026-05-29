@@ -355,10 +355,10 @@ function StatBand() {
         </div>
         <div style={{ display: "grid", gridTemplateColumns: mob ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap: 1, background: C.border, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
           {stats.map((stat) => (
-            <div key={stat.label} style={{ padding: "40px 28px", textAlign: "center", background: C.void }}>
-              <div style={{ fontSize: 42, fontWeight: 400, color: C.ink, letterSpacing: "-0.02em", fontFamily: "Georgia, serif", lineHeight: 1, marginBottom: 12, background: "linear-gradient(180deg,#f0ede6 0%, #b8955a 130%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>{stat.value}</div>
-              <div style={{ fontSize: 12, color: C.ink, letterSpacing: "0.04em", marginBottom: 4, fontWeight: 500 }}>{stat.label}</div>
-              <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.5 }}>{stat.sub}</div>
+            <div key={stat.label} style={{ padding: mob ? "24px 12px" : "40px 28px", textAlign: "center", background: C.void }}>
+              <div style={{ fontSize: mob ? 26 : 42, fontWeight: 400, color: C.ink, letterSpacing: "-0.02em", fontFamily: "Georgia, serif", lineHeight: 1, marginBottom: mob ? 8 : 12, background: "linear-gradient(180deg,#f0ede6 0%, #b8955a 130%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>{stat.value}</div>
+              <div style={{ fontSize: mob ? 11 : 12, color: C.ink, letterSpacing: "0.04em", marginBottom: 4, fontWeight: 500 }}>{stat.label}</div>
+              <div style={{ fontSize: mob ? 10 : 11, color: C.muted, lineHeight: 1.5 }}>{stat.sub}</div>
             </div>
           ))}
         </div>
