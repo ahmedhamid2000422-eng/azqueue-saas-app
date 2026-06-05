@@ -68,6 +68,11 @@ export default function Queue() {
   // Escalation state
   const [escalations, setEscalations] = useState([]);
   const slaEnabled   = getLimits(user).opsSla;
+
+  // Elapsed timer — single interval, resets when the serving ticket changes (no DB calls)
+  const [elapsedSec, setElapsedSec] = useState(0);
+  // Intercept modal — shown when staff taps "Call next" while already serving
+  const [interceptPending, setInterceptPending] = useState(false);
   // Manager = branch owner OR manager-tier plan
   const isManager    = branch?.owner_id === user?.id || getLimits(user).managerMode;
 
@@ -263,6 +268,18 @@ export default function Queue() {
     return () => clearInterval(id);
   }, [reload]);
 
+  /* ── Elapsed timer for the currently-serving client ──────────── */
+  /* One interval per page. Resets when serving ticket id changes.  */
+  useEffect(() => {
+    const ts = serving?.called_at ?? serving?.started_at ?? null;
+    if (!ts) { setElapsedSec(0); return; }
+    const start = new Date(ts);
+    const tick = () => setElapsedSec(Math.floor((Date.now() - start) / 1000));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [serving?.id, serving?.called_at, serving?.started_at]);
+
   /* ── Load capacity limit from localStorage when branch is known ── */
   useEffect(() => {
     if (!branch?.id) return;
@@ -352,52 +369,83 @@ export default function Queue() {
   // All actions optimistically reload at the end so the dashboard updates
   // instantly — realtime is only a nice-to-have for cross-device sync.
 
-  async function callNext() {
+  // callNextInner — claims the next waiting ticket without touching the
+  // current serving ticket. Called by callNext() and by intercept modal
+  // resolution handlers (after the current ticket has been dealt with).
+  async function callNextInner() {
     if (waiting.length === 0) return;
     setBusy(true);
     setError(null);
     const next = waiting[0];
-    const now = new Date().toISOString();
-
-    if (serving) {
-      const { error: e1 } = await supabase
-        .from("tickets")
-        .update({ status: "completed", completed_at: now })
-        .eq("id", serving.id);
-      if (e1) { setBusy(false); return setError(e1.message); }
-      logServiceTime({
-        branchId: serving.branch_id, ticketId: serving.id, serviceId: serving.service_id,
-        staffId: serving.staff_id, startedAt: serving.started_at, completedAt: now,
-      });
-      sendThanks(serving.id);
-      // Save customer record when a ticket is auto-completed by calling next
-      if (serving.customer_name || serving.customer_phone) {
-        findOrCreateCustomer(branch.id, {
-          name:  serving.customer_name,
-          phone: serving.customer_phone,
-        }).then(async (cust) => {
-          if (!cust) return;
-          const svcName = serviceNameMap[serving.service_id] ?? "";
-          await logQueueEvent(cust.id, branch.id, "queue_complete", {
-            ticketId: serving.id,
-            token:    serving.token,
-            service:  svcName,
-            staffId:  serving.staff_id,
-          }).catch(() => {});
-          generatePersona(cust.id, branch.id).catch(() => {});
-        }).catch(() => {});
-      }
-    }
-
-    const { error: e2 } = await supabase
+    const now  = new Date().toISOString();
+    const { error: e } = await supabase
       .from("tickets")
       .update({ status: "serving", called_at: now, started_at: now })
       .eq("id", next.id);
-    if (e2) { setBusy(false); return setError(e2.message); }
-
+    if (e) { setBusy(false); return setError(e.message); }
     sendCallNotice(next.id);
     await reload();
     setBusy(false);
+  }
+
+  // callNext — if already serving, show the intercept modal instead of
+  // auto-completing. The modal lets staff choose how to resolve first.
+  async function callNext() {
+    if (waiting.length === 0) return;
+    if (serving) {
+      setInterceptPending(true);
+      return;
+    }
+    await callNextInner();
+  }
+
+  // directComplete — completes the current ticket without opening the
+  // satisfaction survey. Used by the intercept modal ("Complete" option).
+  async function directComplete(ticket) {
+    setBusy(true);
+    setError(null);
+    const now = new Date().toISOString();
+    const { error: e } = await supabase
+      .from("tickets")
+      .update({ status: "completed", completed_at: now })
+      .eq("id", ticket.id);
+    if (e) { setBusy(false); return setError(e.message); }
+    logServiceTime({
+      branchId: ticket.branch_id, ticketId: ticket.id, serviceId: ticket.service_id,
+      staffId: ticket.staff_id, startedAt: ticket.started_at, completedAt: now,
+    });
+    sendThanks(ticket.id);
+    if (ticket.customer_name || ticket.customer_phone) {
+      findOrCreateCustomer(branch.id, { name: ticket.customer_name, phone: ticket.customer_phone })
+        .then(async (cust) => {
+          if (!cust) return;
+          await logQueueEvent(cust.id, branch.id, "queue_complete", {
+            ticketId: ticket.id, token: ticket.token,
+            service:  serviceNameMap[ticket.service_id] ?? "",
+            staffId:  ticket.staff_id,
+          }).catch(() => {});
+          generatePersona(cust.id, branch.id).catch(() => {});
+        }).catch(() => {});
+    }
+    setBusy(false);
+  }
+
+  // ── Intercept modal resolution handlers ─────────────────────────
+  async function interceptResolveComplete() {
+    setInterceptPending(false);
+    await directComplete(serving);
+    await reload();          // sync state before calling next
+    await callNextInner();
+  }
+  async function interceptResolveReturn() {
+    setInterceptPending(false);
+    await sendBackToQueue();
+    await callNextInner();
+  }
+  async function interceptResolveNoShow() {
+    setInterceptPending(false);
+    await skipServing();
+    await callNextInner();
   }
 
   // Opens the satisfaction survey before completing the ticket
@@ -640,6 +688,18 @@ export default function Queue() {
 
   return (
     <div className="atmosphere-hero p-8 max-w-6xl">
+      {/* ── Intercept Modal — resolve current visit before calling next ── */}
+      {interceptPending && (
+        <InterceptModal
+          ticket={serving}
+          busy={busy}
+          onComplete={interceptResolveComplete}
+          onReturn={interceptResolveReturn}
+          onNoShow={interceptResolveNoShow}
+          onDismiss={() => setInterceptPending(false)}
+        />
+      )}
+
       {/* ── Satisfaction Survey Modal ─────────────────────────────────── */}
       {surveyTicket && (
         <SatisfactionSurvey
@@ -755,17 +815,25 @@ export default function Queue() {
           {serving && (() => {
             const svcName = serviceNameMap[serving.service_id] ?? "";
             const cx = getComplexity(svcName);
-            return svcName ? (
-              <div className={"inline-flex items-center gap-2 text-[9px] border px-2.5 py-1 mb-1 " + cx.color + " " + cx.border}>
-                <span>{cx.label}</span>
-                <span className="opacity-70">{svcName}</span>
-                <span className="opacity-50">·</span>
-                <span>~{durationStats[svcName]?.avg ?? cx.estimatedMin}m</span>
-                {durationStats[svcName] && (
-                  <span className="opacity-50">({durationStats[svcName].count} actual samples)</span>
+            const waitMin = serving.wait_minutes ?? 0;
+            return (
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                {svcName && (
+                  <div className={"inline-flex items-center gap-2 text-[9px] border px-2.5 py-1 " + cx.color + " " + cx.border}>
+                    <span>{cx.label}</span>
+                    <span className="opacity-70">{svcName}</span>
+                    <span className="opacity-50">·</span>
+                    <span>~{durationStats[svcName]?.avg ?? cx.estimatedMin}m</span>
+                    {durationStats[svcName] && (
+                      <span className="opacity-50">({durationStats[svcName].count} actual samples)</span>
+                    )}
+                  </div>
                 )}
+                <span className="text-[9px] text-ink-mute border border-line px-2 py-0.5">
+                  Waiting {waitMin} min
+                </span>
               </div>
-            ) : null;
+            );
           })()}
 
           {/* Bounce alert — shown when customer has been parked back multiple times */}
@@ -780,6 +848,20 @@ export default function Queue() {
                 Parked back <strong>{serving.bounce_count}×</strong> — this customer may need
                 {serving.bounce_count >= 3 ? " direct manager attention." : " a dedicated counter."}
               </span>
+            </div>
+          )}
+
+          {/* Elapsed time + soft warning */}
+          {serving && (
+            <div className="flex items-center gap-3 mt-3">
+              <span className="ovline text-[9px] text-ink-mute">
+                Time: {String(Math.floor(elapsedSec / 60)).padStart(2, "0")}:{String(elapsedSec % 60).padStart(2, "0")}
+              </span>
+              {elapsedSec >= 1800 && (
+                <span className="text-[10px] text-gold-soft border border-gold-deep/40 px-2 py-0.5">
+                  Need help? Reassign or call backup.
+                </span>
+              )}
             </div>
           )}
 
@@ -839,12 +921,16 @@ export default function Queue() {
             waiting.slice(0, 8).map((t, i) => {
               const arrival = arrivalState(t.customer_distance_m);
               const isPriority = (t.priority ?? 0) > 0;
+              const waitMin = t.wait_minutes ?? 0;
+              const waitBorder =
+                waitMin > 35 ? "border-l-2 border-l-[#b56b5f]" :
+                waitMin > 20 ? "border-l-2 border-l-[#c9a86a]/60" : "";
               return (
                 <div
                   key={t.id}
                   className={`px-5 py-3 border-b border-line last:border-b-0 grid grid-cols-[60px_1fr_auto_auto] gap-2 items-center ${
                     i === 0 ? "bg-[rgba(201,168,106,0.05)]" : ""
-                  }`}
+                  } ${waitBorder}`}
                 >
                   <span className="font-display text-gold-soft text-sm flex items-center gap-1">
                     {isPriority && <span className="text-[#e4cb95] text-[10px]">★</span>}
@@ -878,13 +964,26 @@ export default function Queue() {
                         </span>
                       )}
                     </div>
-                    <div className="text-[10px] text-ink-mute font-mono flex items-center gap-2">
-                      <span>{t.customer_phone}</span>
+                    {/* Service name + wait time row */}
+                    <div className="text-[10px] text-ink-mute flex items-center gap-2 mt-0.5">
+                      {serviceNameMap[t.service_id] && (
+                        <span>{serviceNameMap[t.service_id]}</span>
+                      )}
+                      <span className={
+                        waitMin > 35 ? "text-[#d49185]" :
+                        waitMin > 20 ? "text-[#c9a86a]" :
+                        "text-ink-mute"
+                      }>
+                        · {waitMin} min wait
+                      </span>
                       {arrival === "en_route" && (
                         <span className="text-[#74b9e8]">
                           · ETA {formatEta(t.customer_eta_sec)}
                         </span>
                       )}
+                    </div>
+                    <div className="text-[10px] text-ink-mute font-mono mt-0.5">
+                      {t.customer_phone}
                     </div>
                     {personaCache[t.id] && (
                       <PersonaMini data={personaCache[t.id]} />
@@ -1551,6 +1650,59 @@ function SatisfactionSurvey({ ticket, busy, onSubmit, onSkip }) {
             Skip
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+
+/* ── InterceptModal ─────────────────────────────────────────────────── */
+// Shown when staff taps "Call next" while a customer is still being served.
+// Forces them to resolve the current visit before moving on.
+function InterceptModal({ ticket, busy, onComplete, onReturn, onNoShow, onDismiss }) {
+  if (!ticket) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="bg-bg border border-line p-7 max-w-sm w-full mx-4">
+        <div className="ovline text-[9px] text-ink-mute mb-4">Finish current visit first</div>
+        <div className="text-base font-medium text-ink mb-1">
+          {ticket.customer_name || ticket.token} is still at the counter
+        </div>
+        <div className="text-xs text-ink-soft mb-6">
+          Resolve this visit before calling the next customer.
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={onComplete}
+            disabled={busy}
+            className="w-full bg-gold text-[#141410] text-xs font-medium py-2.5 tracking-wide disabled:opacity-40 transition hover:opacity-90"
+          >
+            Complete visit → call next
+          </button>
+          <button
+            onClick={onReturn}
+            disabled={busy}
+            className="w-full border border-line text-xs text-ink py-2.5 tracking-wide hover:border-line-2 transition disabled:opacity-40"
+          >
+            Return to queue → call next
+          </button>
+          <button
+            onClick={onNoShow}
+            disabled={busy}
+            className="w-full border border-line text-xs text-ink-mute py-2.5 tracking-wide hover:border-line-2 transition disabled:opacity-40"
+          >
+            No-show → call next
+          </button>
+        </div>
+
+        <button
+          onClick={onDismiss}
+          disabled={busy}
+          className="mt-4 w-full text-[10px] ovline text-ink-mute hover:text-ink transition"
+        >
+          Cancel
+        </button>
       </div>
     </div>
   );

@@ -19,6 +19,8 @@ import TvDisplay from "./pages/TvDisplay";
 import BookingPage from "./pages/BookingPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import Legal from "./pages/Legal";
+import Checkin from "./pages/Checkin";
+import Display from "./pages/Display";
 import BusinessDashboard from "./modes/business/Dashboard";
 import PersonalDashboard from "./modes/personal/Dashboard";
 import StaffDashboard from "./modes/staff/Dashboard";
@@ -43,12 +45,14 @@ export default function App() {
       <Route path="/manager-mode" element={<ManagerMode />} />
 
       {/* Public customer-side flow — no auth */}
-      <Route path="/q/:slug"      element={<CustomerCheckIn />} />
-      <Route path="/t/:ticketId"  element={<CustomerTicket />} />
-      <Route path="/display/:slug" element={<TvDisplay />} />
-      <Route path="/b/:slug"       element={<BookingPage />} />
-      <Route path="/legal/:doc"    element={<Legal />} />
-      <Route path="/legal"         element={<Legal />} />
+      <Route path="/q/:slug"           element={<CustomerCheckIn />} />
+      <Route path="/t/:ticketId"       element={<CustomerTicket />} />
+      <Route path="/display/:slug"     element={<TvDisplay />} />
+      <Route path="/b/:slug"           element={<BookingPage />} />
+      <Route path="/checkin/:branchId" element={<Checkin />} />
+      <Route path="/display-tv/:branchId" element={<Display />} />
+      <Route path="/legal/:doc"        element={<Legal />} />
+      <Route path="/legal"             element={<Legal />} />
 
       {/* Platform admin (your operator dashboard) */}
       <Route

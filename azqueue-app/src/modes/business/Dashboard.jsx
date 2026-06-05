@@ -13,8 +13,10 @@ import Customers from "./Customers";
 import DisplaySetup from "./DisplaySetup";
 import Settings from "./Settings";
 import Onboarding from "./Onboarding";
+import OwnerDashboard from "./OwnerDashboard";
 
 const NAV = [
+  { label: "Overview",  path: "/overview" },
   { label: "Queue",    path: "" },
   { label: "Bookings", path: "/bookings" },
   { label: "Schedule", path: "/schedule" },
@@ -43,6 +45,7 @@ export default function BusinessDashboard() {
         <div className="flex-1">
           <Routes>
             <Route index element={<Queue />} />
+            <Route path="overview"   element={<OwnerDashboard />} />
             <Route path="bookings" element={<Bookings />} />
             <Route path="schedule" element={<Schedule />} />
             <Route path="stations"   element={<Stations />} />

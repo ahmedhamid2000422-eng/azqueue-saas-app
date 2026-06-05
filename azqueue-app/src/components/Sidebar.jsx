@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 
 export default function Sidebar({ mode, items, footerName, footerRole }) {
   const location = useLocation();
-  const base = mode === "business" ? "/business" : "/personal";
+  const base = mode === "business" ? "/business" : mode === "staff" ? "/staff" : "/personal";
 
   return (
     <aside className="relative w-[220px] shrink-0 border-r border-line py-3 flex flex-col h-screen sticky top-0 luxe-panel">
@@ -22,7 +22,7 @@ export default function Sidebar({ mode, items, footerName, footerRole }) {
 
       <nav className="relative flex-1 py-2">
         <div className="ovline px-4 py-2.5 text-[9px] flex items-center gap-2">
-          <span>{mode === "business" ? "Business" : "Personal flow"}</span>
+          <span>{mode === "business" ? "Business" : mode === "staff" ? "Staff" : "Personal flow"}</span>
         </div>
         {items.map((it) => {
           const path = `${base}${it.path}`;

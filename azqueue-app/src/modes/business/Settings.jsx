@@ -22,6 +22,7 @@ import {
   testFreshdeskCredentials,
 } from "../../lib/freshdesk";
 import { getLoyaltyProgram, saveLoyaltyProgram } from "../../lib/loyalty";
+import { QRCodeSVG } from "qrcode.react";
 
 export default function Settings() {
   const { user } = useAuth();
@@ -286,20 +287,84 @@ function GeneralTab({ branch, reload }) {
     setTimeout(() => setSaved(false), 2000);
   }
 
+  const checkinUrl = `${typeof window !== "undefined" ? window.location.origin : "https://azqueue.io"}/checkin/${branch.id}`;
+
   return (
-    <Card luxe className="p-7">
-      <div className="grid sm:grid-cols-2 gap-5">
-        <Field label="Branch name" value={name} onChange={setName} />
-        <Field label="City"        value={city} onChange={setCity} />
-        <Field label="Timezone"    value={tz}   onChange={setTz} />
-        <Field label="Slug"        value={branch.slug ?? ""} onChange={() => {}} readOnly />
-      </div>
-      <div className="rule-ornament my-5 text-[8px]"><span>·</span></div>
-      <div className="flex gap-3 items-center">
-        <Button onClick={save} disabled={busy}>{busy ? "Saving…" : "Save changes"}</Button>
-        {saved && <span className="text-[10px] text-[#9bbd9b]">Saved.</span>}
-      </div>
-    </Card>
+    <div className="space-y-4">
+      <Card luxe className="p-7">
+        <div className="grid sm:grid-cols-2 gap-5">
+          <Field label="Branch name" value={name} onChange={setName} />
+          <Field label="City"        value={city} onChange={setCity} />
+          <Field label="Timezone"    value={tz}   onChange={setTz} />
+          <Field label="Slug"        value={branch.slug ?? ""} onChange={() => {}} readOnly />
+        </div>
+        <div className="rule-ornament my-5 text-[8px]"><span>·</span></div>
+        <div className="flex gap-3 items-center">
+          <Button onClick={save} disabled={busy}>{busy ? "Saving…" : "Save changes"}</Button>
+          {saved && <span className="text-[10px] text-[#9bbd9b]">Saved.</span>}
+        </div>
+      </Card>
+
+      {/* ── Check-in QR code ─────────────────────────────────────── */}
+      <Card luxe className="p-7">
+        <div className="mb-4">
+          <div className="ovline text-[9px] text-gold-soft mb-1">Customer Check-In</div>
+          <h3 className="font-display text-lg font-light tracking-tight text-ink">
+            Walk-in QR code
+          </h3>
+          <p className="text-xs text-ink-soft mt-1">
+            Print this and place it at the front desk. Customers scan it to join the queue from their phone.
+          </p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-8 items-start">
+          {/* QR code */}
+          <div
+            className="p-4 bg-white rounded-sm shrink-0"
+            style={{ lineHeight: 0 }}
+          >
+            <QRCodeSVG
+              value={checkinUrl}
+              size={160}
+              bgColor="#ffffff"
+              fgColor="#0b0b0c"
+              level="M"
+            />
+          </div>
+
+          {/* URL + copy */}
+          <div className="flex-1 space-y-3">
+            <div>
+              <div className="ovline text-[8px] text-ink-mute mb-1">Check-in URL</div>
+              <div className="font-mono text-[10px] text-ink-soft break-all border border-line px-3 py-2 bg-bg-elev">
+                {checkinUrl}
+              </div>
+            </div>
+            <CopyCheckinLink url={checkinUrl} />
+            <div className="text-[10px] text-ink-mute leading-relaxed">
+              Tip: right-click the QR code → Save image, then print at 100% size (≥ 5 cm).
+            </div>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function CopyCheckinLink({ url }) {
+  const [copied, setCopied] = useState(false);
+  function copy() {
+    navigator.clipboard?.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  }
+  return (
+    <button
+      onClick={copy}
+      className="text-[10px] ovline border border-line px-3 py-1.5 text-ink-mute hover:border-gold-deep hover:text-gold-soft transition"
+    >
+      {copied ? "Copied ✓" : "Copy link"}
+    </button>
   );
 }
 
