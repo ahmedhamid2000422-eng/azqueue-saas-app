@@ -64,7 +64,7 @@ export function AuthProvider({ children }) {
         ? window.location.origin
         : (import.meta.env.VITE_SITE_URL ?? "https://azqueue.io");
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${origin}/login`,
+        redirectTo: `${origin}/reset-password`,
       });
       return { error };
     },
