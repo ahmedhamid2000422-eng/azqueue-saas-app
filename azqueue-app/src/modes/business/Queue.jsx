@@ -91,8 +91,8 @@ export default function Queue() {
     // it automatically retries with the base columns so the queue still loads.
     try {
       let active = null;
-      const fullCols = "id, token, status, customer_name, customer_phone, service_id, staff_id, priority, source, created_at, called_at, started_at, completed_at, branch_id, notes, assigned_station_id, bounce_count";
-      const baseCols = "id, token, status, customer_name, customer_phone, service_id, staff_id, priority, source, created_at, called_at, started_at, completed_at, branch_id, notes";
+      const fullCols = "id, token, status, customer_name, customer_phone, service_id, staff_id, priority, source, created_at, called_at, started_at, completed_at, branch_id, notes, assigned_station_id, bounce_count, is_premium, requested_advisor_id, advisor_fee";
+      const baseCols = "id, token, status, customer_name, customer_phone, service_id, staff_id, priority, source, created_at, called_at, started_at, completed_at, branch_id, notes, is_premium, requested_advisor_id, advisor_fee";
 
       const { data: a1, error: e1 } = await supabase
         .from("tickets")
@@ -268,6 +268,9 @@ export default function Queue() {
     return () => clearInterval(id);
   }, [reload]);
 
+  /* ── Derived ───────────────────────────────────────────────────── */
+  const serving = useMemo(() => tickets.find((t) => t.status === "serving"), [tickets]);
+
   /* ── Elapsed timer for the currently-serving client ──────────── */
   /* One interval per page. Resets when serving ticket id changes.  */
   useEffect(() => {
@@ -288,9 +291,6 @@ export default function Queue() {
     setCapacityLimit(isNaN(parsed) ? 0 : parsed);
     setLimitDraft(stored ?? "");
   }, [branch?.id]);
-
-  /* ── Derived ───────────────────────────────────────────────────── */
-  const serving = useMemo(() => tickets.find((t) => t.status === "serving"), [tickets]);
   // Waiting list — smart-sorted (complexity-aware) or default arrival order
   const waiting = useMemo(() => {
     const base = tickets.filter((t) => t.status === "waiting");
@@ -1209,10 +1209,15 @@ export default function Queue() {
                 const durMin  = realAvg ?? cx.estimatedMin;
                 const hasReal = durationStats[svcName]?.count >= 5;
                 return (
-                  <div key={t.id} className="px-4 py-3 border-b border-line last:border-b-0 flex items-center gap-3">
+                  <div key={t.id} className={`px-4 py-3 border-b border-line last:border-b-0 flex items-center gap-3 ${t.is_premium ? "bg-[rgba(201,168,106,0.04)]" : ""}`}>
                     <span className="font-display text-gold-soft text-sm w-10 shrink-0">{t.token}</span>
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs text-ink truncate">{t.customer_name}</div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="text-xs text-ink truncate">{t.customer_name}</div>
+                        {t.is_premium && (
+                          <span className="text-[9px] text-gold-soft border border-gold/40 px-1 shrink-0">⭐ Senior</span>
+                        )}
+                      </div>
                       <div className={"text-[9px] flex items-center gap-1.5 " + cx.color}>
                         {isDropOff && <span>📦</span>}
                         <span>{cx.label}</span>
@@ -1220,13 +1225,28 @@ export default function Queue() {
                         <span className="text-ink-mute truncate">{svcName}</span>
                         <span className="text-ink-mute">·</span>
                         <span>{durMin}m{hasReal ? <span className="text-emerald-400 ml-0.5">✓</span> : ""}</span>
+                        {t.is_premium && (
+                          <>
+                            <span className="text-ink-mute">·</span>
+                            <span className="text-gold-soft">+${t.advisor_fee ?? 50} at counter</span>
+                          </>
+                        )}
                       </div>
                     </div>
-                    {assignedStaff ? (
-                      <span className="text-[9px] text-ink-mute shrink-0 border border-line px-1.5 py-0.5">{assignedStaff.display_name}</span>
-                    ) : (
-                      <span className="text-[9px] text-ink-mute shrink-0">Any</span>
-                    )}
+                    <div className="shrink-0 text-right flex flex-col items-end gap-1">
+                      {assignedStaff ? (
+                        <span className="text-[9px] text-ink-mute border border-line px-1.5 py-0.5">{assignedStaff.display_name}</span>
+                      ) : (
+                        <span className="text-[9px] text-ink-mute">Any</span>
+                      )}
+                      {/* Requested staff (different from assigned) */}
+                      {t.requested_advisor_id && t.requested_advisor_id !== t.staff_id && (() => {
+                        const req = staffList.find((s) => s.id === t.requested_advisor_id);
+                        return req ? (
+                          <span className="text-[9px] text-gold-soft/70">↳ wants {req.display_name}</span>
+                        ) : null;
+                      })()}
+                    </div>
                   </div>
                 );
               })
@@ -1265,11 +1285,16 @@ export default function Queue() {
                   ? pickBestStaff(svcName, enrichedStaffList)
                   : null;
                 return (
-                  <div key={t.id} className={"px-4 py-3 border-b border-line last:border-b-0 " + (!t.staff_id ? "bg-amber-950/10" : "")}>
+                  <div key={t.id} className={"px-4 py-3 border-b border-line last:border-b-0 " + (!t.staff_id ? "bg-amber-950/10" : "") + (t.is_premium ? " bg-[rgba(201,168,106,0.04)]" : "")}>
                     <div className="flex items-start gap-3">
                       <span className="font-display text-gold-soft text-sm w-10 shrink-0 mt-0.5">{t.token}</span>
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs text-ink truncate">{t.customer_name}</div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="text-xs text-ink truncate">{t.customer_name}</div>
+                          {t.is_premium && (
+                            <span className="text-[9px] text-gold-soft border border-gold/40 px-1 shrink-0">⭐ Senior</span>
+                          )}
+                        </div>
                         <div className={"text-[9px] flex items-center gap-1.5 " + cx.color}>
                           <span>{cx.label}</span>
                           <span className="text-ink-mute">·</span>
@@ -1277,6 +1302,12 @@ export default function Queue() {
                           <span className="text-ink-mute">·</span>
                           <span>{durMin}m</span>
                           {hasReal && <span className="text-emerald-400">(real · {durationStats[svcName].count} cases)</span>}
+                          {t.is_premium && (
+                            <>
+                              <span className="text-ink-mute">·</span>
+                              <span className="text-gold-soft">+${t.advisor_fee ?? 50} at counter</span>
+                            </>
+                          )}
                         </div>
                         {/* Immigration note */}
                         {(svcName.toLowerCase().includes("immig") || svcName.toLowerCase().includes("visa") || svcName.toLowerCase().includes("i-") || svcName.toLowerCase().includes("n-4")) && (
@@ -1293,12 +1324,19 @@ export default function Queue() {
                           </div>
                         )}
                       </div>
-                      <div className="shrink-0 text-right">
+                      <div className="shrink-0 text-right flex flex-col items-end gap-1">
                         {assignedStaff ? (
                           <span className="text-[9px] text-emerald-400 border border-emerald-800/50 px-1.5 py-0.5">{assignedStaff.display_name}</span>
                         ) : (
                           <span className="text-[9px] text-amber-400 border border-amber-800/50 px-1.5 py-0.5">Unassigned</span>
                         )}
+                        {/* Requested staff */}
+                        {t.requested_advisor_id && t.requested_advisor_id !== t.staff_id && (() => {
+                          const req = staffList.find((s) => s.id === t.requested_advisor_id);
+                          return req ? (
+                            <span className="text-[9px] text-gold-soft/70">↳ wants {req.display_name}</span>
+                          ) : null;
+                        })()}
                       </div>
                     </div>
                   </div>

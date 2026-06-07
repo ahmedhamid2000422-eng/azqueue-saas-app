@@ -198,6 +198,32 @@ function customerInsights(events = []) {
   };
 }
 
+// ── CSV export ────────────────────────────────────────────────────────
+
+function downloadCustomersCSV(customers, branch) {
+  if (!customers?.length) return;
+  const headers = ["Name", "Phone", "Email", "Tags", "VIP", "Last Visit", "Member Since"];
+  const rows = customers.map((c) => [
+    c.display_name ?? "",
+    c.phone ?? "",
+    c.email ?? "",
+    (c.tags ?? []).join("; "),
+    c.vip ? "Yes" : "No",
+    c.last_seen_at ? new Date(c.last_seen_at).toLocaleDateString() : "",
+    c.created_at   ? new Date(c.created_at).toLocaleDateString()   : "",
+  ]);
+  const csv = [headers, ...rows]
+    .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
+    .join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = `${branch?.name ?? "customers"}-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 // ── Inner component ───────────────────────────────────────────────────
 
 function CustomersInner() {
@@ -523,12 +549,21 @@ function CustomersInner() {
         <div className="p-4 border-b border-line">
           <div className="flex items-center justify-between mb-2">
             <div className="ovline text-[9px] text-gold-soft">Customers · {branch.name}</div>
-            <button
-              onClick={() => { setShowAddForm((x) => !x); setAddError(null); }}
-              className="text-[9px] tracking-[0.12em] uppercase border border-line px-2 py-0.5 text-ink-mute hover:border-gold-deep hover:text-gold-soft transition"
-            >
-              {showAddForm ? "✕ Cancel" : "+ Add"}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => downloadCustomersCSV(customers, branch)}
+                className="text-[9px] tracking-[0.12em] uppercase border border-line px-2 py-0.5 text-ink-mute hover:border-gold-deep hover:text-gold-soft transition"
+                title="Download all customers as CSV"
+              >
+                ↓ CSV
+              </button>
+              <button
+                onClick={() => { setShowAddForm((x) => !x); setAddError(null); }}
+                className="text-[9px] tracking-[0.12em] uppercase border border-line px-2 py-0.5 text-ink-mute hover:border-gold-deep hover:text-gold-soft transition"
+              >
+                {showAddForm ? "✕ Cancel" : "+ Add"}
+              </button>
+            </div>
           </div>
 
           {/* Add-customer form */}

@@ -222,6 +222,49 @@ export default function StaffQueue() {
     ? Math.floor((now - new Date(myCurrent.started_at)) / 1000)
     : 0;
 
+  // ── Clock-in screen — shown when staff haven't started their shift ──
+  if (myStatus === "off") {
+    const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    return (
+      <div className="atmosphere-hero min-h-[calc(100vh-72px)] flex items-center justify-center px-6">
+        <div className="relative corner-marks luxe-panel border border-line p-10 max-w-sm w-full text-center">
+          <span className="cm cm-tl" /><span className="cm cm-tr" /><span className="cm cm-bl" /><span className="cm cm-br" />
+
+          <div className="ovline text-[9px] text-ink-mute mb-6 tracking-widest">
+            {branch?.name ?? "Az Tax Services"}
+          </div>
+
+          <div className="font-display text-5xl font-light gold-text mb-1">{timeStr}</div>
+          <div className="text-[11px] text-ink-mute mb-8">
+            {now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}
+          </div>
+
+          <div className="rule-ornament mb-8 text-[8px]"><span>·</span></div>
+
+          <h2 className="font-display text-2xl font-light tracking-tightest text-ink mb-2">
+            Ready to start?
+          </h2>
+          <p className="text-ink-mute text-sm mb-8 leading-relaxed">
+            Starting your shift makes you visible to customers choosing who to see.
+          </p>
+
+          <Button
+            onClick={() => setStatus("active")}
+            disabled={busy}
+            size="lg"
+            className="w-full"
+          >
+            {busy ? "Starting…" : "Start shift →"}
+          </Button>
+
+          {error && (
+            <p className="text-[11px] text-[#d49185] mt-3">{error}</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   // Break overlay
   if (myStatus === "on_break") {
     const since = primary.status_since
@@ -286,6 +329,7 @@ export default function StaffQueue() {
               upNext={myUpNext}
               onPull={pullNext}
               onBreak={() => setStatus("on_break")}
+              onEndShift={endShift}
               onEscalate={escalateNext}
               disabled={busy || pauseStatus?.state === "paused"}
               completedToday={completedToday}
@@ -370,20 +414,19 @@ function ServingPanel({ ticket, elapsed, staffList, onComplete, onSkip, onPass, 
 }
 
 /* ── Idle panel ───────────────────────────────────────────────── */
-function IdlePanel({ upNext, onPull, onBreak, onEscalate, disabled, completedToday, status, setStatus }) {
+function IdlePanel({ upNext, onPull, onBreak, onEndShift, onEscalate, disabled, completedToday, status, setStatus }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-center gap-2 mb-1">
         {[
-          { id: "active",   label: "Ready",     color: "border-[#506b50] text-[#9bbd9b]" },
-          { id: "on_break", label: "On break",  color: "border-line text-ink-mute" },
-          { id: "off",      label: "Off shift", color: "border-line text-ink-mute" },
+          { id: "active",   label: "Ready",    color: "border-[#506b50] text-[#9bbd9b]", action: () => setStatus("active") },
+          { id: "on_break", label: "On break", color: "border-line text-ink-mute",        action: () => onBreak() },
         ].map((s) => {
           const active = status === s.id;
           return (
             <button
               key={s.id}
-              onClick={() => s.id === "on_break" ? onBreak() : setStatus(s.id)}
+              onClick={s.action}
               disabled={disabled}
               className={`px-3 py-1.5 border text-[10px] tracking-[0.18em] uppercase transition ${
                 active
@@ -396,6 +439,13 @@ function IdlePanel({ upNext, onPull, onBreak, onEscalate, disabled, completedTod
             </button>
           );
         })}
+        <button
+          onClick={onEndShift}
+          disabled={disabled}
+          className="px-3 py-1.5 border border-line text-[10px] tracking-[0.18em] uppercase transition text-ink-mute hover:border-[#b56b5f]/60 hover:text-[#d49185]"
+        >
+          End shift
+        </button>
       </div>
 
       <div className="relative corner-marks luxe-panel border border-line p-10 text-center">
@@ -429,6 +479,51 @@ function IdlePanel({ upNext, onPull, onBreak, onEscalate, disabled, completedTod
             <div className="grid grid-cols-2 gap-2">
               <Button variant="ghost" onClick={onEscalate} disabled={disabled || (upNext[0]?.priority ?? 0) > 0} className="w-full">
                 {(upNext[0]?.priority ?? 0) > 0 ? "★ priority set" : "Escalate"}
+              </Button>
+              <Button variant="ghost" onClick={onBreak} disabled={disabled} className="w-full">
+                Take a break
+              </Button>
+            </div>
+            {upNext.length > 1 && (
+              <div className="mt-6 pt-5 border-t border-line">
+                <div className="ovline text-[9px] mb-3 text-ink-mute">Then</div>
+                <div className="space-y-2">
+                  {upNext.slice(1, 4).map((t) => (
+                    <div key={t.id} className="grid grid-cols-[60px_1fr_auto] gap-3 items-center text-left">
+                      <span className="font-display text-gold-soft text-sm">{t.token}</span>
+                      <span className="text-xs text-ink-soft truncate">{t.customer_name}</span>
+                      <span className="text-[9px] text-ink-mute uppercase tracking-[0.18em]">
+                        {t.source === "book" ? "Book" : "Walk"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      <div className="grid grid-cols-3 gap-px bg-line border border-line">
+        <div className="bg-bg-elev p-3 text-center">
+          <div className="ovline text-[8px]">Served · today</div>
+          <div className="font-display text-base mt-1 gold-text-soft">{completedToday}</div>
+        </div>
+        <div className="bg-bg-elev p-3 text-center">
+          <div className="ovline text-[8px]">Queue ahead</div>
+          <div className="font-display text-base mt-1 gold-text-soft">{upNext.length}</div>
+        </div>
+        <div className="bg-bg-elev p-3 text-center">
+          <div className="ovline text-[8px]">Status</div>
+          <div className="font-display text-base mt-1 capitalize gold-text-soft">
+            {status === "on_break" ? "Break" : status}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+ext[0]?.priority ?? 0) > 0 ? "★ priority set" : "Escalate"}
               </Button>
               <Button variant="ghost" onClick={onBreak} disabled={disabled} className="w-full">
                 Take a break

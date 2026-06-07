@@ -633,6 +633,19 @@ function StaffTab({ branch }) {
     await supabase.from("staff").delete().eq("id", s.id);
     load();
   }
+  async function toggleAdvisor(s) {
+    const next = !s.is_senior_advisor;
+    await supabase.from("staff")
+      .update({ is_senior_advisor: next, advisor_fee: next ? (s.advisor_fee ?? 50) : s.advisor_fee })
+      .eq("id", s.id);
+    load();
+  }
+  async function updateAdvisorFee(s, fee) {
+    const parsed = parseFloat(fee);
+    if (isNaN(parsed) || parsed < 0) return;
+    await supabase.from("staff").update({ advisor_fee: parsed }).eq("id", s.id);
+    load();
+  }
 
   return (
     <div className="space-y-3">
@@ -642,27 +655,60 @@ function StaffTab({ branch }) {
           <div className="px-5 py-10 text-center text-ink-mute text-xs">No staff yet.</div>
         ) : (
           staff.map((s) => (
-            <div key={s.id} className="px-5 py-4 border-b border-line last:border-b-0 grid grid-cols-[1fr_100px_100px_80px] gap-3 items-center">
-              <div>
-                <div className="text-sm text-ink">{s.display_name}</div>
-                <div className="text-[10px] text-ink-mute mt-0.5">
-                  {s.user_id
-                    ? "linked · can sign in"
-                    : s.invite_email
-                      ? <>pending · <span className="text-gold-soft">{s.invite_email}</span></>
-                      : "pending"}
+            <div key={s.id} className="px-5 py-4 border-b border-line last:border-b-0">
+              <div className="grid grid-cols-[1fr_100px_100px_80px] gap-3 items-center">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <div className="text-sm text-ink">{s.display_name}</div>
+                    {s.is_senior_advisor && (
+                      <span className="text-[9px] text-gold-soft border border-gold/40 px-1">⭐ Senior</span>
+                    )}
+                  </div>
+                  <div className="text-[10px] text-ink-mute mt-0.5">
+                    {s.user_id
+                      ? "linked · can sign in"
+                      : s.invite_email
+                        ? <>pending · <span className="text-gold-soft">{s.invite_email}</span></>
+                        : "pending"}
+                  </div>
                 </div>
+                <RoleSelect value={s.role} onChange={(v) => changeRole(s, v)} />
+                <span className={`text-[9px] uppercase tracking-[0.18em] ${
+                  s.status === "serving" ? "text-gold-soft" :
+                  s.status === "active" ? "text-[#9bbd9b]" :
+                  s.status === "on_break" ? "text-[#74b9e8]" :
+                  "text-ink-mute"
+                }`}>
+                  {s.status ?? "off"}
+                </span>
+                <Button variant="ghost" size="sm" onClick={() => remove(s)}>Remove</Button>
               </div>
-              <RoleSelect value={s.role} onChange={(v) => changeRole(s, v)} />
-              <span className={`text-[9px] uppercase tracking-[0.18em] ${
-                s.status === "serving" ? "text-gold-soft" :
-                s.status === "active" ? "text-[#9bbd9b]" :
-                s.status === "on_break" ? "text-[#74b9e8]" :
-                "text-ink-mute"
-              }`}>
-                {s.status ?? "off"}
-              </span>
-              <Button variant="ghost" size="sm" onClick={() => remove(s)}>Remove</Button>
+              {/* Senior Advisor controls */}
+              <div className="mt-2.5 flex items-center gap-4 pl-0">
+                <button
+                  onClick={() => toggleAdvisor(s)}
+                  className="flex items-center gap-2 text-[10px] text-ink-mute hover:text-ink transition"
+                >
+                  <div className={`relative w-8 h-4 rounded-full transition-colors ${s.is_senior_advisor ? "bg-gold" : "bg-line"}`}>
+                    <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-[#141410] shadow transition-transform ${s.is_senior_advisor ? "translate-x-4" : "translate-x-0.5"}`} />
+                  </div>
+                  <span>Senior Advisor</span>
+                </button>
+                {s.is_senior_advisor && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-ink-mute">Fee $</span>
+                    <input
+                      type="number"
+                      defaultValue={s.advisor_fee ?? 50}
+                      min="0"
+                      step="5"
+                      onBlur={(e) => updateAdvisorFee(s, e.target.value)}
+                      className="w-16 bg-bg-elev border border-line focus:border-gold-deep outline-none px-2 py-0.5 text-xs text-ink"
+                    />
+                    <span className="text-[10px] text-ink-mute">at counter</span>
+                  </div>
+                )}
+              </div>
             </div>
           ))
         )}

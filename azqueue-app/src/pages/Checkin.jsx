@@ -6,7 +6,7 @@ import { useCheckin } from "../hooks/useCheckin";
  * Route: /checkin/:branchId
  *
  * Three screens shown one at a time:
- *   1. Service picker
+ *   1. Service picker  →  Staff picker (optional)
  *   2. Name + phone form
  *   3. Confirmation (token + position)
  */
@@ -14,6 +14,7 @@ export default function Checkin() {
   const {
     branch,
     services,
+    staffMembers,
     loading,
     submitting,
     error,
@@ -23,27 +24,27 @@ export default function Checkin() {
     submit,
   } = useCheckin();
 
-  const [screen,    setScreen]    = useState(1); // 1 | 2 | 3
-  const [serviceId, setServiceId] = useState(null);
-  const [name,      setName]      = useState("");
-  const [phone,     setPhone]     = useState("");
+  const [screen,           setScreen]           = useState(1); // 1 | 2 | 3
+  const [serviceId,        setServiceId]        = useState(null);
+  const [preferredStaffId, setPreferredStaffId] = useState(null); // null = anyone
+  const [name,             setName]             = useState("");
+  const [phone,            setPhone]            = useState("");
 
   const selectedService = services.find((s) => s.id === serviceId);
+  const preferredStaff  = staffMembers.find((s) => s.id === preferredStaffId) ?? null;
+  const isSeniorPick    = !!preferredStaff?.is_senior_advisor;
 
   /* ── Handle form submit ───────────────────────────────────── */
   async function handleSubmit(e) {
     e.preventDefault();
     if (!name.trim() || !serviceId) return;
-    await submit(name, phone, serviceId);
-    // useCheckin sets submitted=true on success; we watch that below
+    await submit(name, phone, serviceId, preferredStaffId);
   }
 
   // Move to screen 3 when submission succeeds
-  if (submitted && screen !== 3) {
-    setScreen(3);
-  }
+  if (submitted && screen !== 3) setScreen(3);
 
-  /* ── Loading state ────────────────────────────────────────── */
+  /* ── Loading ──────────────────────────────────────────────── */
   if (loading) {
     return (
       <Shell>
@@ -70,13 +71,14 @@ export default function Checkin() {
     );
   }
 
-  /* ── Screen 1: Service picker ─────────────────────────────── */
+  /* ── Screen 1: Service + Staff picker ────────────────────── */
   if (screen === 1) {
     return (
       <Shell>
         <div className="min-h-screen flex items-center justify-center px-6 py-12">
           <div className="w-full max-w-sm">
-            {/* Branch name */}
+
+            {/* Branch logo + name */}
             <div className="text-center mb-10">
               <div className="inline-flex items-center justify-center w-9 h-9 bg-gold rounded-sm mb-5 shadow-[0_0_24px_rgba(201,168,106,0.3)]">
                 <span className="font-display text-[#141410] text-sm font-semibold">A</span>
@@ -87,7 +89,7 @@ export default function Checkin() {
               <p className="text-ink-soft text-sm">What brings you in today?</p>
             </div>
 
-            {/* Service grid */}
+            {/* ── Service grid ─────────────────────────────── */}
             {services.length === 0 ? (
               <div className="text-center text-ink-mute text-sm py-8">
                 No services available right now.
@@ -109,11 +111,109 @@ export default function Checkin() {
                       <div className="font-display text-base font-light leading-snug">
                         {svc.name}
                       </div>
-                      {svc.description && (
-                        <div className="text-[10px] text-ink-mute mt-1 leading-relaxed line-clamp-2">
-                          {svc.description}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* ── Staff picker — shown once a service is chosen ── */}
+            {serviceId && staffMembers.length > 0 && (
+              <div className="mb-8">
+                <div className="ovline text-[9px] text-ink-mute mb-3">
+                  Who would you like to see?
+                </div>
+
+                {/* "Next available" option */}
+                <button
+                  onClick={() => setPreferredStaffId(null)}
+                  className={`w-full p-3.5 border text-left transition mb-2 flex items-center gap-3 ${
+                    preferredStaffId === null
+                      ? "border-gold bg-[rgba(201,168,106,0.08)]"
+                      : "border-line hover:border-[#3a3a3f]"
+                  }`}
+                >
+                  <div className={`w-4 h-4 rounded-sm border flex items-center justify-center shrink-0 ${
+                    preferredStaffId === null ? "border-gold bg-gold" : "border-line"
+                  }`}>
+                    {preferredStaffId === null && (
+                      <span className="text-[#141410] text-[10px] font-bold">✓</span>
+                    )}
+                  </div>
+                  <div>
+                    <div className={`font-display text-sm font-light ${
+                      preferredStaffId === null ? "text-gold-soft" : "text-ink"
+                    }`}>
+                      Next available
+                    </div>
+                    <div className="text-[10px] text-ink-mute mt-0.5">
+                      Fastest option — whoever's free first
+                    </div>
+                  </div>
+                </button>
+
+                {/* Individual staff cards */}
+                {staffMembers.map((s) => {
+                  const picked = preferredStaffId === s.id;
+                  const statusLabel = s.status === "serving"
+                    ? "With client"
+                    : s.status === "on_break"
+                    ? "On break"
+                    : "Available";
+                  const statusColor = s.status === "serving"
+                    ? "text-gold-soft"
+                    : s.status === "on_break"
+                    ? "text-[#74b9e8]"
+                    : "text-[#9bbd9b]";
+                  const waitLabel = s.estWait === 0 ? "Ready now" : `~${s.estWait} min wait`;
+
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => setPreferredStaffId(picked ? null : s.id)}
+                      className={`w-full p-3.5 border text-left transition mb-2 flex items-center gap-3 ${
+                        picked
+                          ? "border-gold bg-[rgba(201,168,106,0.08)]"
+                          : "border-line hover:border-[#3a3a3f]"
+                      }`}
+                    >
+                      {/* Checkbox */}
+                      <div className={`w-4 h-4 rounded-sm border flex items-center justify-center shrink-0 ${
+                        picked ? "border-gold bg-gold" : "border-line"
+                      }`}>
+                        {picked && (
+                          <span className="text-[#141410] text-[10px] font-bold">✓</span>
+                        )}
+                      </div>
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={`font-display text-sm font-light ${
+                            picked ? "text-gold-soft" : "text-ink"
+                          }`}>
+                            {s.display_name}
+                          </span>
+                          {s.is_senior_advisor && (
+                            <span className="text-[9px] text-gold-soft border border-gold/40 px-1 shrink-0">
+                              ⭐ Senior
+                            </span>
+                          )}
                         </div>
-                      )}
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <span className={`text-[10px] ${statusColor}`}>{statusLabel}</span>
+                          <span className="text-ink-mute text-[10px]">·</span>
+                          <span className="text-[10px] text-ink-mute">{waitLabel}</span>
+                          {s.is_senior_advisor && (
+                            <>
+                              <span className="text-ink-mute text-[10px]">·</span>
+                              <span className="text-[10px] text-gold-soft">
+                                +${s.advisor_fee ?? 50} at counter
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
                     </button>
                   );
                 })}
@@ -140,7 +240,8 @@ export default function Checkin() {
       <Shell>
         <div className="min-h-screen flex items-center justify-center px-6 py-12">
           <div className="w-full max-w-sm">
-            {/* Back arrow */}
+
+            {/* Back */}
             <button
               onClick={() => setScreen(1)}
               className="flex items-center gap-2 text-ink-mute text-xs mb-10 hover:text-ink transition"
@@ -152,9 +253,15 @@ export default function Checkin() {
               <h2 className="font-display text-2xl font-light tracking-tightest text-ink mb-1">
                 Your details
               </h2>
-              <p className="text-ink-mute text-xs">
-                {selectedService?.name}
-              </p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-ink-mute text-xs">{selectedService?.name}</p>
+                {preferredStaff && (
+                  <>
+                    <span className="text-ink-mute text-xs">·</span>
+                    <p className="text-xs text-gold-soft">{preferredStaff.display_name}</p>
+                  </>
+                )}
+              </div>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -191,6 +298,18 @@ export default function Checkin() {
                 />
               </div>
 
+              {/* Senior advisor fee notice */}
+              {isSeniorPick && (
+                <div className="border border-gold/30 bg-[rgba(201,168,106,0.06)] px-4 py-3">
+                  <div className="text-[11px] text-gold-soft font-medium mb-0.5">
+                    ⭐ Senior Advisor — {preferredStaff.display_name}
+                  </div>
+                  <div className="text-[10px] text-ink-mute">
+                    An additional ${preferredStaff.advisor_fee ?? 50} consultation fee applies — payable at the counter after your session.
+                  </div>
+                </div>
+              )}
+
               {/* Error */}
               {error && (
                 <div className="text-[11px] text-[#d49185] border border-[#b56b5f]/30 bg-[#b56b5f]/08 px-3 py-2">
@@ -220,6 +339,7 @@ export default function Checkin() {
     <Shell>
       <div className="min-h-screen flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm text-center">
+
           {/* Token */}
           <div
             className="font-display font-light gold-text leading-none mb-6"
@@ -227,6 +347,17 @@ export default function Checkin() {
           >
             {token}
           </div>
+
+          {/* Staff preference badge */}
+          {preferredStaff && (
+            <div className="inline-flex items-center gap-2 border border-gold/40 bg-[rgba(201,168,106,0.08)] px-3 py-1.5 mb-4">
+              {isSeniorPick && <span className="text-gold-soft text-xs">⭐</span>}
+              <span className="text-gold-soft text-xs font-medium">{preferredStaff.display_name}</span>
+              {isSeniorPick && (
+                <span className="text-ink-mute text-[10px]">+${preferredStaff.advisor_fee ?? 50} at counter</span>
+              )}
+            </div>
+          )}
 
           {/* Position + wait */}
           <div className="text-ink text-lg mb-1">
@@ -259,6 +390,7 @@ export default function Checkin() {
             </div>
             <span className="font-display text-xs text-ink-mute">{branch.name}</span>
           </div>
+
         </div>
       </div>
     </Shell>

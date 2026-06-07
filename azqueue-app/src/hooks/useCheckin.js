@@ -6,38 +6,37 @@ import { sendCheckinConfirmation } from "../lib/notify";
 /**
  * useCheckin — public hook for the customer check-in flow.
  *
- * Fetches branch + services from Supabase (no auth required — public read).
+ * Fetches branch + services + all active staff (with live queue depths).
  * Handles token generation and ticket insertion.
  *
- * Token format: A001, A002, … A999
- *   - Queries today's tickets for this branch WHERE token LIKE 'A%'
- *   - Takes the last one by created_at, increments the number
- *   - Falls back to A001 if none exist today
- *
  * Returns:
- *   branch      — { id, name, city } or null
- *   services    — [{ id, name, description }]
- *   loading     — true during initial fetch
- *   submitting  — true while ticket is being inserted
- *   error       — string or null
- *   submitted   — true once ticket inserted successfully
- *   token       — e.g. "A014"
- *   position    — number of waiting tickets ahead of this one
- *   submit(name, phone, serviceId) — inserts ticket, sets submitted=true
+ *   branch        — { id, name, city } or null
+ *   services      — [{ id, name }]
+ *   staffMembers  — active staff with live queue info:
+ *                   [{ id, display_name, status, is_senior_advisor,
+ *                      advisor_fee, queueDepth, estWait }]
+ *   loading       — true during initial fetch
+ *   submitting    — true while ticket is being inserted
+ *   error         — string or null
+ *   submitted     — true once ticket inserted successfully
+ *   token         — e.g. "A014"
+ *   position      — number of waiting tickets ahead of this one
+ *   submit(name, phone, serviceId, preferredStaffId) — inserts ticket
  */
 export function useCheckin() {
   const { branchId } = useParams();
 
-  const [branch,     setBranch]     = useState(null);
-  const [services,   setServices]   = useState([]);
-  const [loading,    setLoading]    = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [error,      setError]      = useState(null);
-  const [submitted,  setSubmitted]  = useState(false);
-  const [token,      setToken]      = useState(null);
-  const [position,   setPosition]   = useState(null);
+  const [branch,       setBranch]       = useState(null);
+  const [services,     setServices]     = useState([]);
+  const [staffMembers, setStaffMembers] = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [submitting,   setSubmitting]   = useState(false);
+  const [error,        setError]        = useState(null);
+  const [submitted,    setSubmitted]    = useState(false);
+  const [token,        setToken]        = useState(null);
+  const [position,     setPosition]     = useState(null);
 
-  /* ── Initial fetch: branch + services ─────────────────────── */
+  /* ── Initial fetch ─────────────────────────────────────────── */
   useEffect(() => {
     if (!branchId) return;
     let cancelled = false;
@@ -46,19 +45,36 @@ export function useCheckin() {
       setLoading(true);
       setError(null);
 
-      const [{ data: branchRow, error: bErr }, { data: svcRows, error: sErr }] =
-        await Promise.all([
-          supabase
-            .from("branches")
-            .select("id, name, city")
-            .eq("id", branchId)
-            .maybeSingle(),
-          supabase
-            .from("services")
-            .select("id, name")
-            .eq("branch_id", branchId)
-            .order("name"),
-        ]);
+      const [
+        { data: branchRow, error: bErr },
+        { data: svcRows,   error: sErr },
+        { data: staffRows },
+        { data: ticketRows },
+      ] = await Promise.all([
+        supabase
+          .from("branches")
+          .select("id, name, city")
+          .eq("id", branchId)
+          .maybeSingle(),
+        supabase
+          .from("services")
+          .select("id, name")
+          .eq("branch_id", branchId)
+          .order("name"),
+        // All staff who are on duty today (not "off")
+        supabase
+          .from("staff")
+          .select("id, display_name, status, is_senior_advisor, advisor_fee")
+          .eq("branch_id", branchId)
+          .in("status", ["active", "serving", "on_break"])
+          .order("display_name"),
+        // Live ticket counts per staff member
+        supabase
+          .from("tickets")
+          .select("staff_id")
+          .eq("branch_id", branchId)
+          .in("status", ["waiting", "serving"]),
+      ]);
 
       if (cancelled) return;
 
@@ -73,8 +89,24 @@ export function useCheckin() {
         return;
       }
 
+      // Build per-staff queue depth map
+      const depthMap = {};
+      for (const t of ticketRows ?? []) {
+        if (t.staff_id) depthMap[t.staff_id] = (depthMap[t.staff_id] ?? 0) + 1;
+      }
+
+      const enriched = (staffRows ?? []).map((s) => {
+        const depth = depthMap[s.id] ?? 0;
+        return {
+          ...s,
+          queueDepth: depth,
+          estWait:    depth * 10, // ~10 min per ticket
+        };
+      });
+
       setBranch(branchRow);
       setServices(svcRows ?? []);
+      setStaffMembers(enriched);
       setLoading(false);
     })();
 
@@ -82,7 +114,7 @@ export function useCheckin() {
   }, [branchId]);
 
   /* ── submit ────────────────────────────────────────────────── */
-  async function submit(name, phone, serviceId) {
+  async function submit(name, phone, serviceId, preferredStaffId = null) {
     if (!branchId || !name.trim() || !serviceId) return;
     setSubmitting(true);
     setError(null);
@@ -109,25 +141,35 @@ export function useCheckin() {
       }
       const newToken = "A" + String(nextNum).padStart(3, "0");
 
-      /* 2. Count current waiting tickets (position estimate) ── */
+      /* 2. Count waiting tickets for position estimate ───────── */
       const { count: waitingCount } = await supabase
         .from("tickets")
         .select("id", { count: "exact", head: true })
         .eq("branch_id", branchId)
         .eq("status", "waiting");
 
-      /* 3. Insert ticket ────────────────────────────────────── */
+      /* 3. Resolve premium / advisor fee ───────────────────── */
+      const preferredStaff = preferredStaffId
+        ? staffMembers.find((s) => s.id === preferredStaffId)
+        : null;
+      const isSenior   = !!preferredStaff?.is_senior_advisor;
+      const advisorFee = isSenior ? (preferredStaff.advisor_fee ?? 50) : null;
+
+      /* 4. Insert ticket ────────────────────────────────────── */
       const { error: insertErr } = await supabase
         .from("tickets")
         .insert({
-          branch_id:     branchId,
-          service_id:    serviceId,
-          token:         newToken,
-          source:        "walk",
-          customer_name: name.trim(),
-          customer_phone: phone?.trim() || null,
-          status:        "waiting",
-          priority:      1,
+          branch_id:            branchId,
+          service_id:           serviceId,
+          token:                newToken,
+          source:               "walk",
+          customer_name:        name.trim(),
+          customer_phone:       phone?.trim() || null,
+          status:               "waiting",
+          priority:             isSenior ? 2 : 1,
+          is_premium:           isSenior,
+          requested_advisor_id: preferredStaffId ?? null,
+          advisor_fee:          advisorFee,
         });
 
       if (insertErr) {
@@ -138,7 +180,7 @@ export function useCheckin() {
       }
 
       setToken(newToken);
-      setPosition(waitingCount ?? 0); // tickets ahead (before this insert)
+      setPosition(waitingCount ?? 0);
       setSubmitted(true);
 
       // Fire SMS confirmation — non-blocking, never throws
@@ -162,6 +204,9 @@ export function useCheckin() {
   return {
     branch,
     services,
+    staffMembers,
+    // keep seniorAdvisors as a derived slice for backward compat if needed
+    seniorAdvisors: staffMembers.filter((s) => s.is_senior_advisor),
     loading,
     submitting,
     error,
