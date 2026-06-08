@@ -128,3 +128,23 @@ export async function sendWaitUpdate(phone, name, position) {
     `Az Tax Services`;
   await sendSms(phone, body);
 }
+
+/**
+ * Gym mode — sent ~2-3 hours before a booked class to cut down no-shows.
+ * Asks the student to reply/confirm so the instructor can plan headcount.
+ *
+ * @param {string} phone      Student phone
+ * @param {string} name       Student name
+ * @param {string} className  Class/service name e.g. "Beginner Striking"
+ * @param {Date|string} when  Class start time
+ * @param {string} branchName Gym/branch display name
+ */
+export async function sendClassReminder(phone, name, className, when, branchName) {
+  if (!phone) return;
+  const dt = new Date(when);
+  const time = dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const body =
+    `Hi ${name}, friendly reminder — ${className} at ${branchName} starts at ${time} today.\n` +
+    `Reply YES to confirm you're coming (or let us know if you need to skip — saves your spot for someone else).`;
+  await sendSms(phone, body);
+}

@@ -74,10 +74,22 @@ export default function Bookings() {
       return setError("Fill in name, phone, service and time.");
     }
     setBusy(true);
+
+    // Resolve/create the customer record up front so we can link the booking
+    // to it directly — this is what powers gym-mode student tracking
+    // (sessions attended, no-show strikes) on the Classes roster.
+    let linkedCustomer = null;
+    if (name.trim() || phone.trim()) {
+      try {
+        linkedCustomer = await findOrCreateCustomer(branch.id, { name: name.trim(), phone: phone.trim() });
+      } catch { /* non-fatal — booking still proceeds without a linked profile */ }
+    }
+
     const { error } = await supabase.from("bookings").insert({
       branch_id: branch.id,
       service_id: serviceId,
       staff_id: staffId || null,
+      customer_id: linkedCustomer?.id ?? null,
       customer_name: name.trim(),
       customer_phone: phone.trim(),
       scheduled_at: new Date(scheduledAt).toISOString(),
@@ -86,10 +98,10 @@ export default function Bookings() {
     setBusy(false);
     if (error) return setError(error.message);
 
-    // Non-blocking: create/update customer profile, send checklist, generate persona
+    // Non-blocking: generate persona, send checklist
     const svcName = services.find((s) => s.id === serviceId)?.name ?? "General";
-    if (name.trim() || phone.trim()) {
-      findOrCreateCustomer(branch.id, { name: name.trim(), phone: phone.trim() })
+    if (linkedCustomer) {
+      Promise.resolve(linkedCustomer)
         .then((customer) => {
           // Generate persona so staff have a profile ready when the customer arrives
           generatePersona(customer.id, branch.id).catch(() => {});

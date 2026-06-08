@@ -30,6 +30,7 @@ export default function BookingPage() {
 
   // form state
   const [serviceId, setServiceId] = useState(null);
+  const [levelFilter, setLevelFilter] = useState("all"); // gym mode only
   const [dayOffset, setDayOffset] = useState(0);
   const [slot, setSlot] = useState(null);
   const [name, setName] = useState("");
@@ -47,14 +48,14 @@ export default function BookingPage() {
     let cancelled = false;
     (async () => {
       const { data: b, error: bErr } = await supabase
-        .from("branches").select("id, slug, name, city, timezone, islamic_mode")
+        .from("branches").select("id, slug, name, city, timezone, islamic_mode, business_type, booking_faq")
         .eq("slug", slug).single();
       if (bErr || !b) {
         if (!cancelled) { setLoadError(t("checkin.invalid")); setLoading(false); }
         return;
       }
       const { data: svcs } = await supabase
-        .from("services").select("id, name, duration_min")
+        .from("services").select("id, name, duration_min, level")
         .eq("branch_id", b.id).eq("active", true).order("name");
       if (!cancelled) {
         setBranch(b);
@@ -119,6 +120,12 @@ export default function BookingPage() {
 
   if (confirmed) return <Confirmed branch={branch} booking={confirmed} services={services} />;
 
+  const isGym = branch.business_type === "gym";
+  const visibleServices = isGym && levelFilter !== "all"
+    ? services.filter((s) => (s.level ?? "all_levels") === levelFilter)
+    : services;
+  const faqItems = Array.isArray(branch.booking_faq) ? branch.booking_faq : [];
+
   return (
     <Shell>
       {/* Branch header */}
@@ -132,15 +139,39 @@ export default function BookingPage() {
       <form onSubmit={submit} className="mt-8 space-y-6">
         {/* Service */}
         <div>
-          <div className="ovline mb-3">{t("booking.pick_service")}</div>
+          <div className="ovline mb-3">{isGym ? "Pick a class" : t("booking.pick_service")}</div>
+
+          {/* Level filter — gym mode only, and only when classes have levels set */}
+          {isGym && services.some((s) => s.level) && (
+            <div className="flex items-center gap-1.5 flex-wrap mb-3">
+              {LEVEL_FILTERS.map((l) => {
+                const active = levelFilter === l.id;
+                return (
+                  <button
+                    key={l.id}
+                    type="button"
+                    onClick={() => { setLevelFilter(l.id); setServiceId(null); }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 border text-[10px] tracking-wide transition ${
+                      active ? "border-gold bg-[rgba(201,168,106,0.08)] text-gold-soft" : "border-line text-ink-soft hover:border-[#3a3a3f]"
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${l.dot}`} />
+                    {l.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           <div className="space-y-px bg-line border border-line">
-            {services.length === 0 && (
+            {visibleServices.length === 0 && (
               <div className="bg-bg-elev p-4 text-[11px] text-ink-mute italic">
-                {t("checkin.no_services")}
+                {isGym ? "No classes at this level right now — try a different filter." : t("checkin.no_services")}
               </div>
             )}
-            {services.map((s) => {
+            {visibleServices.map((s) => {
               const active = serviceId === s.id;
+              const lvl = isGym ? levelMeta(s.level) : null;
               return (
                 <button
                   key={s.id}
@@ -150,11 +181,17 @@ export default function BookingPage() {
                     active ? "bg-[rgba(201,168,106,0.08)]" : "bg-bg-elev hover:bg-[rgba(201,168,106,0.04)]"
                   }`}
                 >
-                  <span className="flex items-center gap-3">
-                    <span className={`w-3 h-3 border ${active ? "border-gold bg-gold" : "border-line-2"} rounded-full`} />
-                    <span className={`text-sm ${active ? "text-ink" : "text-ink-soft"}`}>{s.name}</span>
+                  <span className="flex items-center gap-3 min-w-0">
+                    <span className={`w-3 h-3 border ${active ? "border-gold bg-gold" : "border-line-2"} rounded-full shrink-0`} />
+                    <span className={`text-sm truncate ${active ? "text-ink" : "text-ink-soft"}`}>{s.name}</span>
+                    {lvl && (
+                      <span className="flex items-center gap-1 text-[9px] text-ink-mute border border-line px-1.5 py-0.5 shrink-0">
+                        <span className={`w-1.5 h-1.5 rounded-full ${lvl.dot}`} />
+                        {lvl.label}
+                      </span>
+                    )}
                   </span>
-                  <span className="text-[10px] text-ink-mute font-mono">~{s.duration_min}m</span>
+                  <span className="text-[10px] text-ink-mute font-mono shrink-0 ml-2">~{s.duration_min}m</span>
                 </button>
               );
             })}
@@ -235,7 +272,40 @@ export default function BookingPage() {
           </>
         )}
       </form>
+
+      {/* FAQ — owner-editable, replaces ad-hoc WhatsApp Q&A */}
+      {faqItems.length > 0 && (
+        <div className="mt-10">
+          <div className="ovline mb-3">Good to know</div>
+          <div className="space-y-px bg-line border border-line">
+            {faqItems.map((item, i) => (
+              <FaqItem key={i} q={item.q} a={item.a} />
+            ))}
+          </div>
+        </div>
+      )}
     </Shell>
+  );
+}
+
+/* ── FAQ accordion item ───────────────────────────────────────────── */
+function FaqItem({ q, a }) {
+  const [open, setOpen] = useState(false);
+  if (!q) return null;
+  return (
+    <div className="bg-bg-elev">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full text-left px-4 py-3 flex items-center justify-between gap-3 hover:bg-[rgba(201,168,106,0.04)] transition"
+      >
+        <span className="text-sm text-ink-soft">{q}</span>
+        <span className={`text-ink-mute text-xs shrink-0 transition-transform ${open ? "rotate-45" : ""}`}>+</span>
+      </button>
+      {open && a && (
+        <div className="px-4 pb-3 text-[12px] text-ink-mute leading-relaxed">{a}</div>
+      )}
+    </div>
   );
 }
 
@@ -287,6 +357,18 @@ function Confirmed({ branch, booking, services }) {
 
 /* ── Helpers ───────────────────────────────────────────────────────── */
 function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
+
+// Gym-mode class levels — mirrors src/modes/business/Classes.jsx
+const LEVEL_FILTERS = [
+  { id: "all",          label: "All levels",   dot: "bg-ink-mute" },
+  { id: "beginner",     label: "Beginner",     dot: "bg-[#9bbd9b]" },
+  { id: "advanced",     label: "Advanced",     dot: "bg-[#d49185]" },
+  { id: "conditioning", label: "Conditioning", dot: "bg-[#74b9e8]" },
+  { id: "all_levels",   label: "Open level",   dot: "bg-gold" },
+];
+function levelMeta(level) {
+  return LEVEL_FILTERS.find((l) => l.id === (level ?? "all_levels")) ?? { label: level, dot: "bg-ink-mute" };
+}
 
 function Field({ label, value, onChange, placeholder, type = "text" }) {
   return (

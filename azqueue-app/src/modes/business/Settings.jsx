@@ -347,7 +347,116 @@ function GeneralTab({ branch, reload }) {
           </div>
         </div>
       </Card>
+
+      {branch.business_type === "gym" && (
+        <BookingFaqEditor branch={branch} reload={reload} />
+      )}
     </div>
+  );
+}
+
+/* ── Booking-page FAQ editor (gym mode) ───────────────────────────── */
+function BookingFaqEditor({ branch, reload }) {
+  const [items, setItems] = useState(() =>
+    Array.isArray(branch.booking_faq) && branch.booking_faq.length
+      ? branch.booking_faq
+      : [{ q: "", a: "" }]
+  );
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    setItems(
+      Array.isArray(branch.booking_faq) && branch.booking_faq.length
+        ? branch.booking_faq
+        : [{ q: "", a: "" }]
+    );
+  }, [branch?.id]);
+
+  function update(i, field, value) {
+    setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, [field]: value } : it)));
+  }
+  function addItem() {
+    setItems((prev) => [...prev, { q: "", a: "" }]);
+  }
+  function removeItem(i) {
+    setItems((prev) => prev.filter((_, idx) => idx !== i));
+  }
+
+  async function save() {
+    setBusy(true);
+    setSaved(false);
+    const cleaned = items
+      .map((it) => ({ q: (it.q ?? "").trim(), a: (it.a ?? "").trim() }))
+      .filter((it) => it.q);
+    await supabase.from("branches").update({ booking_faq: cleaned }).eq("id", branch.id);
+    await reload();
+    setBusy(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }
+
+  return (
+    <Card luxe className="p-7">
+      <div className="mb-4">
+        <div className="ovline text-[9px] text-gold-soft mb-1">Booking page</div>
+        <h3 className="font-display text-lg font-light tracking-tight text-ink">
+          Frequently asked questions
+        </h3>
+        <p className="text-xs text-ink-soft mt-1">
+          Answer the questions students keep asking over WhatsApp — pricing, what to bring, walk-in policy — right on
+          your booking page so they don't have to message you.
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        {items.map((it, i) => (
+          <div key={i} className="border border-line p-3.5 space-y-2.5">
+            <div className="flex items-start gap-2">
+              <div className="flex-1">
+                <div className="ovline text-[8px] mb-1">Question</div>
+                <input
+                  value={it.q}
+                  onChange={(e) => update(i, "q", e.target.value)}
+                  placeholder="e.g. Do I need to bring my own gloves?"
+                  className="w-full bg-bg-elev border border-line focus:border-gold-deep outline-none text-sm px-3 py-2 transition text-ink placeholder:text-ink-mute"
+                />
+              </div>
+              <button
+                onClick={() => removeItem(i)}
+                className="mt-5 text-[10px] text-ink-mute hover:text-[#d49185] transition px-1"
+                title="Remove"
+              >
+                ✕
+              </button>
+            </div>
+            <div>
+              <div className="ovline text-[8px] mb-1">Answer</div>
+              <textarea
+                value={it.a}
+                onChange={(e) => update(i, "a", e.target.value)}
+                placeholder="e.g. We have loaner gloves for your first two sessions — after that, bring your own 12-14oz pair."
+                rows={2}
+                className="w-full bg-bg-elev border border-line focus:border-gold-deep outline-none text-sm px-3 py-2 transition text-ink placeholder:text-ink-mute resize-none"
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <button
+        onClick={addItem}
+        className="mt-3 text-[10px] tracking-wide uppercase text-ink-mute hover:text-gold-soft transition border border-line hover:border-gold-deep px-3 py-1.5"
+      >
+        + Add question
+      </button>
+
+      <div className="rule-ornament my-5 text-[8px]"><span>·</span></div>
+      <div className="flex gap-3 items-center">
+        <Button onClick={save} disabled={busy}>{busy ? "Saving…" : "Save FAQ"}</Button>
+        {saved && <span className="text-[10px] text-[#9bbd9b]">Saved.</span>}
+      </div>
+    </Card>
   );
 }
 
@@ -504,10 +613,20 @@ function DeleteBranchButton({ branch, reload, disabled }) {
 }
 
 /* ── SERVICES (per-branch CRUD) ────────────────────────────────────── */
+const SERVICE_LEVELS = [
+  { id: "",             label: "No level" },
+  { id: "beginner",     label: "Beginner" },
+  { id: "advanced",     label: "Advanced" },
+  { id: "conditioning", label: "Conditioning" },
+  { id: "all_levels",   label: "Open level" },
+];
+
 function ServicesTab({ branch }) {
   const [services, setServices] = useState([]);
   const [name, setName] = useState("");
   const [duration, setDuration] = useState("20");
+  const [level, setLevel] = useState("");
+  const isGym = branch?.business_type === "gym";
 
   async function load() {
     if (!branch?.id) return;
@@ -528,8 +647,14 @@ function ServicesTab({ branch }) {
       branch_id: branch.id,
       name: name.trim(),
       duration_min: parseInt(duration, 10) || 20,
+      level: isGym ? (level || null) : null,
     });
-    setName(""); setDuration("20");
+    setName(""); setDuration("20"); setLevel("");
+    load();
+  }
+
+  async function setServiceLevel(svc, lvl) {
+    await supabase.from("services").update({ level: lvl || null }).eq("id", svc.id);
     load();
   }
 
@@ -547,16 +672,31 @@ function ServicesTab({ branch }) {
     <div className="space-y-3">
       <Card luxe>
         <CardHeader
-          title="Services"
-          subtitle={`What ${branch.name} offers — customers pick from this list at check-in`}
+          title={isGym ? "Class types" : "Services"}
+          subtitle={isGym
+            ? `What ${branch.name} offers — students filter and pick from this list when booking`
+            : `What ${branch.name} offers — customers pick from this list at check-in`}
           right={<span className="ovline text-[9px]">{services.length} total</span>}
         />
         {services.length === 0 ? (
           <div className="px-5 py-10 text-center text-ink-mute text-xs">No services yet.</div>
         ) : (
           services.map((s) => (
-            <div key={s.id} className="px-5 py-4 border-b border-line last:border-b-0 grid grid-cols-[1fr_80px_80px_80px] gap-3 items-center">
+            <div key={s.id} className={`px-5 py-4 border-b border-line last:border-b-0 grid gap-3 items-center ${
+              isGym ? "grid-cols-[1fr_140px_80px_80px_80px]" : "grid-cols-[1fr_80px_80px_80px]"
+            }`}>
               <div className="text-sm text-ink">{s.name}</div>
+              {isGym && (
+                <select
+                  value={s.level ?? ""}
+                  onChange={(e) => setServiceLevel(s, e.target.value)}
+                  className="bg-bg-elev border border-line focus:border-gold-deep outline-none text-[11px] px-2 py-1.5 text-ink-soft transition"
+                >
+                  {SERVICE_LEVELS.map((l) => (
+                    <option key={l.id} value={l.id}>{l.label}</option>
+                  ))}
+                </select>
+              )}
               <div className="text-[10px] text-ink-mute font-mono text-right">~{s.duration_min}m</div>
               <Button variant="ghost" size="sm" onClick={() => toggleActive(s)}>
                 {s.active ? "Active" : "Hidden"}
@@ -568,9 +708,23 @@ function ServicesTab({ branch }) {
       </Card>
 
       <Card luxe className="p-7">
-        <div className="ovline text-gold-soft mb-3">Add a service</div>
-        <div className="grid sm:grid-cols-[1fr_120px_120px] gap-3 items-end">
-          <Field label="Name" value={name} onChange={setName} placeholder="Haircut" />
+        <div className="ovline text-gold-soft mb-3">{isGym ? "Add a class type" : "Add a service"}</div>
+        <div className={`grid gap-3 items-end ${isGym ? "sm:grid-cols-[1fr_140px_120px_120px]" : "sm:grid-cols-[1fr_120px_120px]"}`}>
+          <Field label="Name" value={name} onChange={setName} placeholder={isGym ? "Beginner Striking" : "Haircut"} />
+          {isGym && (
+            <div>
+              <div className="ovline mb-1.5 text-[9px]">Level</div>
+              <select
+                value={level}
+                onChange={(e) => setLevel(e.target.value)}
+                className="w-full bg-bg-elev border border-line focus:border-gold-deep outline-none text-sm px-3 py-2 text-ink transition"
+              >
+                {SERVICE_LEVELS.map((l) => (
+                  <option key={l.id} value={l.id}>{l.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <Field label="Duration (min)" value={duration} onChange={setDuration} type="number" />
           <Button onClick={add} disabled={!name.trim()}>Add</Button>
         </div>
@@ -781,22 +935,73 @@ function ModesTab({ branch, reload }) {
     await reload();
   }
 
+  async function setBusinessType(type) {
+    if (type === branch.business_type) return;
+    await supabase.from("branches").update({ business_type: type }).eq("id", branch.id);
+    await reload();
+  }
+
+  const businessType = branch.business_type ?? "queue";
+
   return (
-    <Card luxe className="p-7 space-y-5">
-      <Toggle
-        label="Autopilot"
-        desc="Auto-call next customer at adaptive pace"
-        on={!!branch.autopilot}
-        setOn={(v) => toggle("autopilot", v)}
-      />
-      <Toggle
-        label="Islamic Mode"
-        desc="Prayer-aware queue with auto-pause"
-        on={!!branch.islamic_mode}
-        setOn={(v) => toggle("islamic_mode", v)}
-        green
-      />
-    </Card>
+    <div className="space-y-5">
+      <Card luxe className="p-7 space-y-4">
+        <div>
+          <div className="text-sm">Business type</div>
+          <div className="text-[10px] text-ink-mute mt-0.5">
+            Changes which tools show up in your dashboard — pick the one that matches how this branch runs.
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button
+            onClick={() => setBusinessType("queue")}
+            className={`p-4 border text-left transition ${
+              businessType === "queue"
+                ? "border-gold bg-[rgba(201,168,106,0.08)]"
+                : "border-line hover:border-[#3a3a3f]"
+            }`}
+          >
+            <div className={`font-display text-sm font-light mb-1 ${businessType === "queue" ? "text-gold-soft" : "text-ink"}`}>
+              Walk-in queue
+            </div>
+            <div className="text-[10px] text-ink-mute leading-relaxed">
+              Customers take a ticket, wait their turn, and get called — e.g. a tax office or clinic.
+            </div>
+          </button>
+          <button
+            onClick={() => setBusinessType("gym")}
+            className={`p-4 border text-left transition ${
+              businessType === "gym"
+                ? "border-gold bg-[rgba(201,168,106,0.08)]"
+                : "border-line hover:border-[#3a3a3f]"
+            }`}
+          >
+            <div className={`font-display text-sm font-light mb-1 ${businessType === "gym" ? "text-gold-soft" : "text-ink"}`}>
+              Gym / class studio
+            </div>
+            <div className="text-[10px] text-ink-mute leading-relaxed">
+              Students book recurring classes by level, confirm attendance, and build a session history — e.g. a gym or dojo.
+            </div>
+          </button>
+        </div>
+      </Card>
+
+      <Card luxe className="p-7 space-y-5">
+        <Toggle
+          label="Autopilot"
+          desc="Auto-call next customer at adaptive pace"
+          on={!!branch.autopilot}
+          setOn={(v) => toggle("autopilot", v)}
+        />
+        <Toggle
+          label="Islamic Mode"
+          desc="Prayer-aware queue with auto-pause"
+          on={!!branch.islamic_mode}
+          setOn={(v) => toggle("islamic_mode", v)}
+          green
+        />
+      </Card>
+    </div>
   );
 }
 
