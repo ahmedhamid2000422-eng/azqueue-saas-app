@@ -277,6 +277,25 @@ function CustomersInner() {
   const [tagFilter,  setTagFilter]  = useState(null);  // null = all
   const [tagDraft,   setTagDraft]   = useState("");
 
+  // Gym mode — student attendance history
+  const [studentBookings, setStudentBookings] = useState([]);
+
+  // ── Load student bookings (gym mode) ───────────────────────────────
+
+  useEffect(() => {
+    if (!selected || branch?.business_type !== "gym") {
+      setStudentBookings([]);
+      return;
+    }
+    supabase
+      .from("bookings")
+      .select("id, service_name, scheduled_at, status, confirmed_at")
+      .eq("customer_id", selected)
+      .order("scheduled_at", { ascending: false })
+      .limit(40)
+      .then(({ data }) => setStudentBookings(data ?? []));
+  }, [selected, branch?.business_type]);
+
   // ── Load list ───────────────────────────────────────────────────────
 
   const reloadList = useCallback(async () => {
@@ -676,15 +695,31 @@ function CustomersInner() {
                 <div className="text-[10px] text-ink-mute truncate">
                   {c.email ?? c.phone ?? "No contact info"}
                 </div>
-                <div className="flex items-center gap-2 mt-0.5">
+                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                   {c.last_seen_at && (
                     <span className="text-[9px] text-ink-mute">{fmtDate(c.last_seen_at)}</span>
                   )}
-                  {(c.visit_count ?? 0) <= 1 && (
-                    <span className="text-[8px] text-[#74b9e8] ovline">New</span>
-                  )}
-                  {(c.visit_count ?? 0) > 1 && (
-                    <span className="text-[8px] text-[#9bbd9b] ovline">{c.visit_count} visits</span>
+                  {branch?.business_type === "gym" ? (
+                    <>
+                      {c.student_track && (
+                        <span className="text-[8px] text-gold-soft ovline capitalize">{c.student_track}</span>
+                      )}
+                      {(c.sessions_attended ?? 0) > 0 && (
+                        <span className="text-[8px] text-[#9bbd9b] ovline">{c.sessions_attended} sessions</span>
+                      )}
+                      {(c.no_show_strikes ?? 0) >= 2 && (
+                        <span className="text-[8px] text-[#d49185] ovline">{c.no_show_strikes} strikes</span>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {(c.visit_count ?? 0) <= 1 && (
+                        <span className="text-[8px] text-[#74b9e8] ovline">New</span>
+                      )}
+                      {(c.visit_count ?? 0) > 1 && (
+                        <span className="text-[8px] text-[#9bbd9b] ovline">{c.visit_count} visits</span>
+                      )}
+                    </>
                   )}
                 </div>
               </button>
@@ -713,7 +748,9 @@ function CustomersInner() {
             {/* ── Profile header ── */}
             <div className="flex items-start justify-between gap-4 mb-6">
               <div>
-                <div className="ovline text-[9px] mb-1 text-gold-soft">Customer profile</div>
+                <div className="ovline text-[9px] mb-1 text-gold-soft">
+                  {branch?.business_type === "gym" ? "Student profile" : "Customer profile"}
+                </div>
                 <h1 className="font-display text-3xl font-light tracking-tightest">
                   {profile.display_name ?? <span className="text-ink-mute">Unknown customer</span>}
                 </h1>
@@ -929,7 +966,10 @@ function CustomersInner() {
 
               {/* Preset quick-add chips */}
               <div className="flex flex-wrap gap-1.5 mb-3">
-                {["immigration", "tax", "vip", "lapsed", "high-value", "drop-off", "follow-up", "new"].map((preset) => {
+                {(branch?.business_type === "gym"
+                  ? ["active", "vip", "lapsed", "injury", "competitor", "drop-off", "follow-up", "new"]
+                  : ["immigration", "tax", "vip", "lapsed", "high-value", "drop-off", "follow-up", "new"]
+                ).map((preset) => {
                   const active = (profile.tags ?? []).includes(preset);
                   return !active ? (
                     <button
@@ -954,6 +994,18 @@ function CustomersInner() {
                 <Button size="sm" type="submit" disabled={!tagDraft.trim()}>Add</Button>
               </form>
             </div>
+
+            {/* ── Student tracking (gym mode only) ── */}
+            {branch?.business_type === "gym" && (
+              <StudentPanel
+                key={profile.id}
+                profile={profile}
+                bookings={studentBookings}
+                onTrackChange={(t) =>
+                  setProfile((p) => (p ? { ...p, student_track: t } : p))
+                }
+              />
+            )}
 
             {/* ── Marketing Insights ── */}
             {(() => {
@@ -1282,13 +1334,161 @@ function CustomersInner() {
                 onClick={handleDelete}
                 className="text-[10px] text-ink-mute hover:text-red-400 transition tracking-wide"
               >
-                Delete customer record
+                Delete {branch?.business_type === "gym" ? "student" : "customer"} record
               </button>
             </div>
 
           </div>
         )}
       </main>
+    </div>
+  );
+}
+
+// ── Student tracking panel (gym mode only) ───────────────────────────────────
+
+const TRACK_META = {
+  beginner:     { label: "🥋 Beginner",     tone: "text-[#74b9e8]",  border: "border-[#4a8ab5]/40" },
+  intermediate: { label: "⚔️ Intermediate", tone: "text-[#d4a959]",  border: "border-[#b8893d]/40" },
+  fighter:      { label: "🏆 Fighter",      tone: "text-[#9bbd9b]",  border: "border-[#506b50]/40" },
+};
+
+function StudentPanel({ profile, bookings = [], onTrackChange }) {
+  const [track,  setTrack]  = useState(profile.student_track ?? "");
+  const [saving, setSaving] = useState(false);
+  const [saved,  setSaved]  = useState(false);
+
+  const dirty = track !== (profile.student_track ?? "");
+
+  async function save() {
+    setSaving(true);
+    try {
+      await updateCustomer(profile.id, { student_track: track || null });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+      if (onTrackChange) onTrackChange(track || null);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const strikes = profile.no_show_strikes ?? 0;
+  const attended = profile.sessions_attended ?? 0;
+
+  return (
+    <div className="mb-6 border border-line bg-bg-elev p-4">
+      <div className="ovline text-[9px] mb-4 text-gold-soft">Student Profile</div>
+
+      {/* Stats row */}
+      <div className="grid grid-cols-3 gap-3 mb-5">
+        <div className="border border-line p-3 text-center">
+          <div className="text-2xl font-light text-ink">{attended}</div>
+          <div className="text-[9px] text-ink-mute ovline mt-0.5">Sessions</div>
+        </div>
+        <div className="border border-line p-3 text-center">
+          <div className={`text-2xl font-light ${strikes >= 3 ? "text-[#d49185]" : strikes >= 1 ? "text-[#d4a959]" : "text-ink"}`}>
+            {strikes}
+          </div>
+          <div className="text-[9px] text-ink-mute ovline mt-0.5">No-show strikes</div>
+        </div>
+        <div className="border border-line p-3 text-center">
+          <div className="text-2xl font-light text-ink">{bookings.length}</div>
+          <div className="text-[9px] text-ink-mute ovline mt-0.5">Total bookings</div>
+        </div>
+      </div>
+
+      {/* Strike warning */}
+      {strikes >= 3 && (
+        <div className="mb-4 border border-[#b56b5f]/40 bg-[#b56b5f]/10 px-3 py-2 text-[11px] text-[#d49185]">
+          ⚠️ {strikes} no-show strikes — consider reaching out before their next class.
+        </div>
+      )}
+
+      {/* Track assignment */}
+      <div className="mb-5">
+        <div className="text-[9px] ovline text-ink-mute mb-2">Training track</div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {Object.entries(TRACK_META).map(([t, meta]) => (
+            <button
+              key={t}
+              onClick={() => { setTrack(t); setSaved(false); }}
+              className={`text-[10px] border px-3 py-1.5 transition ${
+                track === t
+                  ? `${meta.border} ${meta.tone} bg-[rgba(255,255,255,0.03)]`
+                  : "border-line text-ink-mute hover:border-[#3a3a3f]"
+              }`}
+            >
+              {meta.label}
+            </button>
+          ))}
+          {track && (
+            <button
+              onClick={() => { setTrack(""); setSaved(false); }}
+              className="text-[9px] text-ink-mute hover:text-red-400 transition px-1"
+            >
+              ✕ clear
+            </button>
+          )}
+          <Button
+            size="sm"
+            onClick={save}
+            disabled={saving || !dirty}
+          >
+            {saved ? "Saved ✓" : saving ? "Saving…" : "Save track"}
+          </Button>
+        </div>
+      </div>
+
+      {/* Class attendance history */}
+      {bookings.length > 0 && (
+        <div>
+          <div className="text-[9px] ovline text-ink-mute mb-2">
+            Class history · {bookings.length} booking{bookings.length !== 1 ? "s" : ""}
+          </div>
+          <div className="flex flex-col max-h-52 overflow-y-auto">
+            {bookings.slice(0, 25).map((b, i) => {
+              const noShow   = b.status === "no_show";
+              const confirmed = !!b.confirmed_at;
+              const served   = b.status === "served" || b.status === "completed";
+              return (
+                <div
+                  key={b.id}
+                  className={`flex items-center gap-3 py-2.5 text-xs ${
+                    i < bookings.length - 1 ? "border-b border-line/40" : ""
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                    noShow   ? "bg-[#d49185]" :
+                    served   ? "bg-[#9bbd9b]" :
+                    confirmed ? "bg-[#d4a959]" :
+                    "bg-ink-mute/30"
+                  }`} />
+                  <span className="text-ink-soft flex-1 truncate text-[11px]">
+                    {b.service_name ?? "Class"}
+                  </span>
+                  <span className={`text-[9px] shrink-0 ${
+                    noShow   ? "text-[#d49185]" :
+                    served   ? "text-[#9bbd9b]" :
+                    confirmed ? "text-[#d4a959]" :
+                    "text-ink-mute"
+                  }`}>
+                    {noShow ? "No-show" : served ? "Attended" : confirmed ? "Confirmed" : "Booked"}
+                  </span>
+                  <span className="text-[9px] text-ink-mute shrink-0 w-16 text-right">
+                    {b.scheduled_at
+                      ? new Date(b.scheduled_at).toLocaleDateString([], { day: "numeric", month: "short" })
+                      : ""}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {bookings.length === 0 && (
+        <p className="text-[11px] text-ink-mute">No class bookings linked to this student yet.</p>
+      )}
     </div>
   );
 }

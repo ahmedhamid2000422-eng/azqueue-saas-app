@@ -12,6 +12,7 @@ import Insights from "./Insights";
 import Manager from "./Manager";
 import Stations from "./Stations";
 import Customers from "./Customers";
+import Leads from "./Leads";
 import DisplaySetup from "./DisplaySetup";
 import Settings from "./Settings";
 import Onboarding from "./Onboarding";
@@ -24,6 +25,7 @@ const QUEUE_NAV = [
   { label: "Schedule", path: "/schedule" },
   { label: "Stations",  path: "/stations",  badge: "OPS" },
   { label: "Customers", path: "/customers", badge: "NEW" },
+  { label: "Leads",     path: "/leads",     badge: "WA" },
   { label: "Insights",  path: "/insights" },
   { label: "Manager",  path: "/manager", badge: "PRO" },
   { label: "Display",  path: "/display" },
@@ -36,6 +38,7 @@ const GYM_NAV = [
   { label: "Bookings",  path: "/bookings" },
   { label: "Schedule",  path: "/schedule" },
   { label: "Students",  path: "/customers", badge: "NEW" },
+  { label: "Leads",     path: "/leads",     badge: "WA" },
   { label: "Insights",  path: "/insights" },
   { label: "Manager",   path: "/manager", badge: "PRO" },
   { label: "Display",   path: "/display" },
@@ -66,6 +69,7 @@ export default function BusinessDashboard() {
             <Route path="schedule" element={<Schedule />} />
             <Route path="stations"   element={<Stations />} />
             <Route path="customers"  element={<Customers />} />
+            <Route path="leads"      element={<Leads />} />
             <Route path="insights"   element={<Insights />} />
             <Route path="manager"    element={<Manager />} />
             <Route path="display"    element={<DisplaySetup />} />

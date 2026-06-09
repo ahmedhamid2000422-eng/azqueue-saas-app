@@ -351,6 +351,8 @@ function GeneralTab({ branch, reload }) {
       {branch.business_type === "gym" && (
         <BookingFaqEditor branch={branch} reload={reload} />
       )}
+
+      <WhatsAppConfig branch={branch} reload={reload} />
     </div>
   );
 }
@@ -454,6 +456,127 @@ function BookingFaqEditor({ branch, reload }) {
       <div className="rule-ornament my-5 text-[8px]"><span>·</span></div>
       <div className="flex gap-3 items-center">
         <Button onClick={save} disabled={busy}>{busy ? "Saving…" : "Save FAQ"}</Button>
+        {saved && <span className="text-[10px] text-[#9bbd9b]">Saved.</span>}
+      </div>
+    </Card>
+  );
+}
+
+/* ── WhatsApp AI Receptionist config ──────────────────────────── */
+function WhatsAppConfig({ branch, reload }) {
+  const [enabled,  setEnabled]  = useState(branch?.wa_enabled  ?? false);
+  const [phone,    setPhone]    = useState(branch?.wa_phone    ?? "");
+  const [welcome,  setWelcome]  = useState(branch?.wa_flow_config?.welcome ?? "");
+  const [busy,     setBusy]     = useState(false);
+  const [saved,    setSaved]    = useState(false);
+
+  async function save() {
+    setBusy(true);
+    const flowOverride = {};
+    if (welcome.trim()) flowOverride.welcome = welcome.trim();
+    await supabase.from("branches").update({
+      wa_enabled: enabled,
+      wa_phone:   phone.trim() || null,
+      wa_flow_config: { ...(branch.wa_flow_config ?? {}), ...flowOverride },
+    }).eq("id", branch.id);
+    await reload();
+    setBusy(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  }
+
+  const fnUrl = `${window.location.origin.replace(/:\d+$/, "")}/functions/v1/wa-bot`;
+
+  return (
+    <Card luxe className="p-6 mt-6">
+      <CardHeader
+        title="WhatsApp AI Receptionist"
+        subtitle="Auto-qualify leads from WhatsApp — works for tax, gym, and design businesses."
+      />
+
+      {/* Enable toggle */}
+      <div className="flex items-center justify-between py-3 border-b border-line">
+        <div>
+          <div className="text-sm text-ink font-display font-light">Enable WhatsApp receptionist</div>
+          <div className="text-[10px] text-ink-mute mt-0.5">
+            Incoming WhatsApp messages will be handled by the AI bot
+          </div>
+        </div>
+        <button
+          onClick={() => setEnabled(e => !e)}
+          className={`relative w-10 h-5 rounded-full transition-colors ${enabled ? "bg-gold" : "bg-ink-mute/30"}`}
+        >
+          <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${enabled ? "translate-x-5" : "translate-x-0.5"}`} />
+        </button>
+      </div>
+
+      {/* WhatsApp number */}
+      <div className="py-4 border-b border-line">
+        <label className="ovline text-[9px] mb-2 block">Your WhatsApp number (E.164)</label>
+        <input
+          value={phone}
+          onChange={e => setPhone(e.target.value)}
+          placeholder="+60123456789"
+          className="w-full bg-transparent border border-line px-3 py-2 text-sm text-ink focus:border-gold-deep outline-none font-mono"
+        />
+        <p className="text-[10px] text-ink-mute mt-1.5">
+          This must match the number registered in your Twilio WhatsApp sender.
+        </p>
+      </div>
+
+      {/* Custom welcome message */}
+      <div className="py-4 border-b border-line">
+        <label className="ovline text-[9px] mb-2 block">Custom welcome message (optional)</label>
+        <textarea
+          value={welcome}
+          onChange={e => setWelcome(e.target.value)}
+          rows={3}
+          placeholder={`Hi! Welcome to {{branch}}. How can I help you today?`}
+          className="w-full bg-transparent border border-line px-3 py-2 text-sm text-ink focus:border-gold-deep outline-none resize-none"
+        />
+        <p className="text-[10px] text-ink-mute mt-1">Use {"{{branch}}"} to insert your branch name.</p>
+      </div>
+
+      {/* Webhook URL */}
+      <div className="py-4 border-b border-line">
+        <label className="ovline text-[9px] mb-2 block">Twilio webhook URL</label>
+        <div className="flex items-center gap-2">
+          <code className="flex-1 text-[10px] text-gold-soft font-mono bg-[rgba(201,168,106,0.05)] border border-gold/20 px-3 py-2 truncate">
+            {fnUrl}
+          </code>
+          <button
+            onClick={() => navigator.clipboard?.writeText(fnUrl)}
+            className="shrink-0 px-2.5 py-2 border border-line text-[9px] text-ink-mute hover:border-gold-deep hover:text-gold-soft transition"
+          >
+            Copy
+          </button>
+        </div>
+        <p className="text-[10px] text-ink-mute mt-1.5">
+          Paste this into Twilio → Messaging → WhatsApp Senders → "A message comes in" webhook.
+        </p>
+      </div>
+
+      {/* Lead JSON schema reference */}
+      <div className="py-4 border-b border-line">
+        <label className="ovline text-[9px] mb-2 block">Lead data schema</label>
+        <pre className="text-[9px] text-ink-mute font-mono leading-relaxed bg-[rgba(255,255,255,0.02)] border border-line p-3 overflow-x-auto">{`{
+  "service_category": "",
+  "property_type":    "",
+  "location":         "",
+  "budget_range":     "",
+  "timeline":         "",
+  "requirements":     "",
+  "next_action":      "Book consultation | Follow up | Send estimate | Nurture",
+  "lead_score":       "HOT | WARM | COLD",
+  "summary":          ""
+}`}</pre>
+        <p className="text-[10px] text-ink-mute mt-1.5">
+          Every completed conversation populates this JSON into the customer record, visible in the Leads tab.
+        </p>
+      </div>
+
+      <div className="pt-4 flex gap-3 items-center">
+        <Button onClick={save} disabled={busy}>{busy ? "Saving…" : "Save WhatsApp settings"}</Button>
         {saved && <span className="text-[10px] text-[#9bbd9b]">Saved.</span>}
       </div>
     </Card>

@@ -22,6 +22,7 @@ import Legal from "./pages/Legal";
 import Checkin from "./pages/Checkin";
 import Display from "./pages/Display";
 import ResetPassword from "./pages/ResetPassword";
+import ConfirmAttendance from "./pages/ConfirmAttendance";
 import BusinessDashboard from "./modes/business/Dashboard";
 import PersonalDashboard from "./modes/personal/Dashboard";
 import StaffDashboard from "./modes/staff/Dashboard";
@@ -50,6 +51,7 @@ export default function App() {
       <Route path="/t/:ticketId"       element={<CustomerTicket />} />
       <Route path="/display/:slug"     element={<TvDisplay />} />
       <Route path="/b/:slug"           element={<BookingPage />} />
+      <Route path="/confirm/:bookingId" element={<ConfirmAttendance />} />
       <Route path="/reset-password"    element={<ResetPassword />} />
       <Route path="/checkin/:branchId" element={<Checkin />} />
       <Route path="/display-tv/:branchId" element={<Display />} />

@@ -131,20 +131,33 @@ export async function sendWaitUpdate(phone, name, position) {
 
 /**
  * Gym mode — sent ~2-3 hours before a booked class to cut down no-shows.
- * Asks the student to reply/confirm so the instructor can plan headcount.
+ * Includes a one-tap confirm link (/confirm/:bookingId) so the student can
+ * lock in their spot without needing to reply — no inbound SMS webhook required.
  *
- * @param {string} phone      Student phone
- * @param {string} name       Student name
- * @param {string} className  Class/service name e.g. "Beginner Striking"
- * @param {Date|string} when  Class start time
- * @param {string} branchName Gym/branch display name
+ * @param {string} phone       Student phone
+ * @param {string} name        Student name
+ * @param {string} className   Class/service name e.g. "Beginner Striking"
+ * @param {Date|string} when   Class start time
+ * @param {string} branchName  Gym/branch display name
+ * @param {string} [bookingId] Booking UUID — when provided, link to /confirm/:id is appended
  */
-export async function sendClassReminder(phone, name, className, when, branchName) {
+export async function sendClassReminder(phone, name, className, when, branchName, bookingId) {
   if (!phone) return;
   const dt = new Date(when);
   const time = dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+  // One-tap confirm link — uses the app's own origin so it works on any domain.
+  let confirmLine = "";
+  if (bookingId) {
+    try {
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      if (origin) confirmLine = `\nConfirm your spot: ${origin}/confirm/${bookingId}`;
+    } catch { /* non-fatal */ }
+  }
+
   const body =
-    `Hi ${name}, friendly reminder — ${className} at ${branchName} starts at ${time} today.\n` +
-    `Reply YES to confirm you're coming (or let us know if you need to skip — saves your spot for someone else).`;
+    `Hi ${name}, reminder — ${className} at ${branchName} starts at ${time} today.` +
+    confirmLine +
+    `\n(Can't make it? Let us know — frees up your spot for someone else.)`;
   await sendSms(phone, body);
 }

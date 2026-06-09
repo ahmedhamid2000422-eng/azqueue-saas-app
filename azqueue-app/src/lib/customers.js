@@ -141,7 +141,7 @@ export async function loadCustomers(branchId, { limit = 50, offset = 0, search =
 
   let query = supabase
     .from("customers")
-    .select("id, display_name, email, phone, tags, vip, last_seen_at, created_at, freshdesk_id")
+    .select("id, display_name, email, phone, tags, vip, last_seen_at, created_at, freshdesk_id, student_track, sessions_attended, no_show_strikes")
     .eq("branch_id", branchId)
     .order("last_seen_at", { ascending: false, nullsFirst: false })
     .range(offset, offset + limit - 1);

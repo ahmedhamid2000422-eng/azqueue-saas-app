@@ -124,7 +124,7 @@ export default function Classes() {
       for (const b of due ?? []) {
         const svcName = b.service?.name ?? "your class";
         try {
-          await sendClassReminder(b.customer_phone, b.customer_name, svcName, b.scheduled_at, branch.name);
+          await sendClassReminder(b.customer_phone, b.customer_name, svcName, b.scheduled_at, branch.name, b.id);
         } catch { /* never block on SMS failures */ }
         await supabase.from("bookings").update({ reminder_sent_at: new Date().toISOString() }).eq("id", b.id);
       }
