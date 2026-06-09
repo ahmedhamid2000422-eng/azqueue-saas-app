@@ -6,6 +6,7 @@ import { useBranch } from "../../lib/BranchContext";
 import { useAutopilot } from "../../hooks/useAutopilot";
 import { logServiceTime } from "../../lib/autopilot";
 import { sendCallNotice, sendThanks } from "../../lib/notifications";
+import { sendCalledNotification } from "../../lib/notify";
 import { arrivalState, formatEta } from "../../lib/arrival";
 import { loadOpenEscalations, resolveEscalation } from "../../lib/sla";
 import { getLimits } from "../../lib/tier";
@@ -64,6 +65,9 @@ export default function Queue() {
 
   // Last-refresh timestamp for the refresh button / realtime-fallback indicator
   const [lastRefreshed, setLastRefreshed] = useState(null);
+
+  // SMS "Your turn" button: ticketId → "sending" | "sent" | "error"
+  const [smsSent, setSmsSent] = useState({});
 
   // Escalation state
   const [escalations, setEscalations] = useState([]);
@@ -557,6 +561,44 @@ export default function Queue() {
     setBusy(false);
   }
 
+  // ── "Your turn" SMS ────────────────────────────────────────────────
+  // Sends a direct Twilio SMS to a waiting customer telling them to come
+  // to the counter. Useful when the WhatsApp call notice didn't reach them.
+  async function sendYourTurn(ticket) {
+    if (!ticket.customer_phone) return;
+    setSmsSent((prev) => ({ ...prev, [ticket.id]: "sending" }));
+    // Derive a staff display name: prefer matched staff record, fall back to email prefix
+    const myStaff = staffList.find((s) => s.id === user?.id);
+    const staffName = myStaff?.display_name ?? (user?.email?.split("@")[0] ?? "Staff");
+    // Window label: use assigned station name if available, else "Counter 1"
+    const windowLabel = (ticket.assigned_station_id && stationMap[ticket.assigned_station_id])
+      ? stationMap[ticket.assigned_station_id]
+      : "Counter 1";
+    try {
+      await sendCalledNotification(
+        ticket.customer_phone,
+        ticket.customer_name ?? "Customer",
+        ticket.token,
+        windowLabel,
+        staffName,
+      );
+      setSmsSent((prev) => ({ ...prev, [ticket.id]: "sent" }));
+      // Auto-clear the "Sent ✓" indicator after 4 s
+      setTimeout(() => setSmsSent((prev) => {
+        const next = { ...prev };
+        delete next[ticket.id];
+        return next;
+      }), 4000);
+    } catch {
+      setSmsSent((prev) => ({ ...prev, [ticket.id]: "error" }));
+      setTimeout(() => setSmsSent((prev) => {
+        const next = { ...prev };
+        delete next[ticket.id];
+        return next;
+      }), 4000);
+    }
+  }
+
   // ── Manager escalation overrides ───────────────────────────────────
 
   // Resolve an escalation (manager only)
@@ -888,6 +930,30 @@ export default function Queue() {
                 disabled={busy}
               />
             )}
+            {serving?.customer_phone && (
+              <button
+                onClick={() => sendYourTurn(serving)}
+                disabled={smsSent[serving.id] === "sending"}
+                title="Re-send 'Your turn' SMS to customer"
+                className={`text-[11px] px-3 py-1.5 border leading-none transition-colors ${
+                  smsSent[serving.id] === "sent"
+                    ? "border-[#506b50] text-[#9bbd9b]"
+                    : smsSent[serving.id] === "error"
+                    ? "border-red-800 text-red-400"
+                    : smsSent[serving.id] === "sending"
+                    ? "border-line text-ink-mute cursor-wait"
+                    : "border-line text-ink-mute hover:border-[#74b9e8] hover:text-[#74b9e8]"
+                }`}
+              >
+                {smsSent[serving.id] === "sent"
+                  ? "SMS sent ✓"
+                  : smsSent[serving.id] === "error"
+                  ? "SMS failed ✗"
+                  : smsSent[serving.id] === "sending"
+                  ? "Sending…"
+                  : "📱 Nudge by SMS"}
+              </button>
+            )}
           </div>
         </Card>
 
@@ -1019,6 +1085,31 @@ export default function Queue() {
                       </span>
                     )}
                   </div>
+                  {/* "Your turn" SMS nudge — only shown when customer has a phone */}
+                  {t.customer_phone && (
+                    <button
+                      onClick={() => sendYourTurn(t)}
+                      disabled={smsSent[t.id] === "sending"}
+                      title="Send 'Your turn' SMS"
+                      className={`text-[10px] px-2 py-1 border leading-none transition-colors ${
+                        smsSent[t.id] === "sent"
+                          ? "border-[#506b50] text-[#9bbd9b]"
+                          : smsSent[t.id] === "error"
+                          ? "border-red-800 text-red-400"
+                          : smsSent[t.id] === "sending"
+                          ? "border-line text-ink-mute cursor-wait"
+                          : "border-line text-ink-mute hover:border-[#74b9e8] hover:text-[#74b9e8]"
+                      }`}
+                    >
+                      {smsSent[t.id] === "sent"
+                        ? "Sent ✓"
+                        : smsSent[t.id] === "error"
+                        ? "Failed ✗"
+                        : smsSent[t.id] === "sending"
+                        ? "…"
+                        : "📱 SMS"}
+                    </button>
+                  )}
                   <TicketActionsMenu
                     ticket={t}
                     staffList={staffList}

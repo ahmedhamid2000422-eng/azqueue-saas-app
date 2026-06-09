@@ -1,5 +1,8 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useCheckin } from "../hooks/useCheckin";
+import LanguagePicker from "../components/LanguagePicker";
 
 /**
  * Checkin — public customer check-in page.
@@ -48,7 +51,7 @@ export default function Checkin() {
   if (loading) {
     return (
       <Shell>
-        <div className="flex items-center justify-center min-h-screen">
+        <div className="flex-1 flex items-center justify-center py-20">
           <div className="ovline text-ink-mute text-[11px] tracking-widest">Loading…</div>
         </div>
       </Shell>
@@ -75,15 +78,13 @@ export default function Checkin() {
   if (screen === 1) {
     return (
       <Shell>
-        <div className="min-h-screen flex items-center justify-center px-6 py-12">
+        <div className="flex-1 flex items-center justify-center px-6 py-12">
           <div className="w-full max-w-sm">
 
-            {/* Branch logo + name */}
+            {/* Branch header */}
             <div className="text-center mb-10">
-              <div className="inline-flex items-center justify-center w-9 h-9 bg-gold rounded-sm mb-5 shadow-[0_0_24px_rgba(201,168,106,0.3)]">
-                <span className="font-display text-[#141410] text-sm font-semibold">A</span>
-              </div>
-              <h1 className="font-display text-3xl font-light tracking-tightest gold-text mb-2">
+              <div className="ovline text-gold-soft mb-2 text-[9px]">check in</div>
+              <h1 className="font-display text-3xl font-light tracking-tightest text-ink mb-2">
                 {branch.name}
               </h1>
               <p className="text-ink-soft text-sm">What brings you in today?</p>
@@ -238,7 +239,7 @@ export default function Checkin() {
   if (screen === 2) {
     return (
       <Shell>
-        <div className="min-h-screen flex items-center justify-center px-6 py-12">
+        <div className="flex-1 flex items-center justify-center px-6 py-12">
           <div className="w-full max-w-sm">
 
             {/* Back */}
@@ -385,8 +386,8 @@ export default function Checkin() {
 
           {/* Branch name at bottom */}
           <div className="mt-10 flex items-center justify-center gap-2 opacity-40">
-            <div className="w-4 h-4 bg-gold rounded-sm flex items-center justify-center">
-              <span className="font-display text-[#141410] text-[8px]">A</span>
+            <div className="w-5 h-5 bg-gold rounded-sm flex items-center justify-center">
+              <span className="font-display text-[#141410] text-[8px]">AQ</span>
             </div>
             <span className="font-display text-xs text-ink-mute">{branch.name}</span>
           </div>
@@ -399,9 +400,30 @@ export default function Checkin() {
 
 /* ── Shell ────────────────────────────────────────────────────── */
 function Shell({ children }) {
+  const { t } = useTranslation();
   return (
-    <div className="min-h-screen bg-bg text-ink">
-      {children}
+    <div className="min-h-screen bg-bg text-ink flex flex-col relative overflow-hidden">
+      {/* Gold atmospheric wash */}
+      <div
+        aria-hidden
+        className="absolute inset-x-0 top-0 h-[420px] pointer-events-none"
+        style={{ background: "radial-gradient(60% 80% at 50% 0%, rgba(184,149,90,0.07), transparent 70%)" }}
+      />
+      <header className="relative px-6 py-4 border-b border-line/70 flex items-center justify-between backdrop-blur-sm bg-bg/60 shrink-0">
+        <Link to="/" className="flex items-center gap-2.5 hover:opacity-80 transition">
+          <div className="w-7 h-7 bg-gold rounded-sm flex items-center justify-center font-display text-[#141410] text-[10px] shadow-[0_0_24px_rgba(201,168,106,0.3)]">
+            AQ
+          </div>
+          <span className="font-display text-base tracking-tightest text-ink">AzQueue</span>
+        </Link>
+        <LanguagePicker />
+      </header>
+      <main className="relative flex-1 flex flex-col overflow-y-auto">
+        {children}
+      </main>
+      <footer className="relative shrink-0 px-6 py-4 border-t border-line/70 text-[9px] text-ink-mute tracking-[0.2em] uppercase text-center bg-bg/60">
+        {t("common.powered_by", { defaultValue: "Powered by" })} · azqueue.io · secured by 256-bit encryption
+      </footer>
     </div>
   );
 }

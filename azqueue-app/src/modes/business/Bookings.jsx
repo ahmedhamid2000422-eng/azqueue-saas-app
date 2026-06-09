@@ -30,6 +30,9 @@ export default function Bookings() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
+  // Checklist resend: bookingId → "sending" | "sent" | "error"
+  const [checklistSent, setChecklistSent] = useState({});
+
   async function load() {
     if (!branch?.id) return;
     setLoading(true);
@@ -179,6 +182,47 @@ export default function Bookings() {
     load();
   }
 
+  // Manually re-send the document checklist to a customer via WhatsApp
+  async function resendChecklist(booking) {
+    if (!booking.customer_phone) return;
+    setChecklistSent((prev) => ({ ...prev, [booking.id]: "sending" }));
+    const svcName = services.find((s) => s.id === booking.service_id)?.name ?? "General";
+    try {
+      const checklist = getEffectiveChecklist(branch.id, svcName);
+      if (!checklist?.needsChecklist || checklist.items.length === 0) {
+        // No checklist configured for this service — send a plain confirmation instead
+        const msg = `Hi ${booking.customer_name ?? "there"}, this is a reminder of your upcoming appointment for ${svcName} at ${branch.name}. Please bring any relevant documents. Thank you!`;
+        const customer = await findOrCreateCustomer(branch.id, {
+          name: booking.customer_name,
+          phone: booking.customer_phone,
+        });
+        await sendMessage(branch.id, customer, "whatsapp", msg, null);
+      } else {
+        const msg = buildChecklistMessage({
+          customerName: booking.customer_name ?? "Customer",
+          businessName: branch.name,
+          serviceName:  svcName,
+          token: "see your booking confirmation",
+          checklist,
+        });
+        const customer = await findOrCreateCustomer(branch.id, {
+          name: booking.customer_name,
+          phone: booking.customer_phone,
+        });
+        await sendMessage(branch.id, customer, "whatsapp", msg, null);
+      }
+      setChecklistSent((prev) => ({ ...prev, [booking.id]: "sent" }));
+      setTimeout(() => setChecklistSent((prev) => {
+        const next = { ...prev }; delete next[booking.id]; return next;
+      }), 4000);
+    } catch {
+      setChecklistSent((prev) => ({ ...prev, [booking.id]: "error" }));
+      setTimeout(() => setChecklistSent((prev) => {
+        const next = { ...prev }; delete next[booking.id]; return next;
+      }), 4000);
+    }
+  }
+
   if (!dbReady) {
     return <div className="p-8 max-w-xl"><h1 className="font-display text-3xl font-light tracking-tightest mb-3">Bookings</h1><p className="text-ink-soft text-sm">Run the database migration to enable bookings.</p></div>;
   }
@@ -246,14 +290,24 @@ export default function Bookings() {
           const svc = services.find((s) => s.id === b.service_id);
           const time = new Date(b.scheduled_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
           return (
-            <div key={b.id} className="grid grid-cols-[100px_1fr_1fr_120px_120px] px-5 py-3 border-b border-line last:border-b-0 items-center">
+            <div key={b.id} className="grid grid-cols-[90px_1fr_1fr_110px_1fr] px-5 py-3 border-b border-line last:border-b-0 items-center gap-2">
               <span className="font-mono text-gold-soft text-xs">{time}</span>
-              <span className="text-xs">{b.customer_name}</span>
+              <div>
+                <div className="text-xs">{b.customer_name}</div>
+                {b.customer_phone && (
+                  <div className="text-[10px] text-ink-mute font-mono">{b.customer_phone}</div>
+                )}
+              </div>
               <span className="text-xs text-ink-soft">{svc?.name ?? "—"}</span>
               <Badge variant={b.status === "confirmed" ? "conf" : b.status === "arrived" ? "walk" : "due"}>
                 {b.status}
               </Badge>
-              <BookingActions booking={b} onChange={(s) => setStatus(b.id, s)} />
+              <BookingActions
+                booking={b}
+                onChange={(s) => setStatus(b.id, s)}
+                onResendChecklist={() => resendChecklist(b)}
+                checklistState={checklistSent[b.id]}
+              />
             </div>
           );
         })}
@@ -280,13 +334,35 @@ function exportBookings(bookings, services, branch) {
   ]);
 }
 
-function BookingActions({ booking, onChange }) {
-  if (booking.status === "arrived" || booking.status === "no_show" || booking.status === "cancelled") return null;
+function BookingActions({ booking, onChange, onResendChecklist, checklistState }) {
+  const isDone = booking.status === "arrived" || booking.status === "no_show" || booking.status === "cancelled";
   return (
-    <div className="flex gap-1">
-      <Button size="sm" variant="ghost" onClick={() => onChange("arrived")}>Arrived</Button>
-      <Button size="sm" variant="ghost" onClick={() => onChange("no_show")}>No-show</Button>
-      <Button size="sm" variant="ghost" onClick={() => onChange("cancelled")}>Cancel</Button>
+    <div className="flex flex-wrap gap-1 items-center">
+      {!isDone && (
+        <>
+          <Button size="sm" variant="ghost" onClick={() => onChange("arrived")}>Arrived</Button>
+          <Button size="sm" variant="ghost" onClick={() => onChange("no_show")}>No-show</Button>
+          <Button size="sm" variant="ghost" onClick={() => onChange("cancelled")}>Cancel</Button>
+        </>
+      )}
+      {booking.customer_phone && (
+        <button
+          onClick={onResendChecklist}
+          disabled={checklistState === "sending"}
+          title="Re-send document checklist via WhatsApp"
+          className={`text-[10px] px-2 py-1 border leading-none transition-colors ${
+            checklistState === "sent"
+              ? "border-[#506b50] text-[#9bbd9b]"
+              : checklistState === "error"
+              ? "border-red-800 text-red-400"
+              : checklistState === "sending"
+              ? "border-line text-ink-mute cursor-wait"
+              : "border-line text-ink-mute hover:border-[#74b9e8] hover:text-[#74b9e8]"
+          }`}
+        >
+          {checklistState === "sent" ? "Sent ✓" : checklistState === "error" ? "Failed ✗" : checklistState === "sending" ? "…" : "📋 Checklist"}
+        </button>
+      )}
     </div>
   );
 }

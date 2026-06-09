@@ -407,8 +407,8 @@ function Shell({ children }) {
       />
       <header className="relative px-6 py-4 border-b border-line/70 flex items-center justify-between backdrop-blur-sm bg-bg/60">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 bg-gold rounded-sm flex items-center justify-center font-display text-[#141410] text-[10px] shadow-[0_0_24px_rgba(201,168,106,0.3)]">A</div>
-          <span className="font-display text-base">AzQueue</span>
+          <div className="w-7 h-7 bg-gold rounded-sm flex items-center justify-center font-display text-[#141410] text-[10px] shadow-[0_0_24px_rgba(201,168,106,0.3)]">AQ</div>
+          <span className="font-display text-base tracking-tightest">AzQueue</span>
         </div>
         <LanguagePicker />
       </header>
