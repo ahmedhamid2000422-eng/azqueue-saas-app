@@ -933,12 +933,12 @@ function StaffTab({ branch }) {
         ) : (
           staff.map((s) => (
             <div key={s.id} className="px-5 py-4 border-b border-line last:border-b-0">
-              <div className="grid grid-cols-[1fr_100px_100px_80px] gap-3 items-center">
+              <div className="grid grid-cols-[1fr_100px_90px_90px_80px] gap-3 items-center">
                 <div>
                   <div className="flex items-center gap-2">
                     <div className="text-sm text-ink">{s.display_name}</div>
                     {s.is_senior_advisor && (
-                      <span className="text-[9px] text-gold-soft border border-gold/40 px-1">⭐ Senior</span>
+                      <span className="text-[9px] text-gold-soft border border-gold/40 px-1">Senior</span>
                     )}
                   </div>
                   <div className="text-[10px] text-ink-mute mt-0.5">
@@ -958,6 +958,12 @@ function StaffTab({ branch }) {
                 }`}>
                   {s.status ?? "off"}
                 </span>
+                <Link
+                  to={`/business/staff/${s.id}`}
+                  className="text-[10px] tracking-[0.18em] uppercase text-gold-soft hover:text-gold whitespace-nowrap"
+                >
+                  Configure →
+                </Link>
                 <Button variant="ghost" size="sm" onClick={() => remove(s)}>Remove</Button>
               </div>
               {/* Senior Advisor controls */}

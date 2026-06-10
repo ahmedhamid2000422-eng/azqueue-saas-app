@@ -16,6 +16,7 @@ import Leads from "./Leads";
 import DisplaySetup from "./DisplaySetup";
 import Settings from "./Settings";
 import Onboarding from "./Onboarding";
+import StaffProfile from "./StaffProfile";
 import OwnerDashboard from "./OwnerDashboard";
 
 const QUEUE_NAV = [
@@ -74,6 +75,7 @@ export default function BusinessDashboard() {
             <Route path="manager"    element={<Manager />} />
             <Route path="display"    element={<DisplaySetup />} />
             <Route path="onboarding" element={<Onboarding />} />
+            <Route path="staff/:id"  element={<StaffProfile />} />
             <Route path="settings"   element={<Settings />} />
             <Route path="*" element={<Navigate to="" replace />} />
           </Routes>
