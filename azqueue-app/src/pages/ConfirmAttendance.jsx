@@ -40,7 +40,7 @@ export default function ConfirmAttendance() {
       }
 
       const [{ data: br }, { data: svc }] = await Promise.all([
-        supabase.from("branches").select("id, name, city").eq("id", b.branch_id).maybeSingle(),
+        supabase.from("branches").select("id, name, city, brand_color").eq("id", b.branch_id).maybeSingle(),
         supabase.from("services").select("id, name").eq("id", b.service_id).maybeSingle(),
       ]);
 
@@ -68,7 +68,7 @@ export default function ConfirmAttendance() {
 
   if (loading) {
     return (
-      <Shell>
+      <Shell brandColor={branch?.brand_color}>
         <div className="text-center py-20 ovline text-ink-mute">Loading…</div>
       </Shell>
     );
@@ -76,7 +76,7 @@ export default function ConfirmAttendance() {
 
   if (error) {
     return (
-      <Shell>
+      <Shell brandColor={branch?.brand_color}>
         <LuxeFrame className="p-8 mt-8 text-center">
           <div className="font-display text-xl font-light text-ink mb-2">Hmm.</div>
           <p className="text-ink-soft text-sm">{error}</p>
@@ -89,7 +89,7 @@ export default function ConfirmAttendance() {
   const cancelled = booking.status === "cancelled" || booking.status === "no_show";
 
   return (
-    <Shell>
+    <Shell brandColor={branch?.brand_color}>
       <LuxeFrame className="p-8 mt-8 text-center">
         {done ? (
           <>
@@ -146,10 +146,18 @@ export default function ConfirmAttendance() {
   );
 }
 
-function Shell({ children }) {
+function Shell({ children, brandColor }) {
   const { t } = useTranslation();
+  const color = brandColor || "#b8955a";
+  const r = parseInt(color.slice(1,3),16), g = parseInt(color.slice(3,5),16), b = parseInt(color.slice(5,7),16);
+  const mix = (v,t2,a) => Math.round(v+(t2-v)*a).toString(16).padStart(2,"0");
+  const soft = `#${mix(r,255,0.25)}${mix(g,255,0.25)}${mix(b,255,0.25)}`;
+  const deep = `#${mix(r,0,0.22)}${mix(g,0,0.22)}${mix(b,0,0.22)}`;
   return (
-    <div className="min-h-screen bg-bg text-ink flex flex-col relative overflow-hidden">
+    <div
+      className="min-h-screen bg-bg text-ink flex flex-col relative overflow-hidden"
+      style={{ "--aq-brand": color, "--aq-brand-soft": soft, "--aq-brand-deep": deep }}
+    >
       <div
         aria-hidden
         className="absolute inset-x-0 top-0 h-[420px] pointer-events-none"

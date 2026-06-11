@@ -50,7 +50,7 @@ export default function Checkin() {
   /* ── Loading ──────────────────────────────────────────────── */
   if (loading) {
     return (
-      <Shell>
+      <Shell brandColor={branch?.brand_color}>
         <div className="flex-1 flex items-center justify-center py-20">
           <div className="ovline text-ink-mute text-[11px] tracking-widest">Loading…</div>
         </div>
@@ -61,7 +61,7 @@ export default function Checkin() {
   /* ── Branch not found ─────────────────────────────────────── */
   if (!branch) {
     return (
-      <Shell>
+      <Shell brandColor={branch?.brand_color}>
         <div className="flex items-center justify-center min-h-screen px-6">
           <div className="text-center max-w-sm">
             <div className="font-display text-2xl font-light text-ink mb-3">Branch not found</div>
@@ -77,7 +77,7 @@ export default function Checkin() {
   /* ── Screen 1: Service + Staff picker ────────────────────── */
   if (screen === 1) {
     return (
-      <Shell>
+      <Shell brandColor={branch?.brand_color}>
         <div className="flex-1 flex items-center justify-center px-6 py-12">
           <div className="w-full max-w-sm">
 
@@ -238,7 +238,7 @@ export default function Checkin() {
   /* ── Screen 2: Name + phone ───────────────────────────────── */
   if (screen === 2) {
     return (
-      <Shell>
+      <Shell brandColor={branch?.brand_color}>
         <div className="flex-1 flex items-center justify-center px-6 py-12">
           <div className="w-full max-w-sm">
 
@@ -337,7 +337,7 @@ export default function Checkin() {
   const estWait = Math.max(1, position ?? 0) * 10;
 
   return (
-    <Shell>
+    <Shell brandColor={branch?.brand_color}>
       <div className="min-h-screen flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm text-center">
 
@@ -399,10 +399,19 @@ export default function Checkin() {
 }
 
 /* ── Shell ────────────────────────────────────────────────────── */
-function Shell({ children }) {
+function Shell({ children, brandColor }) {
   const { t } = useTranslation();
+  const color = brandColor || "#b8955a";
+  // Derive soft/deep tints from the brand colour
+  const r = parseInt(color.slice(1,3),16), g = parseInt(color.slice(3,5),16), b = parseInt(color.slice(5,7),16);
+  const mix = (v,t2,a) => Math.round(v+(t2-v)*a).toString(16).padStart(2,"0");
+  const soft = `#${mix(r,255,0.25)}${mix(g,255,0.25)}${mix(b,255,0.25)}`;
+  const deep = `#${mix(r,0,0.22)}${mix(g,0,0.22)}${mix(b,0,0.22)}`;
   return (
-    <div className="min-h-screen bg-bg text-ink flex flex-col relative overflow-hidden">
+    <div
+      className="min-h-screen bg-bg text-ink flex flex-col relative overflow-hidden"
+      style={{ "--aq-brand": color, "--aq-brand-soft": soft, "--aq-brand-deep": deep }}
+    >
       {/* Gold atmospheric wash */}
       <div
         aria-hidden

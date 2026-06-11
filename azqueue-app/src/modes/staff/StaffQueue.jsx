@@ -231,7 +231,7 @@ export default function StaffQueue() {
           <span className="cm cm-tl" /><span className="cm cm-tr" /><span className="cm cm-bl" /><span className="cm cm-br" />
 
           <div className="ovline text-[9px] text-ink-mute mb-6 tracking-widest">
-            {branch?.name ?? "Az Tax Services"}
+            {branch?.name ?? "AzQueue"}
           </div>
 
           <div className="font-display text-5xl font-light gold-text mb-1">{timeStr}</div>

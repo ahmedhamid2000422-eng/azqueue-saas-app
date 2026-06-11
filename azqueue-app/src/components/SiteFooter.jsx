@@ -63,7 +63,7 @@ export default function SiteFooter() {
           {/* Brand column — full width on mobile */}
           <div style={mob ? { gridColumn: "1 / -1" } : {}}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-              <div style={{ width: 24, height: 24, background: C.gold, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: C.void }}>A</div>
+              <div style={{ width: 24, height: 24, background: C.gold, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: C.void, letterSpacing: "0.02em" }}>AQ</div>
               <span style={{ fontSize: 14, fontWeight: 500, color: C.ink, letterSpacing: "0.01em" }}>AzQueue</span>
             </div>
             <p style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.65, maxWidth: 240, margin: 0 }}>
@@ -100,9 +100,9 @@ export default function SiteFooter() {
         </div>
 
         {/* Bottom rule */}
-        <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 28, display: "flex", flexDirection: mob ? "column" : "row", justifyContent: "space-between", alignItems: mob ? "flex-start" : "center", gap: 12 }}>
+        <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 28, display: "flex", flexDirection: mob ? "column" : "row", justifyContent: "space-between", alignItems: mob ? "flex-start" : "center", gap: mob ? 16 : 12 }}>
           <div style={{ fontSize: 11, color: C.dim }}>© 2026 AzQueue. All rights reserved.</div>
-          <div style={{ display: "flex", gap: 24 }}>
+          <div style={{ display: "flex", gap: mob ? 16 : 24, flexWrap: "wrap" }}>
             {[["Privacy", "/legal/privacy"], ["Terms", "/legal/terms"], ["Refunds", "/legal/refund"], ["Support", "/support"]].map(([label, to]) => (
               <Link key={label} to={to} style={{ fontSize: 11, color: C.dim, textDecoration: "none" }}
                 onMouseEnter={e => e.target.style.color = C.muted}

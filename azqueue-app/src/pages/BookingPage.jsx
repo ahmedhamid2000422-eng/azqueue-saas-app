@@ -48,7 +48,7 @@ export default function BookingPage() {
     let cancelled = false;
     (async () => {
       const { data: b, error: bErr } = await supabase
-        .from("branches").select("id, slug, name, city, timezone, islamic_mode, business_type, booking_faq")
+        .from("branches").select("id, slug, name, city, timezone, islamic_mode, business_type, booking_faq, brand_color")
         .eq("slug", slug).single();
       if (bErr || !b) {
         if (!cancelled) { setLoadError(t("checkin.invalid")); setLoading(false); }
@@ -115,8 +115,8 @@ export default function BookingPage() {
     setConfirmed(data);
   }
 
-  if (loading)   return <Shell><div className="text-center py-20 ovline text-ink-mute">{t("common.loading")}</div></Shell>;
-  if (loadError) return <Shell><div className="text-center py-12 text-ink-soft text-sm">{loadError}</div></Shell>;
+  if (loading)   return <Shell brandColor={branch?.brand_color}><div className="text-center py-20 ovline text-ink-mute">{t("common.loading")}</div></Shell>;
+  if (loadError) return <Shell brandColor={branch?.brand_color}><div className="text-center py-12 text-ink-soft text-sm">{loadError}</div></Shell>;
 
   if (confirmed) return <Confirmed branch={branch} booking={confirmed} services={services} />;
 
@@ -127,7 +127,7 @@ export default function BookingPage() {
   const faqItems = Array.isArray(branch.booking_faq) ? branch.booking_faq : [];
 
   return (
-    <Shell>
+    <Shell brandColor={branch?.brand_color}>
       {/* Branch header */}
       <div className="atmosphere-hero -mx-6 px-6 -mt-8 pt-8 pb-2 text-center">
         <div className="ovline text-gold-soft mb-2">{t("booking.title")}</div>
@@ -315,7 +315,7 @@ function Confirmed({ branch, booking, services }) {
   const svc = services.find((s) => s.id === booking.service_id);
   const when = new Date(booking.scheduled_at);
   return (
-    <Shell>
+    <Shell brandColor={branch?.brand_color}>
       <LuxeFrame className="p-8 mt-8 text-center">
         <div className="ovline text-[#9bbd9b] mb-3 flex items-center justify-center gap-2">
           <span className="pip breathe" />
@@ -393,10 +393,18 @@ function FormError({ message }) {
   );
 }
 
-function Shell({ children }) {
+function Shell({ children, brandColor }) {
   const { t } = useTranslation();
+  const color = brandColor || "#b8955a";
+  const r = parseInt(color.slice(1,3),16), g = parseInt(color.slice(3,5),16), b = parseInt(color.slice(5,7),16);
+  const mix = (v,t2,a) => Math.round(v+(t2-v)*a).toString(16).padStart(2,"0");
+  const soft = `#${mix(r,255,0.25)}${mix(g,255,0.25)}${mix(b,255,0.25)}`;
+  const deep = `#${mix(r,0,0.22)}${mix(g,0,0.22)}${mix(b,0,0.22)}`;
   return (
-    <div className="min-h-screen bg-bg text-ink flex flex-col relative overflow-hidden">
+    <div
+      className="min-h-screen bg-bg text-ink flex flex-col relative overflow-hidden"
+      style={{ "--aq-brand": color, "--aq-brand-soft": soft, "--aq-brand-deep": deep }}
+    >
       <div
         aria-hidden
         className="absolute inset-x-0 top-0 h-[420px] pointer-events-none"

@@ -58,22 +58,6 @@ function useInView(threshold = 0.12) {
   return [ref, visible];
 }
 
-function useCounter(target, active, duration = 1800) {
-  const [val, setVal] = useState(0);
-  useEffect(() => {
-    if (!active) return;
-    let start = null;
-    const step = ts => {
-      if (!start) start = ts;
-      const p = Math.min((ts - start) / duration, 1);
-      setVal(Math.floor(p * p * target));
-      if (p < 1) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  }, [active, target, duration]);
-  return val;
-}
-
 // ── Page meta + FAQ schema for SEO + AI assistants ──────────────────
 function usePageMeta() {
   useEffect(() => {
@@ -143,6 +127,42 @@ export default function Landing() {
           "acceptedAnswer": { "@type": "Answer", "text": a },
         })),
       }) }} />
+
+      {/* Schema.org SoftwareApplication — tells Google/Gemini this is a named product */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "AzQueue",
+        "url": "https://azqueue.io",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web",
+        "offers": {
+          "@type": "Offer",
+          "price": "79",
+          "priceCurrency": "USD",
+          "availability": "https://schema.org/InStock",
+        },
+        "description": "Queue and booking management system for service businesses. Walk-ins and bookings in one smart queue — with WhatsApp AI receptionist, Islamic prayer-aware scheduling, loyalty cards, and live staff dashboard. Used in 12+ countries.",
+        "featureList": [
+          "WhatsApp AI Receptionist",
+          "Virtual queue & walk-in check-in",
+          "Appointment booking system",
+          "Prayer-time aware scheduling",
+          "Customer loyalty punch cards",
+          "Real-time TV queue display",
+          "SMS & WhatsApp notifications",
+          "Multi-branch management",
+          "Lead scoring & CRM",
+        ],
+        "screenshot": "https://azqueue.io/og-image.png",
+        "publisher": {
+          "@type": "Organization",
+          "name": "AzQueue",
+          "url": "https://azqueue.io",
+          "logo": "https://azqueue.io/favicon.svg",
+        },
+      }) }} />
+
       <SiteNav />
       <Hero />
       <LogoCloud />
@@ -155,6 +175,7 @@ export default function Landing() {
       <HowItWorks />
       <CaseStudies />
       <Testimonials />
+      <SavingsCalculator />
       <FAQSection />
       <Pricing />
       <FinalCTA />
@@ -177,7 +198,7 @@ function Hero() {
         <div style={{ flex: mob ? "none" : "0 0 500px", width: mob ? "100%" : "auto", opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(16px)", transition: "all 0.8s ease" }}>
           <div style={{ ...T.label, marginBottom: 28, display: "inline-flex", alignItems: "center", gap: 10, padding: "6px 12px", border: `1px solid ${C.border}`, borderRadius: 999, background: "rgba(184,149,90,0.04)" }}>
             <div style={{ width: 5, height: 5, borderRadius: "50%", background: C.live }} />
-            Live in 200+ businesses · 12 countries
+            Queue management, simplified
           </div>
           <h1 style={{ ...T.display, fontSize: mob ? 36 : 50, color: C.ink, margin: "0 0 22px", maxWidth: 500 }}>
             Every customer informed.{" "}
@@ -206,11 +227,8 @@ function Hero() {
               </div>
             ))}
           </div>
-          <div style={{ marginTop: 24, display: "flex", alignItems: "center", gap: 10, paddingTop: 20, borderTop: `1px solid ${C.border}` }}>
-            <div style={{ display: "flex", gap: 1.5 }}>
-              {[...Array(5)].map((_, i) => <span key={i} style={{ color: C.gold, fontSize: 13, lineHeight: 1 }}>★</span>)}
-            </div>
-            <span style={{ fontSize: 12, color: C.muted, letterSpacing: "-0.005em" }}>4.9 · 600+ businesses trust AzQueue to run their front desk</span>
+          <div style={{ marginTop: 24, paddingTop: 20, borderTop: `1px solid ${C.border}` }}>
+            <span style={{ fontSize: 12, color: C.muted, letterSpacing: "-0.005em" }}>Built for clinics, salons, banks, and service businesses that take their front desk seriously.</span>
           </div>
         </div>
 
@@ -336,15 +354,11 @@ function LogoCloud() {
 function StatBand() {
   const [ref, visible] = useInView();
   const mob = useMob();
-  const tickets  = useCounter(250000, visible, 2000);
-  const branches = useCounter(200, visible, 1600);
-  const wait     = useCounter(8, visible, 1200);
-  const sat      = useCounter(96, visible, 1400);
   const stats = [
-    { value: visible ? tickets.toLocaleString() + "+" : "—", label: "Tickets served",        sub: "Across all live branches" },
-    { value: visible ? branches + "+" : "—",                  label: "Active branches",       sub: "Live and growing weekly" },
-    { value: visible ? wait + " min" : "—",                   label: "Avg. wait time",        sub: "Down from 21 min before" },
-    { value: visible ? sat + "%" : "—",                       label: "Customer satisfaction", sub: "Verified post-visit ratings" },
+    { value: "≤ 15 min",   label: "Setup time",            sub: "From sign-up to first ticket" },
+    { value: "Zero",       label: "Hardware required",     sub: "Any tablet or phone works" },
+    { value: "One tap",    label: "Customer check-in",     sub: "No app, no paper, no queuing" },
+    { value: "Real-time",  label: "Staff dashboard",       sub: "Live view across all stations" },
   ];
   return (
     <section ref={ref} style={{ padding: mob ? "60px 20px" : "100px 48px" }}>
@@ -355,8 +369,8 @@ function StatBand() {
         </div>
         <div style={{ display: "grid", gridTemplateColumns: mob ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap: 1, background: C.border, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
           {stats.map((stat) => (
-            <div key={stat.label} style={{ padding: mob ? "24px 12px" : "40px 28px", textAlign: "center", background: C.void }}>
-              <div style={{ fontSize: mob ? 26 : 42, fontWeight: 400, color: C.ink, letterSpacing: "-0.02em", fontFamily: "Georgia, serif", lineHeight: 1, marginBottom: mob ? 8 : 12, background: "linear-gradient(180deg,#f0ede6 0%, #b8955a 130%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>{stat.value}</div>
+            <div key={stat.label} style={{ padding: mob ? "24px 12px" : "40px 28px", textAlign: "center", background: C.void, opacity: visible ? 1 : 0, transition: "opacity 0.6s ease" }}>
+              <div style={{ fontSize: mob ? 22 : 34, fontWeight: 400, color: C.ink, letterSpacing: "-0.02em", fontFamily: "Georgia, serif", lineHeight: 1, marginBottom: mob ? 8 : 12, background: "linear-gradient(180deg,#f0ede6 0%, #b8955a 130%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>{stat.value}</div>
               <div style={{ fontSize: mob ? 11 : 12, color: C.ink, letterSpacing: "0.04em", marginBottom: 4, fontWeight: 500 }}>{stat.label}</div>
               <div style={{ fontSize: mob ? 10 : 11, color: C.muted, lineHeight: 1.5 }}>{stat.sub}</div>
             </div>
@@ -941,6 +955,198 @@ function Testimonials() {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ── Savings Calculator ───────────────────────────────────────────── */
+const CURRENCIES = {
+  USD: { symbol: "$", label: "USD", rate: 1,      price: 79 },
+  AED: { symbol: "AED ", label: "AED", rate: 3.67, price: 290 },
+};
+
+function SavingsCalculator() {
+  const [ref, visible] = useInView(0.08);
+  const mob = useMob();
+
+  const [currency, setCurrency] = useState("USD");
+  const [custsPerDay, setCustsPerDay]   = useState(30);
+  const [avgVal,      setAvgVal]        = useState(150);
+  const [staffCount,  setStaffCount]    = useState(2);
+  const [hourlyRate,  setHourlyRate]    = useState(18);
+  const [noshowPct,   setNoshowPct]     = useState(18);
+
+  const cur = CURRENCIES[currency];
+
+  // Calculation logic (same as the chat widget above)
+  const workingDays  = 22;
+  const staffSavings = Math.round(staffCount * 1.5 * hourlyRate * workingDays * cur.rate);
+  const savedNoshows = Math.max(0, (noshowPct / 100) - 0.05);
+  const noshowSave   = Math.round(custsPerDay * workingDays * savedNoshows * avgVal * cur.rate);
+  const walkoutSave  = Math.round(custsPerDay * workingDays * 0.08 * avgVal * cur.rate);
+  const total        = staffSavings + noshowSave + walkoutSave;
+  const annual       = total * 12;
+  const roi          = cur.price > 0 ? Math.round(total / cur.price) : 0;
+
+  const fmt = n => cur.symbol + n.toLocaleString();
+
+  const sliders = [
+    { label: "Customers per day",    id: "cust",   min: 5,  max: 200, step: 5,  val: custsPerDay, set: setCustsPerDay,  fmt: v => v },
+    { label: "Average service value",id: "val",    min: 20, max: 1000,step: 10, val: avgVal,      set: setAvgVal,       fmt: v => cur.symbol + v },
+    { label: "Staff on queue duty",  id: "staff",  min: 1,  max: 10,  step: 1,  val: staffCount,  set: setStaffCount,   fmt: v => v },
+    { label: "Staff hourly rate",    id: "rate",   min: 10, max: 80,  step: 1,  val: hourlyRate,  set: setHourlyRate,   fmt: v => cur.symbol + v },
+    { label: "Current no-show rate", id: "noshow", min: 0,  max: 40,  step: 1,  val: noshowPct,   set: setNoshowPct,    fmt: v => v + "%" },
+  ];
+
+  const buckets = [
+    { label: "Staff time recovered",  sub: "1.5 hrs/day saved per staff member",           val: staffSavings, color: "#378ADD" },
+    { label: "No-shows eliminated",   sub: `${noshowPct}% → 5% with SMS reminders`,         val: noshowSave,   color: C.sage    },
+    { label: "Walkouts prevented",    sub: "23% of customers leave after 5+ min wait",      val: walkoutSave,  color: C.gold    },
+  ];
+
+  return (
+    <section
+      ref={ref}
+      id="savings"
+      style={{
+        padding: mob ? "60px 20px" : "120px 48px",
+        background: C.void,
+        borderTop: `1px solid ${C.border}`,
+        opacity: visible ? 1 : 0,
+        transform: visible ? "none" : "translateY(24px)",
+        transition: "all 0.7s ease",
+      }}
+    >
+      <div style={{ maxWidth: 1160, margin: "0 auto" }}>
+
+        {/* Header row */}
+        <div style={{ display: "flex", flexDirection: mob ? "column" : "row", justifyContent: "space-between", alignItems: mob ? "flex-start" : "flex-end", gap: 24, marginBottom: mob ? 40 : 64 }}>
+          <div>
+            <div style={{ ...T.label, marginBottom: 16 }}>ROI Calculator</div>
+            <h2 style={{ ...T.h2, fontSize: mob ? 26 : 34, color: C.ink, margin: "0 0 12px" }}>
+              See exactly what you're leaving on the table.
+            </h2>
+            <p style={{ ...T.body, margin: 0, maxWidth: 520, fontSize: 14 }}>
+              Adjust the sliders to match your business. Every number is grounded in real operating costs — no marketing inflation.
+            </p>
+          </div>
+
+          {/* Currency toggle */}
+          <div style={{ display: "flex", border: `1px solid ${C.border}`, borderRadius: 6, overflow: "hidden", flexShrink: 0 }}>
+            {Object.keys(CURRENCIES).map(k => (
+              <button
+                key={k}
+                onClick={() => setCurrency(k)}
+                style={{
+                  padding: "8px 20px",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  letterSpacing: "0.1em",
+                  background: currency === k ? C.gold : "transparent",
+                  color: currency === k ? C.void : C.muted,
+                  border: "none",
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                }}
+              >
+                {k}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Two-column layout */}
+        <div style={{ display: "grid", gridTemplateColumns: mob ? "1fr" : "1fr 1fr", gap: mob ? 40 : 64, alignItems: "start" }}>
+
+          {/* Left — sliders */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+            {sliders.map(s => (
+              <div key={s.id}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
+                  <span style={{ fontSize: 12, color: C.muted, letterSpacing: "0.04em" }}>{s.label}</span>
+                  <span style={{ fontSize: 16, color: C.ink, fontVariantNumeric: "tabular-nums" }}>{s.fmt(s.val)}</span>
+                </div>
+                <div style={{ position: "relative" }}>
+                  {/* Track fill */}
+                  <div style={{
+                    position: "absolute", top: "50%", left: 0,
+                    width: `${((s.val - s.min) / (s.max - s.min)) * 100}%`,
+                    height: 2, background: C.gold, transform: "translateY(-50%)", pointerEvents: "none", borderRadius: 2,
+                  }} />
+                  <input
+                    type="range" min={s.min} max={s.max} step={s.step} value={s.val}
+                    onChange={e => s.set(Number(e.target.value))}
+                    style={{
+                      width: "100%", appearance: "none", WebkitAppearance: "none",
+                      background: C.faint, height: 2, borderRadius: 2, outline: "none", cursor: "pointer",
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Right — results */}
+          <div>
+            {/* Breakdown rows */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 1, marginBottom: 2 }}>
+              {buckets.map(b => (
+                <div key={b.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 0", borderBottom: `1px solid ${C.border}`, gap: 16 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+                    <div style={{ width: 3, height: 36, background: b.color, borderRadius: 2, flexShrink: 0 }} />
+                    <div>
+                      <div style={{ fontSize: 13, color: C.ink, marginBottom: 2 }}>{b.label}</div>
+                      <div style={{ fontSize: 11, color: C.muted }}>{b.sub}</div>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 18, color: C.ink, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{fmt(b.val)}<span style={{ fontSize: 10, color: C.muted, marginLeft: 4 }}>/mo</span></div>
+                </div>
+              ))}
+            </div>
+
+            {/* Total card */}
+            <div style={{
+              marginTop: 20,
+              padding: mob ? "24px 20px" : "28px 28px",
+              border: `1px solid rgba(184,149,90,0.3)`,
+              borderRadius: 8,
+              background: "rgba(184,149,90,0.04)",
+              display: "flex", flexDirection: mob ? "column" : "row", justifyContent: "space-between", alignItems: mob ? "flex-start" : "center", gap: 20,
+            }}>
+              <div>
+                <div style={{ fontSize: 11, color: C.muted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6 }}>Monthly savings</div>
+                <div style={{ fontSize: mob ? 36 : 44, color: C.gold, fontFamily: "Georgia, serif", fontWeight: 500, letterSpacing: "-0.02em", lineHeight: 1 }}>
+                  {fmt(total)}
+                </div>
+                <div style={{ fontSize: 12, color: C.muted, marginTop: 6 }}>
+                  {roi}× return on your {cur.symbol}{cur.price.toLocaleString()}/mo AzQueue plan
+                </div>
+              </div>
+              <div style={{ textAlign: mob ? "left" : "right" }}>
+                <div style={{ fontSize: 11, color: C.muted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6 }}>Annual savings</div>
+                <div style={{ fontSize: mob ? 24 : 28, color: C.ink, fontFamily: "Georgia, serif", fontWeight: 500, letterSpacing: "-0.01em" }}>
+                  {fmt(annual)}
+                </div>
+              </div>
+            </div>
+
+            {/* CTA */}
+            <div style={{ marginTop: 20, display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <Link
+                to="/signup"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 8,
+                  padding: "12px 24px", background: C.gold, color: C.void,
+                  fontSize: 13, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase",
+                  textDecoration: "none", borderRadius: 4, transition: "opacity 0.15s",
+                }}
+              >
+                Start saving — free 14 days <Ic.Arr />
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </section>

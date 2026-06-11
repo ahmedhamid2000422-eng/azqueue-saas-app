@@ -53,7 +53,7 @@ export function useCheckin() {
       ] = await Promise.all([
         supabase
           .from("branches")
-          .select("id, name, city")
+          .select("id, name, city, brand_color")
           .eq("id", branchId)
           .maybeSingle(),
         supabase
@@ -190,7 +190,7 @@ export function useCheckin() {
           name.trim(),
           newToken,
           waitingCount ?? 0,
-          branch?.name ?? "Az Tax Services"
+          branch?.name ?? "AzQueue"
         );
       }
     } catch (e) {

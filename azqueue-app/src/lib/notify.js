@@ -20,8 +20,8 @@
  *
  * Three exported functions:
  *   sendCheckinConfirmation(phone, name, token, position, branchName)
- *   sendCalledNotification(phone, name, token, windowNumber, staffName)
- *   sendWaitUpdate(phone, name, position)
+ *   sendCalledNotification(phone, name, token, windowNumber, staffName, branchName)
+ *   sendWaitUpdate(phone, name, position, branchName)
  *
  * All functions are fire-and-forget — they log errors to console
  * but never throw, so a Twilio failure never breaks the queue flow.
@@ -96,36 +96,38 @@ export async function sendCheckinConfirmation(phone, name, token, position, bran
 /**
  * Sent when a staff member calls this customer's ticket.
  *
- * @param {string} phone        Customer phone
- * @param {string} name         Customer name
- * @param {string} token        Queue token e.g. "A014"
+ * @param {string} phone              Customer phone
+ * @param {string} name               Customer name
+ * @param {string} token              Queue token e.g. "A014"
  * @param {number|string} windowNumber  Window/counter number
- * @param {string} staffName    Staff member's display name
+ * @param {string} staffName          Staff member's display name
+ * @param {string} [branchName]       Branch display name (defaults to "AzQueue")
  */
-export async function sendCalledNotification(phone, name, token, windowNumber, staffName) {
+export async function sendCalledNotification(phone, name, token, windowNumber, staffName, branchName = "AzQueue") {
   if (!phone) return;
   const body =
     `${name}, it's your turn!\n` +
-    `Please come to Window ${windowNumber} · ${staffName} is ready for you.\n` +
-    `Az Tax Services`;
+    `Please come to ${windowNumber} · ${staffName} is ready for you.\n` +
+    branchName;
   await sendSms(phone, body);
 }
 
 /**
  * Optional position update — call periodically for long waits.
  *
- * @param {string} phone     Customer phone
- * @param {string} name      Customer name
- * @param {number} position  Current position in queue (1 = next)
+ * @param {string} phone         Customer phone
+ * @param {string} name          Customer name
+ * @param {number} position      Current position in queue (1 = next)
+ * @param {string} [branchName]  Branch display name (defaults to "AzQueue")
  */
-export async function sendWaitUpdate(phone, name, position) {
+export async function sendWaitUpdate(phone, name, position, branchName = "AzQueue") {
   if (!phone) return;
   const pos  = Math.max(1, position ?? 1);
   const wait = pos * 10;
   const body =
     `Hi ${name}, you're still #${pos} in line.\n` +
     `Est. ${wait} more minutes. Thank you for waiting.\n` +
-    `Az Tax Services`;
+    branchName;
   await sendSms(phone, body);
 }
 

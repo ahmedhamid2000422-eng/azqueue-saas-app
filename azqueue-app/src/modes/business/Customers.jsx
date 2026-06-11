@@ -1288,6 +1288,27 @@ function CustomersInner() {
                 </div>
               </div>
 
+              {/* One-tap status templates (shown for all real channels) */}
+              {composeChannel !== "manual" && (
+                <div className="px-4 pt-3 pb-1 flex gap-1.5 flex-wrap border-b border-line/50">
+                  {[
+                    { label: "Documents received", body: `Hi ${profile?.name?.split(" ")[0] ?? "there"}, we've received your documents. We'll review and be in touch shortly.` },
+                    { label: "Filed ✓",            body: `Hi ${profile?.name?.split(" ")[0] ?? "there"}, your return has been filed successfully. You're all set!` },
+                    { label: "Case update",        body: `Hi ${profile?.name?.split(" ")[0] ?? "there"}, there's an update on your case. Please give us a call at your earliest convenience.` },
+                    { label: "Reschedule",         body: `Hi ${profile?.name?.split(" ")[0] ?? "there"}, we need to reschedule your appointment. When are you available? Feel free to reply here.` },
+                  ].map(({ label, body }) => (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => setComposeText(body)}
+                      className="text-[9px] px-2 py-1 border border-line text-ink-mute hover:border-gold hover:text-gold transition tracking-wide rounded-sm"
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <div className="px-4 py-3">
                 <textarea
                   value={composeText}

@@ -259,17 +259,37 @@ function BillingTab() {
 }
 
 /* ── GENERAL ───────────────────────────────────────────────────────── */
+const DEFAULT_BRAND_COLOR = "#b8955a";
+
+// Derive lighter/darker tints so --aq-brand-soft and --aq-brand-deep
+// update automatically when the owner changes the brand colour.
+function deriveTints(hex) {
+  // Parse
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const mix = (v, target, t) => Math.round(v + (target - v) * t);
+  const toHex = (v) => v.toString(16).padStart(2, "0");
+  // soft: blend toward white
+  const soft = `#${toHex(mix(r,255,0.25))}${toHex(mix(g,255,0.25))}${toHex(mix(b,255,0.25))}`;
+  // deep: blend toward black
+  const deep = `#${toHex(mix(r,0,0.22))}${toHex(mix(g,0,0.22))}${toHex(mix(b,0,0.22))}`;
+  return { soft, deep };
+}
+
 function GeneralTab({ branch, reload }) {
-  const [name, setName] = useState(branch?.name ?? "");
-  const [city, setCity] = useState(branch?.city ?? "");
-  const [tz,   setTz]   = useState(branch?.timezone ?? "Asia/Kuala_Lumpur");
-  const [busy, setBusy] = useState(false);
+  const [name,       setName]       = useState(branch?.name ?? "");
+  const [city,       setCity]       = useState(branch?.city ?? "");
+  const [tz,         setTz]         = useState(branch?.timezone ?? "Asia/Kuala_Lumpur");
+  const [brandColor, setBrandColor] = useState(branch?.brand_color ?? DEFAULT_BRAND_COLOR);
+  const [busy,  setBusy]  = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     setName(branch?.name ?? "");
     setCity(branch?.city ?? "");
     setTz(branch?.timezone ?? "Asia/Kuala_Lumpur");
+    setBrandColor(branch?.brand_color ?? DEFAULT_BRAND_COLOR);
   }, [branch?.id]);
 
   if (!branch) return <Empty hint="Select or create a branch first." />;
@@ -279,13 +299,15 @@ function GeneralTab({ branch, reload }) {
     setSaved(false);
     await supabase
       .from("branches")
-      .update({ name, city, timezone: tz })
+      .update({ name, city, timezone: tz, brand_color: brandColor })
       .eq("id", branch.id);
     await reload();
     setBusy(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }
+
+  const { soft, deep } = deriveTints(brandColor);
 
   const checkinUrl = `${typeof window !== "undefined" ? window.location.origin : "https://azqueue.io"}/checkin/${branch.id}`;
 
@@ -301,6 +323,93 @@ function GeneralTab({ branch, reload }) {
         <div className="rule-ornament my-5 text-[8px]"><span>·</span></div>
         <div className="flex gap-3 items-center">
           <Button onClick={save} disabled={busy}>{busy ? "Saving…" : "Save changes"}</Button>
+          {saved && <span className="text-[10px] text-[#9bbd9b]">Saved.</span>}
+        </div>
+      </Card>
+
+      {/* ── Brand colour ──────────────────────────────────────────── */}
+      <Card luxe className="p-7">
+        <div className="mb-5">
+          <div className="ovline text-[9px] text-gold-soft mb-1">Portal Branding</div>
+          <h3 className="font-display text-lg font-light tracking-tight text-ink">
+            Brand colour
+          </h3>
+          <p className="text-xs text-ink-soft mt-1">
+            Applied to your customer-facing check-in page, ticket display, and booking links.
+            Pick any colour that matches your business.
+          </p>
+        </div>
+
+        {/* Colour picker row */}
+        <div className="flex flex-wrap items-center gap-5 mb-5">
+          <div className="relative">
+            <input
+              type="color"
+              value={brandColor}
+              onChange={(e) => setBrandColor(e.target.value)}
+              className="w-14 h-14 rounded-sm cursor-pointer border border-line/60 bg-transparent p-0.5"
+              title="Pick brand colour"
+            />
+          </div>
+
+          {/* Live tint preview */}
+          <div className="flex gap-2 items-center">
+            <div className="flex flex-col items-center gap-1">
+              <div className="w-10 h-10 rounded-sm border border-line/40" style={{ background: brandColor }} />
+              <span className="text-[8px] text-ink-mute">Main</span>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <div className="w-10 h-10 rounded-sm border border-line/40" style={{ background: soft }} />
+              <span className="text-[8px] text-ink-mute">Soft</span>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <div className="w-10 h-10 rounded-sm border border-line/40" style={{ background: deep }} />
+              <span className="text-[8px] text-ink-mute">Deep</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <span className="font-mono text-xs text-ink-soft">{brandColor.toUpperCase()}</span>
+            <button
+              onClick={() => setBrandColor(DEFAULT_BRAND_COLOR)}
+              className="text-[10px] text-ink-mute hover:text-ink transition text-left"
+            >
+              ↺ Reset to AzQueue gold
+            </button>
+          </div>
+        </div>
+
+        {/* Preset swatches — useful for interior designers / brand-conscious clients */}
+        <div className="mb-5">
+          <div className="ovline text-[8px] text-ink-mute mb-2">Quick presets</div>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { hex: "#b8955a", label: "AzQueue Gold" },
+              { hex: "#2d6a4f", label: "Forest Green" },
+              { hex: "#1d3557", label: "Navy" },
+              { hex: "#6d4c41", label: "Walnut" },
+              { hex: "#7b2d8b", label: "Plum" },
+              { hex: "#c0392b", label: "Crimson" },
+              { hex: "#1a1a2e", label: "Midnight" },
+              { hex: "#4a90d9", label: "Sky Blue" },
+              { hex: "#2c2c2c", label: "Charcoal" },
+            ].map(({ hex, label }) => (
+              <button
+                key={hex}
+                title={label}
+                onClick={() => setBrandColor(hex)}
+                className="w-7 h-7 rounded-sm border-2 transition hover:scale-110"
+                style={{
+                  background: hex,
+                  borderColor: brandColor === hex ? "#f0ede6" : "transparent",
+                }}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="flex gap-3 items-center">
+          <Button onClick={save} disabled={busy}>{busy ? "Saving…" : "Save colour"}</Button>
           {saved && <span className="text-[10px] text-[#9bbd9b]">Saved.</span>}
         </div>
       </Card>

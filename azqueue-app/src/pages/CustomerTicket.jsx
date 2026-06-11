@@ -47,7 +47,7 @@ export default function CustomerTicket() {
       }
 
       const [{ data: b }, { data: s }] = await Promise.all([
-        supabase.from("branches").select("id, name, city, slug").eq("id", t.branch_id).single(),
+        supabase.from("branches").select("id, name, city, slug, brand_color").eq("id", t.branch_id).single(),
         t.service_id
           ? supabase.from("services").select("id, name, duration_min").eq("id", t.service_id).single()
           : Promise.resolve({ data: null }),
@@ -185,11 +185,11 @@ export default function CustomerTicket() {
     );
   }
 
-  if (loading) return <Shell><div className="text-center py-20 ovline text-ink-mute">Loading…</div></Shell>;
-  if (error)   return <Shell><div className="text-center py-12 text-ink-soft text-sm">{error}</div></Shell>;
+  if (loading) return <Shell brandColor={branch?.brand_color}><div className="text-center py-20 ovline text-ink-mute">Loading…</div></Shell>;
+  if (error)   return <Shell brandColor={branch?.brand_color}><div className="text-center py-12 text-ink-soft text-sm">{error}</div></Shell>;
 
   return (
-    <Shell>
+    <Shell brandColor={branch?.brand_color}>
       {/* Branch */}
       <div className="atmosphere-hero -mx-6 px-6 -mt-8 pt-6 pb-2 text-center">
         <div className="ovline text-gold-soft mb-2">{branch?.name}</div>
@@ -471,10 +471,18 @@ function fmtAgo(iso) {
 }
 
 /* ── Shell ─────────────────────────────────────────────────────────── */
-function Shell({ children }) {
+function Shell({ children, brandColor }) {
   const { t } = useTranslation();
+  const color = brandColor || "#b8955a";
+  const r = parseInt(color.slice(1,3),16), g = parseInt(color.slice(3,5),16), b = parseInt(color.slice(5,7),16);
+  const mix = (v,t2,a) => Math.round(v+(t2-v)*a).toString(16).padStart(2,"0");
+  const soft = `#${mix(r,255,0.25)}${mix(g,255,0.25)}${mix(b,255,0.25)}`;
+  const deep = `#${mix(r,0,0.22)}${mix(g,0,0.22)}${mix(b,0,0.22)}`;
   return (
-    <div className="min-h-screen bg-bg text-ink flex flex-col relative overflow-hidden">
+    <div
+      className="min-h-screen bg-bg text-ink flex flex-col relative overflow-hidden"
+      style={{ "--aq-brand": color, "--aq-brand-soft": soft, "--aq-brand-deep": deep }}
+    >
       <div
         aria-hidden
         className="absolute inset-x-0 top-0 h-[420px] pointer-events-none"

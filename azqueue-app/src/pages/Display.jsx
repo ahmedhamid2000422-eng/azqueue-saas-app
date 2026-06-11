@@ -92,7 +92,7 @@ export default function Display() {
           className="font-display font-light"
           style={{ color: "#c9a86a", fontSize: 48, opacity: 0.4 }}
         >
-          Az Tax Services
+          AzQueue
         </div>
       </div>
     );
@@ -125,16 +125,16 @@ export default function Display() {
           >
             <span
               className="font-display font-semibold"
-              style={{ color: "#141410", fontSize: 18 }}
+              style={{ color: "#141410", fontSize: 14 }}
             >
-              A
+              AQ
             </span>
           </div>
           <span
             className="font-display font-light tracking-tight"
             style={{ color: "#e4cb95", fontSize: 28 }}
           >
-            {branchName || "Az Tax Services"}
+            {branchName || "AzQueue"}
           </span>
         </div>
 

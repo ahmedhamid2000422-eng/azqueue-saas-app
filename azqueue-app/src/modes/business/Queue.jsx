@@ -581,6 +581,7 @@ export default function Queue() {
         ticket.token,
         windowLabel,
         staffName,
+        branch?.name ?? "AzQueue",
       );
       setSmsSent((prev) => ({ ...prev, [ticket.id]: "sent" }));
       // Auto-clear the "Sent ✓" indicator after 4 s

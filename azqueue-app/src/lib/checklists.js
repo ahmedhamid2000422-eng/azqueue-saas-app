@@ -595,6 +595,126 @@ export const DEFAULT_CHECKLISTS = {
     ],
   },
 
+  // ── Architecture & Design ─────────────────────────────────────────────
+
+  "design consultation": {
+    label: "Design Consultation",
+    needsChecklist: true,
+    reminder: "Bring any photos, sketches, or inspiration images — the more context you share, the more productive the session.",
+    items: [
+      "Site address or project location",
+      "Existing floor plans or drawings (if available)",
+      "Photos of the current space or site",
+      "Inspiration images or mood board (Pinterest board, magazine clippings, etc.)",
+      "Brief written summary of your goals and must-haves",
+      "Approximate budget range",
+      "Project timeline or move-in / completion target",
+      "HOA rules or building regulations (if applicable)",
+      "List of questions and priorities for the session",
+    ],
+  },
+
+  "architectural review": {
+    label: "Architectural Design Review",
+    needsChecklist: true,
+    reminder: "Bring all previously issued drawings at full scale if possible.",
+    items: [
+      "Latest set of architectural drawings (all sheets)",
+      "Structural drawings (if separate from architectural set)",
+      "MEP (Mechanical, Electrical, Plumbing) drawings (if available)",
+      "Previous review comments or markup from authorities",
+      "Project brief or scope-of-work document",
+      "Site plan and survey",
+      "Specifications document (if issued)",
+    ],
+  },
+
+  "permit consultation": {
+    label: "Building Permit Consultation",
+    needsChecklist: true,
+    reminder: "Permit requirements vary by municipality — we will confirm exactly what your local authority needs.",
+    items: [
+      "Site address and parcel number",
+      "Full architectural drawing set (signed and stamped if available)",
+      "Structural calculations and drawings",
+      "Site plan with setbacks, easements, and utility locations",
+      "Existing building permit history (if renovation project)",
+      "HOA approval letter (if required)",
+      "Soil report or geotechnical survey (for new construction)",
+      "Environmental impact or hazmat assessment (if applicable)",
+      "Contractor license number and contact (if contractor already selected)",
+    ],
+  },
+
+  "site assessment": {
+    label: "Site Visit / Assessment",
+    needsChecklist: true,
+    items: [
+      "Property address and access instructions",
+      "Current site survey or boundary plan",
+      "Any existing drawings or as-built plans",
+      "List of specific concerns or areas to assess",
+      "HOA rules or deed restrictions (if applicable)",
+      "Key or gate access codes if site is gated",
+    ],
+  },
+
+  "interior design": {
+    label: "Interior Design Consultation",
+    needsChecklist: true,
+    reminder: "Bring physical fabric or material samples if you already have preferences — colour matching on screens is not reliable.",
+    items: [
+      "Floor plan or room dimensions (measured or drawn to scale)",
+      "Photos of existing space and furniture",
+      "Inspiration images or saved boards",
+      "Budget range for the project",
+      "List of rooms/areas to be designed",
+      "Furniture and items you plan to keep",
+      "Fabric/material preferences or allergy considerations",
+      "Timeline for completion",
+    ],
+  },
+
+  "zoning consultation": {
+    label: "Zoning / Planning Consultation",
+    needsChecklist: true,
+    items: [
+      "Property address and parcel number",
+      "Current zoning designation (check municipality website)",
+      "Proposed use or development description",
+      "Site plan (even rough sketch)",
+      "Any prior zoning or variance decisions for the property",
+      "Neighbour notification details (if variance required)",
+    ],
+  },
+
+  "project meeting": {
+    label: "Project Progress Meeting",
+    needsChecklist: false,
+    items: [
+      "Latest drawing set or revision",
+      "Open RFI list (if in construction phase)",
+      "Site photos taken since last meeting",
+      "Change order log",
+      "List of decisions needed or questions for today",
+    ],
+  },
+
+  "architecture": {
+    label: "Architecture Services",
+    needsChecklist: true,
+    reminder: "Bring all existing drawings, survey, and photos of the site or space.",
+    items: [
+      "Project address and site details",
+      "Existing drawings or as-built plans (if available)",
+      "Site survey or boundary plan",
+      "Photos of existing space or site",
+      "Project goals and brief",
+      "Budget range",
+      "Target completion date",
+    ],
+  },
+
   // ── Personal Services (no checklist needed) ────────────────────────────
 
   "haircut": { label: "Haircut", needsChecklist: false, items: [] },

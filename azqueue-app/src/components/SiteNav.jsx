@@ -60,7 +60,7 @@ export default function SiteNav({ solid = false }) {
       }}>
         {/* Logo */}
         <Link to="/" style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none", zIndex: 101 }}>
-          <div style={{ width: 24, height: 24, background: C.gold, borderRadius: 5, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: C.void }}>A</div>
+          <div style={{ width: 24, height: 24, background: C.gold, borderRadius: 5, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: C.void, letterSpacing: "0.02em" }}>AQ</div>
           <span style={{ fontSize: 14, fontWeight: 500, color: C.ink, letterSpacing: "0.01em" }}>AzQueue</span>
         </Link>
 

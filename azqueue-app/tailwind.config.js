@@ -12,9 +12,12 @@ export default {
         "surface-2":"#131210",
         line:      "rgba(255,255,255,0.07)",
         "line-2":  "rgba(255,255,255,0.12)",
-        gold:      "#b8955a",
-        "gold-soft":"#d4b478",
-        "gold-deep":"#8a7246",
+        // CSS-variable-driven so client portal pages can swap the accent
+        // colour per branch (set --aq-brand on the Shell root div).
+        // Admin dashboard always falls back to the hard-coded AzQueue gold.
+        gold:       "var(--aq-brand,      #b8955a)",
+        "gold-soft":"var(--aq-brand-soft, #d4b478)",
+        "gold-deep":"var(--aq-brand-deep, #8a7246)",
         ink:       "#f0ede6",
         "ink-soft":"#bdbab2",
         "ink-mute":"#60605a",
