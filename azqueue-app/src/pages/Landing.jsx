@@ -513,6 +513,7 @@ function LiveDashboard() {
 }
 
 function DashboardMockup() {
+  const mob = useMob();
   const rows = [
     { token: "A 38", name: "Khalid M.",   service: "Lab Results", wait: "12m", status: "serving" },
     { token: "A 39", name: "Aisha R.",    service: "General",     wait: "8m",  status: "serving" },
@@ -521,47 +522,51 @@ function DashboardMockup() {
     { token: "A 42", name: "Sara A.",     service: "General",     wait: "2m",  status: "wait"    },
     { token: "A 43", name: "Yusuf B.",    service: "Lab Results", wait: "1m",  status: "wait"    },
   ];
+  // Mobile: compact 3-col table (no service/wait columns)
+  const colTemplate = mob ? "48px 1fr 72px" : "60px 1fr 130px 60px 90px";
   return (
-    <div style={{ background: C.void, border: `1px solid ${C.border}`, borderRadius: 14, padding: 18, boxShadow: "0 40px 80px -30px rgba(0,0,0,0.7)" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.live, boxShadow: "0 0 12px rgba(74,222,128,0.5)" }} />
-          <span style={{ fontSize: 11, color: C.muted, letterSpacing: "0.06em", textTransform: "uppercase" }}>Live · City Clinic · Al Barsha</span>
+    <div style={{ background: C.void, border: `1px solid ${C.border}`, borderRadius: 14, padding: mob ? 14 : 18, boxShadow: "0 40px 80px -30px rgba(0,0,0,0.7)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.live, boxShadow: "0 0 12px rgba(74,222,128,0.5)", flexShrink: 0 }} />
+          <span style={{ fontSize: mob ? 10 : 11, color: C.muted, letterSpacing: "0.06em", textTransform: "uppercase" }}>Live · City Clinic</span>
         </div>
         <span style={{ fontSize: 11, color: C.muted, fontFamily: "monospace" }}>14:32</span>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 14 }}>
+      {/* Stats — 2×2 on mobile, 4-wide on desktop */}
+      <div style={{ display: "grid", gridTemplateColumns: mob ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap: 6, marginBottom: 12 }}>
         {[{ label: "Waiting", value: "12" }, { label: "Serving", value: "3" }, { label: "Avg wait", value: "8m" }, { label: "Done today", value: "94" }].map(k => (
-          <div key={k.label} style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 8, padding: "12px 14px" }}>
+          <div key={k.label} style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 8, padding: mob ? "10px 10px" : "12px 14px" }}>
             <div style={{ fontSize: 9, color: C.muted, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 4 }}>{k.label}</div>
-            <div style={{ fontSize: 22, color: C.ink, fontFamily: "Georgia, serif", letterSpacing: "-0.02em", lineHeight: 1 }}>{k.value}</div>
+            <div style={{ fontSize: mob ? 18 : 22, color: C.ink, fontFamily: "Georgia, serif", letterSpacing: "-0.02em", lineHeight: 1 }}>{k.value}</div>
           </div>
         ))}
       </div>
+      {/* Queue table */}
       <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "60px 1fr 130px 60px 90px", padding: "10px 16px", borderBottom: `1px solid ${C.border}`, fontSize: 9, color: C.muted, letterSpacing: "0.12em", textTransform: "uppercase" }}>
-          <span>Ticket</span><span>Customer</span><span>Service</span><span>Wait</span><span>Status</span>
+        <div style={{ display: "grid", gridTemplateColumns: colTemplate, padding: mob ? "9px 12px" : "10px 16px", borderBottom: `1px solid ${C.border}`, fontSize: 9, color: C.muted, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+          <span>Ticket</span><span>Customer</span>{!mob && <span>Service</span>}{!mob && <span>Wait</span>}<span style={{ textAlign: mob ? "right" : "left" }}>Status</span>
         </div>
         {rows.map((r, i) => {
           const accent = r.status === "serving" ? C.gold : r.status === "next" ? C.goldLit : C.muted;
           const bg     = r.status === "serving" ? "rgba(184,149,90,0.05)" : "transparent";
           return (
-            <div key={r.token} style={{ display: "grid", gridTemplateColumns: "60px 1fr 130px 60px 90px", padding: "11px 16px", borderTop: i === 0 ? "none" : `1px solid ${C.border}`, background: bg, alignItems: "center" }}>
-              <span style={{ fontSize: 12, color: accent, fontFamily: "monospace", fontWeight: 600 }}>{r.token}</span>
-              <span style={{ fontSize: 12.5, color: r.status === "wait" ? C.muted : C.ink }}>{r.name}</span>
-              <span style={{ fontSize: 11.5, color: C.muted }}>{r.service}</span>
-              <span style={{ fontSize: 11.5, color: C.muted, fontFamily: "monospace" }}>{r.wait}</span>
-              <span style={{ fontSize: 9, color: accent, letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 600, background: r.status === "serving" ? "rgba(184,149,90,0.1)" : r.status === "next" ? "rgba(212,180,120,0.06)" : "transparent", padding: "3px 8px", borderRadius: 4, justifySelf: "start", border: r.status !== "wait" ? `1px solid ${accent}33` : `1px solid ${C.border}` }}>
-                {r.status === "wait" ? "Waiting" : r.status === "next" ? "Up next" : "Serving"}
+            <div key={r.token} style={{ display: "grid", gridTemplateColumns: colTemplate, padding: mob ? "9px 12px" : "11px 16px", borderTop: i === 0 ? "none" : `1px solid ${C.border}`, background: bg, alignItems: "center" }}>
+              <span style={{ fontSize: mob ? 11 : 12, color: accent, fontFamily: "monospace", fontWeight: 600 }}>{r.token}</span>
+              <span style={{ fontSize: mob ? 11.5 : 12.5, color: r.status === "wait" ? C.muted : C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
+              {!mob && <span style={{ fontSize: 11.5, color: C.muted }}>{r.service}</span>}
+              {!mob && <span style={{ fontSize: 11.5, color: C.muted, fontFamily: "monospace" }}>{r.wait}</span>}
+              <span style={{ fontSize: 9, color: accent, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 600, background: r.status === "serving" ? "rgba(184,149,90,0.1)" : r.status === "next" ? "rgba(212,180,120,0.06)" : "transparent", padding: "3px 6px", borderRadius: 4, justifySelf: mob ? "end" : "start", border: r.status !== "wait" ? `1px solid ${accent}33` : `1px solid ${C.border}` }}>
+                {r.status === "wait" ? "Wait" : r.status === "next" ? "Next" : "Serving"}
               </span>
             </div>
           );
         })}
       </div>
-      <div style={{ marginTop: 14, display: "flex", gap: 8 }}>
-        <button style={{ flex: 1, background: C.gold, color: C.void, border: "none", borderRadius: 8, padding: "11px 0", fontSize: 11, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", cursor: "pointer" }}>Call next →</button>
-        <button style={{ background: "transparent", color: C.ink, border: `1px solid ${C.borderL}`, borderRadius: 8, padding: "11px 18px", fontSize: 11, fontWeight: 500, cursor: "pointer" }}>Reassign</button>
-        <button style={{ background: "transparent", color: C.ink, border: `1px solid ${C.borderL}`, borderRadius: 8, padding: "11px 18px", fontSize: 11, fontWeight: 500, cursor: "pointer" }}>Pause queue</button>
+      <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
+        <button style={{ flex: 1, background: C.gold, color: C.void, border: "none", borderRadius: 8, padding: "10px 0", fontSize: 11, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", cursor: "pointer" }}>Call next →</button>
+        {!mob && <button style={{ background: "transparent", color: C.ink, border: `1px solid ${C.borderL}`, borderRadius: 8, padding: "10px 14px", fontSize: 11, fontWeight: 500, cursor: "pointer" }}>Reassign</button>}
+        {!mob && <button style={{ background: "transparent", color: C.ink, border: `1px solid ${C.borderL}`, borderRadius: 8, padding: "10px 14px", fontSize: 11, fontWeight: 500, cursor: "pointer" }}>Pause</button>}
       </div>
     </div>
   );
