@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>Quick Survey · AzQueue</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --wa-green: #25D366;
+    --wa-dark:  #075E54;
+    --wa-teal:  #128C7E;
+    --wa-bg:    #ECE5DD;
+    --wa-bubble-in:  #ffffff;
+    --wa-bubble-out: #DCF8C6;
+    --wa-text:  #111B21;
+    --wa-muted: #667781;
+  }
+
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--wa-bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Header */
+  .header {
+    background: var(--wa-dark);
+    color: #fff;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .header-avatar {
+    width: 40px; height: 40px;
+    background: var(--wa-green);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 16px; color: #fff;
+    flex-shrink: 0;
+  }
+  .header-info { flex: 1; }
+  .header-name { font-size: 16px; font-weight: 600; }
+  .header-status { font-size: 12px; color: rgba(255,255,255,0.7); }
+
+  /* Progress */
+  .progress-bar {
+    height: 3px;
+    background: rgba(255,255,255,0.2);
+    position: sticky;
+    top: 64px;
+    z-index: 9;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--wa-green);
+    transition: width 0.4s ease;
+    width: 0%;
+  }
+
+  /* Chat area */
+  .chat {
+    flex: 1;
+    padding: 16px 12px 120px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow-y: auto;
+  }
+
+  /* Bubbles */
+  .bubble-wrap {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    animation: fadeUp 0.25s ease both;
+  }
+  .bubble-wrap.in  { justify-content: flex-start; }
+  .bubble-wrap.out { justify-content: flex-end; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .bubble {
+    max-width: 78%;
+    padding: 8px 12px 6px;
+    border-radius: 8px;
+    font-size: 14.5px;
+    line-height: 1.45;
+    position: relative;
+    word-break: break-word;
+  }
+  .bubble.in {
+    background: var(--wa-bubble-in);
+    border-top-left-radius: 2px;
+    color: var(--wa-text);
+    box-shadow: 0 1px 1px rgba(0,0,0,0.12);
+  }
+  .bubble.out {
+    background: var(--wa-bubble-out);
+    border-top-right-radius: 2px;
+    color: var(--wa-text);
+    box-shadow: 0 1px 1px rgba(0,0,0,0.12);
+  }
+  .bubble .time {
+    font-size: 11px;
+    color: var(--wa-muted);
+    text-align: right;
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 3px;
+  }
+  .bubble.out .time::after {
+    content: "✓✓";
+    color: #53bdeb;
+    font-size: 12px;
+  }
+
+  /* Typing indicator */
+  .typing {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 14px;
+    background: var(--wa-bubble-in);
+    border-radius: 8px;
+    border-top-left-radius: 2px;
+    width: fit-content;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+    animation: fadeUp 0.2s ease both;
+  }
+  .typing span {
+    width: 7px; height: 7px;
+    background: #aaa;
+    border-radius: 50%;
+    animation: bounce 1.2s infinite ease-in-out;
+  }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-6px); }
+  }
+
+  /* Answer options */
+  .options-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: #f0f2f5;
+    border-top: 1px solid #d1d7db;
+    padding: 10px 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 20;
+    transition: transform 0.3s ease;
+  }
+  .options-bar.hidden { transform: translateY(100%); }
+
+  .options-label {
+    font-size: 11px;
+    color: var(--wa-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    padding: 0 2px;
+  }
+
+  .options-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .opt-btn {
+    padding: 9px 14px;
+    border-radius: 20px;
+    border: 1.5px solid var(--wa-teal);
+    background: #fff;
+    color: var(--wa-teal);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+  .opt-btn:active, .opt-btn.selected {
+    background: var(--wa-teal);
+    color: #fff;
+    transform: scale(0.97);
+  }
+  .opt-btn.selected {
+    transform: none;
+  }
+
+  .confirm-btn {
+    margin-top: 2px;
+    padding: 11px;
+    border-radius: 24px;
+    border: none;
+    background: var(--wa-green);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    display: none;
+    transition: opacity 0.2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .confirm-btn.show { display: block; }
+  .confirm-btn:active { opacity: 0.85; }
+
+  /* Date divider */
+  .date-divider {
+    text-align: center;
+    font-size: 12px;
+    color: #54656f;
+    background: rgba(255,255,255,0.55);
+    padding: 4px 12px;
+    border-radius: 8px;
+    align-self: center;
+    margin: 8px 0;
+  }
+
+  /* Done screen */
+  .done-screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 40px 24px;
+    gap: 16px;
+    flex: 1;
+    animation: fadeUp 0.4s ease both;
+  }
+  .done-screen.show { display: flex; }
+  .done-icon { font-size: 64px; }
+  .done-title { font-size: 22px; font-weight: 700; color: var(--wa-dark); }
+  .done-sub { font-size: 15px; color: var(--wa-muted); max-width: 280px; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-avatar">AQ</div>
+  <div class="header-info">
+    <div class="header-name">AzQueue Survey</div>
+    <div class="header-status" id="status-text">online</div>
+  </div>
+</div>
+
+<div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+
+<div class="chat" id="chat">
+  <div class="date-divider">Today</div>
+</div>
+
+<div class="done-screen" id="done">
+  <div class="done-icon">🙌</div>
+  <div class="done-title">Thank you!</div>
+  <div class="done-sub">Your answers have been recorded. You're helping us build something that actually works for people like you.</div>
+</div>
+
+<div class="options-bar hidden" id="options-bar">
+  <div class="options-label" id="options-label">Choose one</div>
+  <div class="options-grid" id="options-grid"></div>
+  <button class="confirm-btn" id="confirm-btn" onclick="confirmMulti()">Send ✓</button>
+</div>
+
+<script>
+const SUPABASE_URL  = "https://haiighdwffvbjfepfttf.supabase.co";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhhaWlnaGR3ZmZ2YmpmZXBmdHRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2MTg3MzIsImV4cCI6MjA5MzE5NDczMn0.tYp8SdXvNKvOOPffQG58_lqvlKBNOwtM57_3_9Lqjik";
+
+const answers = {};
+let currentQ = 0;
+let multiSelected = [];
+
+const QUESTIONS = [
+  {
+    id: "intro",
+    text: "👋 Hey! I'm doing a 2-min survey about queues and waiting at businesses. Totally anonymous — your answers help us build better software. Ready?",
+    options: [{ label: "Let's go 🚀", value: "yes" }],
+    multi: false,
+    skip: true,
+  },
+  {
+    id: "role",
+    text: "First — who are you?",
+    options: [
+      { label: "🎓 Student", value: "student" },
+      { label: "💼 Business owner / manager", value: "owner" },
+      { label: "Both", value: "both" },
+    ],
+    multi: false,
+  },
+  {
+    id: "businesses",
+    text: "Which of these do you visit most often? *(tap all that apply)*",
+    options: [
+      { label: "🏋️ Gym / fitness studio", value: "gym" },
+      { label: "🥋 Martial arts / dance studio", value: "studio" },
+      { label: "📊 Tax office / accountant", value: "tax" },
+      { label: "🏛️ Immigration / government office", value: "immigration" },
+      { label: "🏥 Clinic / pharmacy", value: "clinic" },
+      { label: "🏦 Bank", value: "bank" },
+      { label: "✂️ Salon / barber", value: "salon" },
+      { label: "🎓 University admin office", value: "uni_admin" },
+    ],
+    multi: true,
+  },
+  {
+    id: "frustration",
+    text: "What frustrates you most when visiting these places?",
+    options: [
+      { label: "⏳ Don't know how long the wait is", value: "unknown_wait" },
+      { label: "📍 Have to physically stay the whole time", value: "cant_leave" },
+      { label: "📵 No way to book ahead", value: "no_booking" },
+      { label: "😬 Miss my turn if I step away", value: "miss_turn" },
+      { label: "✅ I don't usually have a problem", value: "no_issue" },
+    ],
+    multi: false,
+  },
+  {
+    id: "would_use_wa",
+    text: "If you could join a queue via WhatsApp and get a message when it's almost your turn — would you use it?",
+    options: [
+      { label: "Yes, definitely 🙌", value: "yes" },
+      { label: "Probably", value: "probably" },
+      { label: "Not sure", value: "not_sure" },
+      { label: "Probably not", value: "no" },
+    ],
+    multi: false,
+  },
+  {
+    id: "top_feature",
+    text: "What feature matters most to you? *(pick one)*",
+    options: [
+      { label: "📱 WhatsApp check-in", value: "wa_checkin" },
+      { label: "🔔 Live wait time updates", value: "live_updates" },
+      { label: "📅 Book a slot in advance", value: "booking" },
+      { label: "⏰ Auto-reminders", value: "reminders" },
+      { label: "🚫 No-show tracking", value: "noshow" },
+    ],
+    multi: false,
+  },
+  // Owner-only questions (shown if role = 'owner' or 'both')
+  {
+    id: "pain_points",
+    text: "As a business owner — what are your biggest headaches? *(tap all that apply)*",
+    ownerOnly: true,
+    options: [
+      { label: "😤 Long queues frustrating customers", value: "long_queues" },
+      { label: "🚫 No-shows and cancellations", value: "noshows" },
+      { label: "📢 Staff manually calling names", value: "manual_calling" },
+      { label: "📵 No automatic reminders", value: "no_reminders" },
+      { label: "📋 Everything on paper / WhatsApp groups", value: "manual_system" },
+    ],
+    multi: true,
+  },
+  {
+    id: "willingness_to_pay",
+    text: "What would you expect to pay for a system that handles all of this automatically?",
+    ownerOnly: true,
+    options: [
+      { label: "🆓 Free only", value: "free" },
+      { label: "💸 Up to RM 50/month", value: "rm50" },
+      { label: "💳 RM 50–150/month", value: "rm150" },
+      { label: "💰 RM 150–400/month", value: "rm400" },
+      { label: "🏆 More if it saves real time", value: "more" },
+    ],
+    multi: false,
+  },
+];
+
+function getTime() {
+  return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function addBubble(text, dir = "in", delay = 0) {
+  return new Promise(resolve => {
+    setTimeout(() => {
+      const chat = document.getElementById("chat");
+      const wrap = document.createElement("div");
+      wrap.className = `bubble-wrap ${dir}`;
+      wrap.innerHTML = `
+        <div class="bubble ${dir}">
+          ${text.replace(/\*(.*?)\*/g, '<em>$1</em>')}
+          <div class="time">${getTime()}</div>
+        </div>`;
+      chat.appendChild(wrap);
+      chat.scrollTop = chat.scrollHeight;
+      resolve();
+    }, delay);
+  });
+}
+
+function showTyping() {
+  return new Promise(resolve => {
+    const chat = document.getElementById("chat");
+    const wrap = document.createElement("div");
+    wrap.className = "bubble-wrap in";
+    wrap.id = "typing-indicator";
+    wrap.innerHTML = `<div class="typing"><span></span><span></span><span></span></div>`;
+    chat.appendChild(wrap);
+    chat.scrollTop = chat.scrollHeight;
+    setTimeout(resolve, 900);
+  });
+}
+
+function removeTyping() {
+  const el = document.getElementById("typing-indicator");
+  if (el) el.remove();
+}
+
+function updateProgress() {
+  const visibleQs = QUESTIONS.filter(q =>
+    !q.ownerOnly || answers.role === "owner" || answers.role === "both"
+  ).filter(q => !q.skip);
+  const answered = visibleQs.filter(q => answers[q.id] !== undefined).length;
+  const pct = Math.round((answered / visibleQs.length) * 100);
+  document.getElementById("progress").style.width = pct + "%";
+}
+
+function showOptions(q) {
+  const bar   = document.getElementById("options-bar");
+  const grid  = document.getElementById("options-grid");
+  const label = document.getElementById("options-label");
+  const confirmBtn = document.getElementById("confirm-btn");
+
+  grid.innerHTML = "";
+  multiSelected = [];
+  confirmBtn.className = "confirm-btn";
+
+  label.textContent = q.multi ? "Tap all that apply" : "Choose one";
+
+  q.options.forEach(opt => {
+    const btn = document.createElement("button");
+    btn.className = "opt-btn";
+    btn.textContent = opt.label;
+    btn.dataset.value = opt.value;
+
+    if (q.multi) {
+      btn.onclick = () => {
+        btn.classList.toggle("selected");
+        const v = opt.value;
+        if (multiSelected.includes(v)) {
+          multiSelected = multiSelected.filter(x => x !== v);
+        } else {
+          multiSelected.push(v);
+        }
+        confirmBtn.className = "confirm-btn" + (multiSelected.length > 0 ? " show" : "");
+      };
+    } else {
+      btn.onclick = () => selectSingle(q, opt);
+    }
+    grid.appendChild(btn);
+  });
+
+  bar.className = "options-bar";
+}
+
+async function selectSingle(q, opt) {
+  // Hide options
+  document.getElementById("options-bar").className = "options-bar hidden";
+
+  // Show user's reply bubble
+  await addBubble(opt.label, "out", 100);
+
+  // Store answer
+  answers[q.id] = opt.value;
+  updateProgress();
+
+  // Move to next question
+  await nextQuestion();
+}
+
+async function confirmMulti() {
+  if (multiSelected.length === 0) return;
+
+  document.getElementById("options-bar").className = "options-bar hidden";
+
+  // Find current question
+  const q = QUESTIONS[currentQ];
+  const selectedLabels = q.options
+    .filter(o => multiSelected.includes(o.value))
+    .map(o => o.label)
+    .join(", ");
+
+  await addBubble(selectedLabels, "out", 100);
+  answers[q.id] = [...multiSelected];
+  updateProgress();
+
+  await nextQuestion();
+}
+
+async function nextQuestion() {
+  currentQ++;
+
+  // Find next applicable question
+  while (currentQ < QUESTIONS.length) {
+    const q = QUESTIONS[currentQ];
+    if (q.ownerOnly && answers.role !== "owner" && answers.role !== "both") {
+      currentQ++;
+      continue;
+    }
+    break;
+  }
+
+  if (currentQ >= QUESTIONS.length) {
+    await submitAndFinish();
+    return;
+  }
+
+  await showTyping();
+  removeTyping();
+  await addBubble(QUESTIONS[currentQ].text, "in");
+  showOptions(QUESTIONS[currentQ]);
+}
+
+async function submitAndFinish() {
+  document.getElementById("status-text").textContent = "submitting...";
+
+  const payload = {
+    role:                answers.role || null,
+    businesses:          Array.isArray(answers.businesses) ? answers.businesses : null,
+    frustration:         answers.frustration || null,
+    would_use_wa:        answers.would_use_wa || null,
+    top_feature:         answers.top_feature || null,
+    pain_points:         Array.isArray(answers.pain_points) ? answers.pain_points : null,
+    willingness_to_pay:  answers.willingness_to_pay || null,
+    user_agent:          navigator.userAgent.slice(0, 200),
+    referrer:            document.referrer.slice(0, 200) || null,
+  };
+
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/survey_responses`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": SUPABASE_ANON,
+        "Authorization": `Bearer ${SUPABASE_ANON}`,
+        "Prefer": "return=minimal",
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (e) {
+    // Fail silently — don't let a network error ruin the experience
+  }
+
+  // Show done
+  document.getElementById("options-bar").className = "options-bar hidden";
+  document.getElementById("chat").style.display = "none";
+  document.getElementById("done").className = "done-screen show";
+  document.getElementById("progress").style.width = "100%";
+  document.getElementById("status-text").textContent = "thank you 🙏";
+}
+
+// Kick off
+async function init() {
+  await new Promise(r => setTimeout(r, 400));
+  await showTyping();
+  removeTyping();
+  await addBubble(QUESTIONS[0].text, "in");
+  showOptions(QUESTIONS[0]);
+}
+
+init();
+</script>
+</body>
+</html>
