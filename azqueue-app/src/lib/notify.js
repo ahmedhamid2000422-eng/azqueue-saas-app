@@ -1,5 +1,5 @@
 /**
- * notify.js — Twilio SMS notifications for Az Tax Services.
+ * notify.js — Twilio SMS notifications (multi-tenant, used by all branches).
  *
  * ┌─────────────────────────────────────────────────────────────────┐
  * │ SECURITY WARNING                                                │

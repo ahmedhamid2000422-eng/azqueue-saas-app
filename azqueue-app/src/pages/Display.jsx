@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useDisplay } from "../hooks/useDisplay";
 
 /**
- * Display — full-screen TV display for Az Tax Services.
+ * Display — full-screen TV display for any AzQueue branch (branchId from URL).
  * Route: /display-tv/:branchId  (public, no auth)
  *
  * Layout:

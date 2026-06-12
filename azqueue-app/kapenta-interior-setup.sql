@@ -18,7 +18,7 @@
 
 do $$
 declare
-  v_user_id   uuid := 'PASTE-MOHD-HANIS-UUID-HERE';  -- ← from Supabase Auth users tab
+  v_user_id   uuid := '4d146dbb-4a15-4114-8c1f-397ea318d23c';  -- Mohd. Hanis
   v_branch_id uuid;
 begin
 
@@ -31,6 +31,7 @@ begin
     timezone,
     business_type,
     autopilot,
+    wa_phone,
     wa_enabled,
     wa_flow_config
   )
@@ -42,7 +43,8 @@ begin
     'Asia/Kuala_Lumpur',
     'queue',
     true,
-    false,                                  -- set to true once WhatsApp number is configured
+    '+60135901575',                         -- Mohd. Hanis WhatsApp
+    true,                                   -- WhatsApp enabled
     '{"preset": "design"}'::jsonb           -- uses the Interior Design WhatsApp bot flow
   )
   returning id into v_branch_id;
