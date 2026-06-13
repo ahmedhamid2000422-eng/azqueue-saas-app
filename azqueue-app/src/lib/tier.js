@@ -97,7 +97,7 @@ export const TIER_LIMITS = {
 };
 
 export function getTier(user) {
-  return user?.user_metadata?.tier || "manager";
+  return user?.user_metadata?.tier || "essential";
 }
 
 export function getLimits(user) {

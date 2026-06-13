@@ -829,19 +829,61 @@ function BranchesTab({ branches, currentId, select, reload, userId }) {
 
 function DeleteBranchButton({ branch, reload, disabled }) {
   const [confirming, setConfirming] = useState(false);
+  const [busy,       setBusy]       = useState(false);
+  const [err,        setErr]        = useState(null);
+
   async function del() {
-    await supabase.from("branches").delete().eq("id", branch.id);
+    setBusy(true);
+    setErr(null);
+
+    // Request exact count so we can detect RLS-blocked deletes (no error but 0 rows)
+    const { error, count } = await supabase
+      .from("branches")
+      .delete({ count: "exact" })
+      .eq("id", branch.id);
+
+    if (error) {
+      setErr(error.message);
+      setBusy(false);
+      return;
+    }
+
+    if (count === 0) {
+      // RLS blocked it silently — branch's owner_id doesn't match auth.uid()
+      setErr(
+        "Permission denied — this branch was created by a different account. " +
+        "Run the cleanup SQL in your Supabase dashboard to remove it."
+      );
+      setBusy(false);
+      return;
+    }
+
     await reload();
+    setConfirming(false);
+    setBusy(false);
   }
+
   if (disabled) return <span className="text-[9px] text-ink-mute">Last branch</span>;
-  return confirming
-    ? (
+
+  return confirming ? (
+    <div className="flex flex-col items-end gap-1.5">
       <div className="flex gap-1">
-        <Button size="sm" onClick={del}>Confirm</Button>
-        <Button variant="ghost" size="sm" onClick={() => setConfirming(false)}>Cancel</Button>
+        <Button size="sm" onClick={del} disabled={busy}>
+          {busy ? "Deleting…" : "Confirm delete"}
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => { setConfirming(false); setErr(null); }}>
+          Cancel
+        </Button>
       </div>
-    )
-    : <Button variant="ghost" size="sm" onClick={() => setConfirming(true)}>Remove</Button>;
+      {err && (
+        <span className="text-[10px] text-[#d49185] max-w-[260px] text-right leading-snug">
+          {err}
+        </span>
+      )}
+    </div>
+  ) : (
+    <Button variant="ghost" size="sm" onClick={() => setConfirming(true)}>Remove</Button>
+  );
 }
 
 /* ── SERVICES (per-branch CRUD) ────────────────────────────────────── */
