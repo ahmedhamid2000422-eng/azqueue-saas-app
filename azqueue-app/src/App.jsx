@@ -17,6 +17,7 @@ import CustomerCheckIn from "./pages/CustomerCheckIn";
 import CustomerTicket from "./pages/CustomerTicket";
 import TvDisplay from "./pages/TvDisplay";
 import BookingPage from "./pages/BookingPage";
+import SurveyPage from "./pages/SurveyPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import Legal from "./pages/Legal";
 import Checkin from "./pages/Checkin";
@@ -51,6 +52,7 @@ export default function App() {
       <Route path="/t/:ticketId"       element={<CustomerTicket />} />
       <Route path="/display/:slug"     element={<TvDisplay />} />
       <Route path="/b/:slug"           element={<BookingPage />} />
+      <Route path="/survey/:slug"      element={<SurveyPage />} />
       <Route path="/confirm/:bookingId" element={<ConfirmAttendance />} />
       <Route path="/reset-password"    element={<ResetPassword />} />
       <Route path="/checkin/:branchId" element={<Checkin />} />

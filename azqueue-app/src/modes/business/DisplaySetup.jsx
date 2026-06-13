@@ -40,6 +40,7 @@ export default function DisplaySetup() {
   const kioskUrl   = `${origin}/q/${branch.slug}?kiosk=1`;
   const checkinUrl = `${origin}/q/${branch.slug}`;
   const bookingUrl = `${origin}/b/${branch.slug}`;
+  const surveyUrl  = `${origin}/survey/${branch.slug}`;
 
   return (
     <div className="atmosphere-hero p-8 max-w-6xl">
@@ -101,6 +102,13 @@ export default function DisplaySetup() {
           url={bookingUrl}
           accent="sage"
           openLabel="Open booking"
+        />
+        <UrlCard
+          label="Feedback survey"
+          subtitle="Rate-your-visit page customers can fill anytime"
+          url={surveyUrl}
+          accent="sage"
+          openLabel="Open survey"
         />
       </div>
 
@@ -167,6 +175,7 @@ export default function DisplaySetup() {
           <QrTile label="iPad Kiosk URL"  url={kioskUrl}   caption="Scan from the iPad at the door." />
           <QrTile label="Walk-in poster"  url={checkinUrl} caption="Print A4 and stick at reception." />
           <QrTile label="Booking poster"  url={bookingUrl} caption="Share on Instagram or Google profile." />
+          <QrTile label="Feedback survey" url={surveyUrl}  caption="Print at the door so customers can rate easily." />
         </div>
       </Card>
 

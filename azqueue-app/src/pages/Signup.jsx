@@ -56,7 +56,10 @@ export default function Signup() {
     e.preventDefault();
     setError(null);
 
-    if (password.length < 6) return setError("Password must be at least 6 characters.");
+    if (password.length < 8)        return setError("Password must be at least 8 characters.");
+    if (!/[a-zA-Z]/.test(password))  return setError("Password must include at least one letter.");
+    if (!/\d/.test(password))        return setError("Password must include at least one number.");
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return setError("Please enter a valid email.");
     if (mode === "business" && !businessName.trim()) return setError("Please enter your business name.");
     if (mode === "personal" && !displayName.trim()) return setError("Please enter your name.");
 
@@ -134,7 +137,7 @@ export default function Signup() {
               <Field label="Your name"      value={displayName}  onChange={setDisplayName}  placeholder="Ahmed" required autoFocus />
             )}
             <Field label="Email address" type="email"    value={email}    onChange={setEmail}    placeholder="you@example.com"     required />
-            <Field label="Password"      type="password" value={password} onChange={setPassword} placeholder="At least 6 characters" required />
+            <Field label="Password"      type="password" value={password} onChange={setPassword} placeholder="8+ chars · letters & numbers" required />
 
             {error && (
               <div style={{ fontSize: 12, color: C.bad, background: "rgba(181,107,95,0.08)", border: "1px solid rgba(181,107,95,0.25)", borderRadius: 6, padding: "10px 14px", lineHeight: 1.5 }}>

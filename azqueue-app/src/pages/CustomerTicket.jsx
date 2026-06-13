@@ -325,9 +325,22 @@ function Completed({ ticket, branch }) {
         {t("ticket.service_complete")}
       </h2>
       <div className="rule-ornament my-5 text-[8px]"><span>✦</span></div>
-      <p className="text-ink-soft text-xs leading-relaxed mb-5">
+      <p className="text-ink-soft text-xs leading-relaxed mb-6">
         {t("ticket.thanks_visit", { branchName: branch?.name })}
       </p>
+
+      <Link
+        to={`/survey/${branch?.slug}?ticket=${ticket.id}`}
+        className="inline-block w-full mb-5"
+      >
+        <div className="border border-gold-deep bg-[rgba(201,168,106,0.06)] hover:bg-[rgba(201,168,106,0.12)] transition px-5 py-4 text-center">
+          <div className="text-base text-gold-soft tracking-wider mb-1">
+            ★ ★ ★ ★ ★
+          </div>
+          <div className="text-[11px] text-ink tracking-wide">Rate your visit</div>
+        </div>
+      </Link>
+
       <Link
         to={`/q/${branch?.slug}`}
         className="inline-block text-[10px] tracking-[0.2em] uppercase text-gold-soft hover:text-gold"
