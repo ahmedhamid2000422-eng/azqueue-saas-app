@@ -46,7 +46,11 @@ const Ic = {
   Moon:   () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>,
   Star:   () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
   Chart:  () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
-  Branch: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>,
+  Branch:  () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>,
+  Money:   () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>,
+  Bell:    () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>,
+  Islam:   () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M12 3a9 9 0 1 0 9 9c-4.97 0-9-4.03-9-9z"/></svg>,
+  Display: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>,
 };
 
 const WaIcon = () => (
@@ -68,6 +72,10 @@ export default function Product() {
       <KioskSection />
       <DashboardSection />
       <WhatsAppSection />
+      <MonetisationSection />
+      <NotificationsSection />
+      <IslamicModeSection />
+      <LiveDisplaySection />
       <FeaturesGrid />
       <ProductCTA />
       <SiteFooter />
@@ -262,6 +270,246 @@ function WhatsAppSection() {
               <span style={{ fontSize: 13, color: C.muted }}>{t}</span>
             </div>
           ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ── Monetisation Section ── */
+function MonetisationSection() {
+  const [ref, visible] = useInView();
+  const items = [
+    { label: "Paid appointments", desc: "Charge a booking fee upfront. Customers pay before their slot is confirmed — no more free no-shows." },
+    { label: "Priority queues & VIP lanes", desc: "Let customers pay to jump the line. Set your own price per priority bump; the queue re-orders automatically." },
+    { label: "Deposits & partial payments", desc: "Collect a deposit at booking and charge the balance on arrival. Refund policies are configurable per service." },
+    { label: "No-show fees", desc: "Automatically charge a penalty when a booked customer doesn't show up. Protect your calendar and your revenue." },
+    { label: "Rescheduling fees", desc: "Optionally charge for late reschedules. Define the cutoff window and the fee — AzQueue enforces it every time." },
+  ];
+  return (
+    <section ref={ref} style={{ padding: "120px 48px", background: C.void }}>
+      <div style={{ maxWidth: 1160, margin: "0 auto" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 100, flexWrap: "wrap" }}>
+          <div style={{ flex: "0 0 340px", opacity: visible ? 1 : 0, transform: visible ? "none" : "translateX(-16px)", transition: "all 0.7s ease" }}>
+            <div style={{ ...T.label, marginBottom: 20 }}>Monetisation</div>
+            <h2 style={{ ...T.h3, color: C.ink, margin: "0 0 18px" }}>Turn your calendar into a revenue engine.</h2>
+            <p style={{ ...T.body, fontSize: 14, margin: 0 }}>
+              AzQueue handles deposits, priority fees, and no-show penalties automatically — so you get paid whether the customer shows up or not.
+            </p>
+            <div style={{ marginTop: 36 }}>
+              <div style={{ fontSize: 28, fontWeight: 500, color: C.gold, fontFamily: "Georgia, serif" }}>0</div>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>unpaid no-shows with deposits enabled</div>
+            </div>
+          </div>
+          <div style={{ flex: 1, minWidth: 280, opacity: visible ? 1 : 0, transform: visible ? "none" : "translateX(16px)", transition: "all 0.7s ease 0.1s" }}>
+            {items.map((item, i) => (
+              <div key={i} style={{ display: "flex", gap: 20, paddingBottom: 24, marginBottom: 24, borderBottom: i < items.length - 1 ? `1px solid ${C.border}` : "none", opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(8px)", transition: `all 0.5s ease ${0.1 + i * 0.07}s` }}>
+                <div style={{ width: 28, height: 28, borderRadius: 7, border: `1px solid ${C.faint}`, display: "flex", alignItems: "center", justifyContent: "center", color: C.gold, flexShrink: 0, marginTop: 2 }}><Ic.Money /></div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: C.ink, marginBottom: 5, letterSpacing: "-0.01em" }}>{item.label}</div>
+                  <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.65 }}>{item.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ── Notifications Section ── */
+function NotificationsSection() {
+  const [ref, visible] = useInView();
+  const channels = [
+    { name: "WhatsApp", color: "#25D366", dot: "#128C7E", example: "You're next — Ticket A42, counter 3. Please proceed now." },
+    { name: "SMS", color: "#b8955a", dot: "#7a5c2a", example: "AzQueue: Your appointment is in 30 minutes. Reply CONFIRM or CANCEL." },
+    { name: "Email", color: "#60a5fa", dot: "#2563eb", example: "Booking confirmed for tomorrow at 10:00 AM. Add to calendar →" },
+    { name: "Push", color: "#a78bfa", dot: "#6d28d9", example: "⏰ Your turn is coming up — 2 people ahead of you." },
+  ];
+  return (
+    <section ref={ref} style={{ padding: "120px 48px", background: C.card }}>
+      <div style={{ maxWidth: 1160, margin: "0 auto" }}>
+        <div style={{ marginBottom: 72, opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(12px)", transition: "all 0.6s ease" }}>
+          <div style={{ ...T.label, marginBottom: 20 }}>Reminders & notifications</div>
+          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 60, flexWrap: "wrap" }}>
+            <h2 style={{ ...T.h2, color: C.ink, margin: 0, maxWidth: 500 }}>Every customer reminded.<br /><em style={{ color: C.gold, fontStyle: "italic" }}>Every channel covered.</em></h2>
+            <p style={{ ...T.body, maxWidth: 340, margin: 0, fontSize: 14 }}>
+              AzQueue sends the right message at the right moment — booking confirmations, wait-time alerts, and follow-ups — across all four channels with delivery tracking built in.
+            </p>
+          </div>
+        </div>
+
+        {/* Channel cards */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 1, background: C.border, borderRadius: 16, overflow: "hidden", marginBottom: 48 }}>
+          {channels.map((ch, i) => (
+            <div key={i} style={{ background: C.void, padding: "28px 28px 24px", opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(10px)", transition: `all 0.5s ease ${i * 0.08}s` }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: ch.color }} />
+                <span style={{ fontSize: 11, fontWeight: 600, color: ch.color, letterSpacing: "0.08em", textTransform: "uppercase" }}>{ch.name}</span>
+              </div>
+              <div style={{ background: C.panel, borderRadius: 8, padding: "12px 14px", border: `1px solid ${C.border}` }}>
+                <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.6 }}>{ch.example}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Feature list */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 32, opacity: visible ? 1 : 0, transition: "all 0.6s ease 0.3s" }}>
+          {[
+            ["Customisable templates", "Write your own message templates per service, language, and channel. Merge fields auto-fill customer name, ticket, and wait time."],
+            ["Delivery tracking", "See exactly which messages were delivered, read, and replied to. Failed deliveries automatically fall back to the next available channel."],
+            ["Send-time analytics", "Track open rates, reply rates, and no-show reduction week over week. Know which reminder timing works best for your customers."],
+          ].map(([title, desc], i) => (
+            <div key={i} style={{ borderTop: `1px solid ${C.border}`, paddingTop: 24 }}>
+              <div style={{ width: 28, height: 28, borderRadius: 7, border: `1px solid ${C.faint}`, display: "flex", alignItems: "center", justifyContent: "center", color: C.gold, marginBottom: 16 }}><Ic.Bell /></div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: C.ink, marginBottom: 8, letterSpacing: "-0.01em" }}>{title}</div>
+              <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.65 }}>{desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ── Islamic Mode Section ── */
+function IslamicModeSection() {
+  const [ref, visible] = useInView();
+  const prayers = [
+    { name: "Fajr",    time: "5:22", status: "ended" },
+    { name: "Dhuhr",   time: "12:31", status: "ended" },
+    { name: "Asr",     time: "15:47", status: "active" },
+    { name: "Maghrib", time: "18:09", status: "upcoming" },
+    { name: "Isha",    time: "19:28", status: "upcoming" },
+  ];
+  return (
+    <section ref={ref} style={{ padding: "120px 48px", background: C.void }}>
+      <div style={{ maxWidth: 1160, margin: "0 auto", display: "flex", alignItems: "center", gap: 100, flexWrap: "wrap" }}>
+        {/* Mockup */}
+        <div style={{ flex: 1, minWidth: 280, opacity: visible ? 1 : 0, transform: visible ? "none" : "translateX(-16px)", transition: "all 0.7s ease" }}>
+          <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 16, overflow: "hidden", boxShadow: "0 20px 48px rgba(0,0,0,0.45)", maxWidth: 400 }}>
+            <div style={{ padding: "14px 20px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#facc15" }} />
+                <span style={{ fontSize: 12, fontWeight: 500, color: C.ink }}>Islamic Mode</span>
+              </div>
+              <span style={{ fontSize: 10, color: C.muted }}>Al Noor Medical Center</span>
+            </div>
+            <div style={{ padding: "16px 20px 8px" }}>
+              <div style={{ fontSize: 9, color: C.muted, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 12 }}>Today's prayer schedule</div>
+              {prayers.map((p, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", borderRadius: 8, marginBottom: 4, background: p.status === "active" ? "rgba(250,204,21,0.06)" : "transparent", border: p.status === "active" ? `1px solid rgba(250,204,21,0.15)` : "1px solid transparent" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    {p.status === "active" && <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#facc15" }} />}
+                    {p.status !== "active" && <div style={{ width: 5, height: 5 }} />}
+                    <span style={{ fontSize: 12, color: p.status === "active" ? C.ink : p.status === "ended" ? C.faint : C.muted, fontWeight: p.status === "active" ? 500 : 400 }}>{p.name}</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 11, color: p.status === "active" ? "#facc15" : p.status === "ended" ? C.faint : C.muted, fontFamily: "monospace" }}>{p.time}</span>
+                    {p.status === "ended"   && <span style={{ fontSize: 9, color: C.faint }}>done</span>}
+                    {p.status === "active"  && <span style={{ fontSize: 9, color: "#facc15", fontWeight: 500 }}>paused</span>}
+                    {p.status === "upcoming"&& <span style={{ fontSize: 9, color: C.muted }}>soon</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{ padding: "12px 20px 16px", borderTop: `1px solid ${C.border}`, display: "flex", gap: 8, alignItems: "center" }}>
+              <div style={{ fontSize: 10, color: "#facc15" }}>⏸</div>
+              <span style={{ fontSize: 11, color: C.muted }}>Queue paused for Asr — resumes at 15:57</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Copy */}
+        <div style={{ flex: "0 0 360px", opacity: visible ? 1 : 0, transform: visible ? "none" : "translateX(16px)", transition: "all 0.7s ease 0.1s" }}>
+          <div style={{ ...T.label, marginBottom: 20 }}>Islamic mode</div>
+          <h2 style={{ ...T.h3, color: C.ink, margin: "0 0 18px" }}>Built for businesses that pray.</h2>
+          <p style={{ ...T.body, margin: "0 0 32px", fontSize: 14 }}>
+            Enable Islamic Mode and AzQueue automatically pauses your queue at each prayer time and resumes it afterward. No manual intervention. No missed customers. Just a system that respects your faith.
+          </p>
+          {[
+            "Prayer times auto-calculated by location",
+            "Queue holds, customers are notified",
+            "Automatic resume after prayer window",
+            "Staff receive a push notification to return",
+            "Prayer pause visible on live customer display",
+          ].map(t => (
+            <div key={t} style={{ display: "flex", gap: 10, marginBottom: 10, alignItems: "center" }}>
+              <div style={{ width: 16, height: 16, borderRadius: 4, border: `1px solid ${C.faint}`, display: "flex", alignItems: "center", justifyContent: "center", color: C.gold, flexShrink: 0 }}><Ic.Check /></div>
+              <span style={{ fontSize: 13, color: C.muted }}>{t}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ── Live Display Section ── */
+function LiveDisplaySection() {
+  const [ref, visible] = useInView();
+  const [pulse, setPulse] = useState(false);
+  useEffect(() => {
+    const id = setInterval(() => setPulse(p => !p), 1800);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <section ref={ref} style={{ padding: "120px 48px", background: C.card }}>
+      <div style={{ maxWidth: 1160, margin: "0 auto", display: "flex", alignItems: "center", gap: 100, flexWrap: "wrap" }}>
+        {/* Copy */}
+        <div style={{ flex: "0 0 360px", opacity: visible ? 1 : 0, transform: visible ? "none" : "translateX(-16px)", transition: "all 0.7s ease" }}>
+          <div style={{ ...T.label, marginBottom: 20 }}>Live display</div>
+          <h2 style={{ ...T.h3, color: C.ink, margin: "0 0 18px" }}>A TV screen your lobby actually needs.</h2>
+          <p style={{ ...T.body, margin: "0 0 32px", fontSize: 14 }}>
+            Cast AzQueue's live display to any screen in your waiting area. Customers see which ticket is being served, how many are ahead, and exactly where they are in the queue — in real time.
+          </p>
+          {[
+            "Works on any HDMI screen or smart TV",
+            "Opens in a browser — no app install needed",
+            "Shows now serving, queue size, and wait estimate",
+            "Branded with your logo and colors",
+            "Automatically updates when tickets are called",
+          ].map(t => (
+            <div key={t} style={{ display: "flex", gap: 10, marginBottom: 10, alignItems: "center" }}>
+              <div style={{ width: 16, height: 16, borderRadius: 4, border: `1px solid ${C.faint}`, display: "flex", alignItems: "center", justifyContent: "center", color: C.gold, flexShrink: 0 }}><Ic.Check /></div>
+              <span style={{ fontSize: 13, color: C.muted }}>{t}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* TV Mockup */}
+        <div style={{ flex: 1, minWidth: 280, opacity: visible ? 1 : 0, transform: visible ? "none" : "translateX(16px)", transition: "all 0.7s ease 0.1s" }}>
+          <div style={{ background: "#111", border: "6px solid #1c1c1c", borderRadius: 12, boxShadow: "0 24px 56px rgba(0,0,0,0.6)", overflow: "hidden", position: "relative" }}>
+            {/* Screen content */}
+            <div style={{ background: C.void, padding: "36px 32px 32px", minHeight: 260 }}>
+              {/* Header */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${C.border}`, paddingBottom: 18, marginBottom: 28 }}>
+                <div style={{ fontSize: 11, color: C.muted, letterSpacing: "0.12em", textTransform: "uppercase" }}>Al Noor Medical Center</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: pulse ? C.live : "rgba(74,222,128,0.4)", transition: "background 0.4s ease" }} />
+                  <span style={{ fontSize: 10, color: C.muted }}>live</span>
+                </div>
+              </div>
+              {/* Now serving */}
+              <div style={{ textAlign: "center", marginBottom: 28 }}>
+                <div style={{ fontSize: 10, color: C.muted, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 10 }}>Now serving</div>
+                <div style={{ fontSize: 72, fontWeight: 400, color: C.gold, fontFamily: "Georgia, serif", lineHeight: 1, letterSpacing: "0.04em" }}>A 42</div>
+                <div style={{ fontSize: 11, color: C.muted, marginTop: 8 }}>Counter 3 · General Consultation</div>
+              </div>
+              {/* Queue strip */}
+              <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
+                {[["A43", true], ["A44", false], ["A45", false], ["A46", false]].map(([t, next]) => (
+                  <div key={t} style={{ padding: "7px 14px", borderRadius: 6, background: next ? "rgba(184,149,90,0.1)" : "rgba(255,255,255,0.03)", border: `1px solid ${next ? "rgba(184,149,90,0.2)" : C.border}`, fontSize: 11, fontWeight: next ? 600 : 400, color: next ? C.gold : C.muted, fontFamily: "monospace" }}>{t}</div>
+                ))}
+                <div style={{ padding: "7px 14px", borderRadius: 6, background: "transparent", border: `1px solid ${C.border}`, fontSize: 11, color: C.faint }}>+8</div>
+              </div>
+            </div>
+            {/* TV stand */}
+            <div style={{ background: "#1c1c1c", height: 8 }} />
+          </div>
+          <div style={{ width: 60, height: 10, background: "#161616", borderRadius: "0 0 4px 4px", margin: "0 auto", boxShadow: "0 4px 12px rgba(0,0,0,0.5)" }} />
         </div>
       </div>
     </section>
