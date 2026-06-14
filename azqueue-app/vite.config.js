@@ -26,8 +26,8 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // Don't cache the auth or realtime endpoints — always go to network
-        navigateFallbackDenylist: [/^\/api/, /\/auth\/v1/, /\/realtime\/v1/],
+        // Don't cache auth/realtime endpoints or standalone HTML pages — always go to network
+        navigateFallbackDenylist: [/^\/api/, /\/auth\/v1/, /\/realtime\/v1/, /\/survey\.html/],
         runtimeCaching: [
           {
             urlPattern: ({ request }) => request.destination === "image",
