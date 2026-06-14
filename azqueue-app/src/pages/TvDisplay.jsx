@@ -106,25 +106,67 @@ export default function TvDisplay() {
     return () => { cancelled = true; };
   }, [slug, isDemo]);
 
-  // Realtime
+  // Realtime — with auto-reconnect for Apple TV / AirPlay / long sessions
   useEffect(() => {
     if (isDemo || !branch?.id) return;
-    const ch = supabase
-      .channel(`display-${branch.id}`)
-      .on("postgres_changes",
-        { event: "*", schema: "public", table: "tickets", filter: `branch_id=eq.${branch.id}` },
-        async () => {
-          const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-          const { data: tk } = await supabase.from("tickets")
-            .select("id, token, status, customer_name, service_id, staff_id, created_at, started_at, called_at, branch_id")
-            .eq("branch_id", branch.id)
-            .in("status", ["waiting", "serving"])
-            .gte("created_at", todayStart.toISOString())
-            .order("created_at");
-          setTickets(tk ?? []);
-        })
-      .subscribe();
-    return () => { supabase.removeChannel(ch); };
+
+    let ch = null;
+    let reconnectTimer = null;
+    let alive = true;
+
+    async function fetchTickets() {
+      const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+      const { data: tk } = await supabase.from("tickets")
+        .select("id, token, status, customer_name, service_id, staff_id, created_at, started_at, called_at, branch_id")
+        .eq("branch_id", branch.id)
+        .in("status", ["waiting", "serving"])
+        .gte("created_at", todayStart.toISOString())
+        .order("created_at");
+      if (alive) setTickets(tk ?? []);
+    }
+
+    function connect() {
+      if (!alive) return;
+      ch = supabase
+        .channel(`display-${branch.id}-${Date.now()}`)   // unique name so re-sub doesn't conflict
+        .on("postgres_changes",
+          { event: "*", schema: "public", table: "tickets", filter: `branch_id=eq.${branch.id}` },
+          () => fetchTickets())
+        .subscribe((status) => {
+          // If the channel errors or closes unexpectedly, schedule a reconnect.
+          // This covers: AirPlay pause, iPad sleep, Wi-Fi handoff, Supabase restart.
+          if ((status === "CHANNEL_ERROR" || status === "CLOSED") && alive) {
+            reconnectTimer = setTimeout(() => {
+              if (!alive) return;
+              supabase.removeChannel(ch).catch(() => {});
+              fetchTickets();  // pull fresh data while reconnecting
+              connect();
+            }, 3_000);
+          }
+        });
+    }
+
+    connect();
+    // Also poll every 60 s as a safety net — TV displays must never go stale
+    const pollId = setInterval(fetchTickets, 60_000);
+
+    // Reconnect when the tab/app comes back to the foreground (iPad Home Screen / AirPlay resume)
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        supabase.removeChannel(ch).catch(() => {});
+        fetchTickets();
+        connect();
+      }
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      alive = false;
+      clearTimeout(reconnectTimer);
+      clearInterval(pollId);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      supabase.removeChannel(ch).catch(() => {});
+    };
   }, [branch?.id, isDemo]);
 
   // Prayer

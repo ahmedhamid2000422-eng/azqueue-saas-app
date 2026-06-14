@@ -47,7 +47,7 @@ export default function CustomerTicket() {
       }
 
       const [{ data: b }, { data: s }] = await Promise.all([
-        supabase.from("branches").select("id, name, city, slug, brand_color").eq("id", t.branch_id).single(),
+        supabase.from("branches").select("id, name, city, slug, brand_color, lat, lng").eq("id", t.branch_id).single(),
         t.service_id
           ? supabase.from("services").select("id, name, duration_min").eq("id", t.service_id).single()
           : Promise.resolve({ data: null }),

@@ -31,6 +31,9 @@ export default function SurveyPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
 
+  // No slug → friendly "ask the business for the link" landing
+  if (!slug) return <NoSlugLanding />;
+
   const [rating, setRating] = useState(0);
   const [hover, setHover]   = useState(0);
   const [feedback, setFeedback] = useState("");
@@ -222,6 +225,52 @@ function prettifyError(msg = "") {
   if (/too many surveys/i.test(msg))   return "Too many submissions. Try again later.";
   if (/check constraint/i.test(msg))   return "Some fields are out of range.";
   return msg;
+}
+
+/* ── /survey (no slug) — friendly fallback ─────────────────────── */
+function NoSlugLanding() {
+  const [slug, setSlug] = useState("");
+  return (
+    <Shell>
+      <div className="atmosphere-hero -mx-6 px-6 -mt-8 pt-10 pb-2 text-center">
+        <div className="ovline text-gold-soft mb-2">Customer feedback</div>
+        <h1 className="font-display text-3xl font-light tracking-tightest leading-tight">
+          Rate <em className="not-italic gold-text-soft">your visit.</em>
+        </h1>
+        <p className="text-ink-soft text-xs mt-3 max-w-xs mx-auto leading-relaxed">
+          Scan the QR poster at the business you visited, or enter their code below.
+        </p>
+      </div>
+
+      <form
+        onSubmit={(e) => { e.preventDefault(); if (slug.trim()) window.location.href = `/survey/${slug.trim()}`; }}
+        className="mt-8 space-y-4"
+      >
+        <div>
+          <div className="ovline mb-1.5 text-[9px]">Branch code</div>
+          <input
+            value={slug}
+            onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-"))}
+            placeholder="e.g. kl-downtown"
+            autoFocus
+            className="w-full bg-bg-elev border border-line focus:border-gold-deep outline-none text-sm px-4 py-3 transition text-ink placeholder:text-ink-mute"
+          />
+          <div className="text-[10px] text-ink-mute mt-2">
+            The code is the last part of the URL on the printed poster — usually a short, lowercase name.
+          </div>
+        </div>
+        <Button type="submit" disabled={!slug.trim()} className="w-full">
+          Continue →
+        </Button>
+      </form>
+
+      <div className="rule-ornament my-8 text-[8px]"><span>·</span></div>
+
+      <div className="text-[11px] text-ink-mute text-center leading-relaxed">
+        Surveys are anonymous by default. Your rating goes straight to the manager — never shared, never sold.
+      </div>
+    </Shell>
+  );
 }
 
 function Shell({ children }) {

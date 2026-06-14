@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import Landing from "./pages/Landing";
 import ModeSelect from "./pages/ModeSelect";
 import Login from "./pages/Login";
@@ -28,6 +28,7 @@ import BusinessDashboard from "./modes/business/Dashboard";
 import PersonalDashboard from "./modes/personal/Dashboard";
 import StaffDashboard from "./modes/staff/Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
+import NotFound from "./pages/NotFound";
 
 export default function App() {
   return (
@@ -53,6 +54,7 @@ export default function App() {
       <Route path="/display/:slug"     element={<TvDisplay />} />
       <Route path="/b/:slug"           element={<BookingPage />} />
       <Route path="/survey/:slug"      element={<SurveyPage />} />
+      <Route path="/survey"            element={<SurveyPage />} />
       <Route path="/confirm/:bookingId" element={<ConfirmAttendance />} />
       <Route path="/reset-password"    element={<ResetPassword />} />
       <Route path="/checkin/:branchId" element={<Checkin />} />
@@ -97,7 +99,7 @@ export default function App() {
         }
       />
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }
