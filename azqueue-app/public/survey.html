@@ -547,7 +547,7 @@ async function submitAndFinish() {
   };
 
   try {
-    await fetch(`${SUPABASE_URL}/rest/v1/survey_responses`, {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/survey_responses`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -557,8 +557,12 @@ async function submitAndFinish() {
       },
       body: JSON.stringify(payload),
     });
+    if (!res.ok) {
+      // Log for debugging but don't block the thank-you screen
+      console.warn("Survey submit failed:", res.status, await res.text());
+    }
   } catch (e) {
-    // Fail silently — don't let a network error ruin the experience
+    console.warn("Survey submit network error:", e.message);
   }
 
   // Show done

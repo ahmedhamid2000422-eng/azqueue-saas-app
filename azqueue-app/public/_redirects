@@ -1,0 +1,5 @@
+# survey.html is a standalone static page — serve it directly, never route through React
+/survey.html      /survey.html      200
+
+# SPA catch-all — everything else goes through the React app
+/*                /index.html       200
