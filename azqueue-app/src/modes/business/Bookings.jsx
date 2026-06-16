@@ -33,6 +33,10 @@ export default function Bookings() {
   // Checklist resend: bookingId → "sending" | "sent" | "error"
   const [checklistSent, setChecklistSent] = useState({});
 
+  // Detail panel
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [customerProfile, setCustomerProfile] = useState(null);
+
   async function load() {
     if (!branch?.id) return;
     setLoading(true);
@@ -127,6 +131,19 @@ export default function Bookings() {
 
     setName(""); setPhone(""); setShowForm(false);
     load();
+  }
+
+  async function openDetail(booking) {
+    setSelectedBooking(booking);
+    setCustomerProfile(null);
+    if (booking.customer_id) {
+      const { data } = await supabase
+        .from("customers")
+        .select("id, name, phone, sessions_attended, no_show_strikes, student_track, persona_summary, created_at")
+        .eq("id", booking.customer_id)
+        .single();
+      setCustomerProfile(data ?? null);
+    }
   }
 
   async function setStatus(id, status) {
@@ -275,6 +292,20 @@ export default function Bookings() {
         </Card>
       )}
 
+      {/* Detail panel overlay */}
+      {selectedBooking && (
+        <BookingDetailPanel
+          booking={selectedBooking}
+          service={services.find((s) => s.id === selectedBooking.service_id)}
+          staffMember={staff.find((s) => s.id === selectedBooking.staff_id)}
+          customerProfile={customerProfile}
+          checklistState={checklistSent[selectedBooking.id]}
+          onClose={() => { setSelectedBooking(null); setCustomerProfile(null); }}
+          onStatusChange={(status) => { setStatus(selectedBooking.id, status); setSelectedBooking((b) => b ? { ...b, status } : b); }}
+          onResendChecklist={() => resendChecklist(selectedBooking)}
+        />
+      )}
+
       <Card luxe>
         <CardHeader title="Today's bookings" subtitle="Confirmed customers expected" right={<span className="ovline text-[9px]">{bookings.length}</span>} />
         <div className="grid grid-cols-[100px_1fr_1fr_120px_120px] px-5 py-2.5 border-b border-line bg-[rgba(201,168,106,0.03)]">
@@ -289,8 +320,13 @@ export default function Bookings() {
         ) : bookings.map((b) => {
           const svc = services.find((s) => s.id === b.service_id);
           const time = new Date(b.scheduled_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+          const isSelected = selectedBooking?.id === b.id;
           return (
-            <div key={b.id} className="grid grid-cols-[90px_1fr_1fr_110px_1fr] px-5 py-3 border-b border-line last:border-b-0 items-center gap-2">
+            <div
+              key={b.id}
+              onClick={() => openDetail(b)}
+              className={`grid grid-cols-[90px_1fr_1fr_110px_1fr] px-5 py-3 border-b border-line last:border-b-0 items-center gap-2 cursor-pointer transition-colors ${isSelected ? "bg-[rgba(201,168,106,0.05)]" : "hover:bg-[rgba(255,255,255,0.02)]"}`}
+            >
               <span className="font-mono text-gold-soft text-xs">{time}</span>
               <div>
                 <div className="text-xs">{b.customer_name}</div>
@@ -334,10 +370,167 @@ function exportBookings(bookings, services, branch) {
   ]);
 }
 
+
+function BookingDetailPanel({ booking, service, staffMember, customerProfile, checklistState, onClose, onStatusChange, onResendChecklist }) {
+  const isDone = booking.status === "arrived" || booking.status === "no_show" || booking.status === "cancelled";
+  const fmt = (dt) => dt ? new Date(dt).toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—";
+
+  const statusColor = {
+    confirmed: "#b8955a",
+    pending:   "#60a5fa",
+    arrived:   "#4ade80",
+    no_show:   "#f87171",
+    cancelled: "#6b7280",
+  };
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        onClick={onClose}
+        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 40, backdropFilter: "blur(2px)" }}
+      />
+      {/* Panel */}
+      <div style={{
+        position: "fixed", top: 0, right: 0, bottom: 0, width: 420, maxWidth: "100vw",
+        background: "#0f0e0d", borderLeft: "1px solid rgba(255,255,255,0.07)",
+        zIndex: 50, display: "flex", flexDirection: "column", overflowY: "auto",
+        boxShadow: "-24px 0 64px rgba(0,0,0,0.6)",
+      }}>
+        {/* Header */}
+        <div style={{ padding: "20px 24px 16px", borderBottom: "1px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <div style={{ fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "#60605a", marginBottom: 4 }}>Booking details</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 22, fontWeight: 400, color: "#f0ede6", fontFamily: "Georgia, serif" }}>
+                {new Date(booking.scheduled_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </span>
+              <span style={{
+                fontSize: 9, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase",
+                color: statusColor[booking.status] ?? "#60605a",
+                border: `1px solid ${statusColor[booking.status] ?? "#60605a"}`,
+                padding: "2px 8px", borderRadius: 2,
+              }}>{booking.status}</span>
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "#60605a", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: 4 }}>&#x2715;</button>
+        </div>
+
+        <div style={{ flex: 1, padding: "20px 24px", display: "flex", flexDirection: "column", gap: 20 }}>
+
+          {/* Customer */}
+          <DSection label="Customer">
+            <DRow label="Name"  value={booking.customer_name ?? "—"} />
+            <DRow label="Phone" value={booking.customer_phone ?? "—"} mono />
+            {customerProfile && (
+              <>
+                {customerProfile.sessions_attended > 0 && (
+                  <DRow label="Sessions attended" value={String(customerProfile.sessions_attended)} highlight />
+                )}
+                {customerProfile.no_show_strikes > 0 && (
+                  <DRow label="No-show strikes" value={String(customerProfile.no_show_strikes)} warn />
+                )}
+                {customerProfile.student_track && (
+                  <DRow label="Track" value={customerProfile.student_track} />
+                )}
+                {customerProfile.persona_summary && (
+                  <div style={{ marginTop: 8, padding: "10px 12px", background: "rgba(255,255,255,0.03)", borderRadius: 6, border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div style={{ fontSize: 9, color: "#60605a", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 5 }}>AI profile</div>
+                    <div style={{ fontSize: 11, color: "#999896", lineHeight: 1.6 }}>{customerProfile.persona_summary}</div>
+                  </div>
+                )}
+              </>
+            )}
+            {!customerProfile && booking.customer_id && (
+              <div style={{ fontSize: 10, color: "#60605a" }}>Loading profile…</div>
+            )}
+          </DSection>
+
+          {/* Appointment */}
+          <DSection label="Appointment">
+            <DRow label="Service"  value={service?.name ?? "—"} />
+            {service?.duration_min && <DRow label="Duration" value={`${service.duration_min} min`} />}
+            <DRow label="Staff"    value={staffMember?.display_name ?? "Any available"} />
+            <DRow label="Date"     value={fmt(booking.scheduled_at)} />
+          </DSection>
+
+          {/* Timeline */}
+          <DSection label="Timeline">
+            <DRow label="Booked at"             value={fmt(booking.created_at)} />
+            {booking.confirmed_at     && <DRow label="Customer confirmed" value={fmt(booking.confirmed_at)} highlight />}
+            {booking.reminder_sent_at && <DRow label="Reminder sent"      value={fmt(booking.reminder_sent_at)} />}
+          </DSection>
+
+          {/* Actions */}
+          <DSection label="Actions">
+            {!isDone && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+                <DBtn onClick={() => onStatusChange("arrived")}  color="#4ade80">&#x2713; Mark arrived</DBtn>
+                <DBtn onClick={() => onStatusChange("no_show")}  color="#f87171">&#x2715; No-show</DBtn>
+                <DBtn onClick={() => onStatusChange("cancelled")} color="#6b7280">Cancel</DBtn>
+              </div>
+            )}
+            {booking.customer_phone && (
+              <DBtn
+                onClick={onResendChecklist}
+                disabled={checklistState === "sending"}
+                color="#b8955a"
+              >
+                {checklistState === "sent" ? "Sent ✓" : checklistState === "error" ? "Failed ✗" : checklistState === "sending" ? "Sending…" : "📋 Resend checklist"}
+              </DBtn>
+            )}
+          </DSection>
+
+        </div>
+      </div>
+    </>
+  );
+}
+
+function DSection({ label, children }) {
+  return (
+    <div>
+      <div style={{ fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "#b8955a", marginBottom: 10, paddingBottom: 6, borderBottom: "1px solid rgba(255,255,255,0.05)" }}>{label}</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>{children}</div>
+    </div>
+  );
+}
+
+function DRow({ label, value, mono, highlight, warn }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
+      <span style={{ fontSize: 10, color: "#60605a", flexShrink: 0 }}>{label}</span>
+      <span style={{
+        fontSize: mono ? 10 : 11,
+        fontFamily: mono ? "monospace" : "inherit",
+        color: highlight ? "#4ade80" : warn ? "#f87171" : "#c8c4bc",
+        textAlign: "right", wordBreak: "break-all",
+      }}>{value}</span>
+    </div>
+  );
+}
+
+function DBtn({ onClick, color, disabled, children }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        background: "transparent",
+        border: `1px solid ${disabled ? "rgba(255,255,255,0.1)" : color}`,
+        color: disabled ? "#60605a" : color,
+        fontSize: 11, padding: "6px 12px", borderRadius: 4,
+        cursor: disabled ? "not-allowed" : "pointer",
+        transition: "opacity 0.15s",
+      }}
+    >{children}</button>
+  );
+}
+
 function BookingActions({ booking, onChange, onResendChecklist, checklistState }) {
   const isDone = booking.status === "arrived" || booking.status === "no_show" || booking.status === "cancelled";
   return (
-    <div className="flex flex-wrap gap-1 items-center">
+    <div className="flex flex-wrap gap-1 items-center" onClick={(e) => e.stopPropagation()}>
       {!isDone && (
         <>
           <Button size="sm" variant="ghost" onClick={() => onChange("arrived")}>Arrived</Button>
@@ -347,7 +540,7 @@ function BookingActions({ booking, onChange, onResendChecklist, checklistState }
       )}
       {booking.customer_phone && (
         <button
-          onClick={onResendChecklist}
+          onClick={(e) => { e.stopPropagation(); onResendChecklist(); }}
           disabled={checklistState === "sending"}
           title="Re-send document checklist via WhatsApp"
           className={`text-[10px] px-2 py-1 border leading-none transition-colors ${

@@ -127,8 +127,23 @@ export async function findOrCreateCustomer(branchId, identity = {}) {
     })
     .select("*")
     .single();
-  if (error) throw error;
-  return data;
+
+  if (!error) return data;
+
+  // INSERT failed — likely an anon (QR walk-in) user blocked by RLS.
+  // Fall back to the security-definer RPC which anon is allowed to call.
+  const { data: rpcId, error: rpcErr } = await supabase.rpc(
+    "upsert_walk_in_customer",
+    {
+      p_branch_id: branchId,
+      p_name:      name  ?? "",
+      p_phone:     phone ?? "",
+      p_email:     email ?? null,
+    }
+  );
+  if (rpcErr) throw rpcErr;
+  // Return a minimal customer shape; the full row is in the DB now.
+  return { id: rpcId, branch_id: branchId, display_name: name, phone, email };
 }
 
 // ── Customer queries ──────────────────────────────────────────────────
