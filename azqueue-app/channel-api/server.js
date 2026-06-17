@@ -23,6 +23,12 @@
  *   GET  /webhooks/instagram    — Meta verification handshake
  *   POST /webhooks/instagram    — inbound IG DMs
  *   POST /webhooks/whatsapp     — inbound WhatsApp Cloud messages
+ *
+ * Zid e-commerce integration (OAuth — see src/routes/zid.js for why this
+ * has to live server-side):
+ *   GET  /zid/connect           — get the Zid consent-screen URL for a branch
+ *   GET  /zid/callback          — OAuth redirect target, exchanges code for tokens
+ *   POST /zid/sync              — pull customers/orders/products into AzQueue
  */
 
 import "dotenv/config";
@@ -34,6 +40,7 @@ import morgan from "morgan";
 import identifyRouter  from "./src/routes/identify.js";
 import customersRouter from "./src/routes/customers.js";
 import enrichRouter    from "./src/routes/enrich.js";
+import zidRouter        from "./src/routes/zid.js";
 
 const app  = express();
 const PORT = process.env.PORT ?? 3001;
@@ -81,6 +88,11 @@ function requireApiKey(req, res, next) {
 app.use("/identify",  requireApiKey, identifyRouter);
 app.use("/customers", requireApiKey, customersRouter);
 app.use("/enrich",    requireApiKey, enrichRouter);
+
+// Zid has its own per-branch-owner auth (a real Supabase user session,
+// checked against branch ownership) instead of the shared x-api-key —
+// see verifyBranchOwner() in src/routes/zid.js for why.
+app.use("/zid", zidRouter);
 
 // Health check — no auth required
 app.get("/health", (_req, res) => res.json({ status: "ok", ts: new Date().toISOString() }));

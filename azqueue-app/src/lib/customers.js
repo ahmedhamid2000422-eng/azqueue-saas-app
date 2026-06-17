@@ -28,11 +28,11 @@ import { getFreshdeskContext } from "./freshdesk";
  * If a partial match exists, merges the new fields in.
  *
  * @param {string} branchId
- * @param {{ name?, email?, phone?, facebookId?, instagramId?, whatsappId?, freshdeskId? }} identity
+ * @param {{ name?, email?, phone?, facebookId?, instagramId?, whatsappId?, freshdeskId?, zidId?, shopifyId? }} identity
  * @returns {Promise<{ id: string, ...customer }>}
  */
 export async function findOrCreateCustomer(branchId, identity = {}) {
-  const { name, email, phone, facebookId, instagramId, whatsappId, freshdeskId } = identity;
+  const { name, email, phone, facebookId, instagramId, whatsappId, freshdeskId, zidId, shopifyId } = identity;
 
   // Try to find existing customer — check each identifier in priority order
   let existing = null;
@@ -97,6 +97,8 @@ export async function findOrCreateCustomer(branchId, identity = {}) {
     if (instagramId && !existing.instagram_id) updates.instagram_id  = instagramId;
     if (whatsappId  && !existing.whatsapp_id)  updates.whatsapp_id   = whatsappId;
     if (freshdeskId && !existing.freshdesk_id) updates.freshdesk_id  = freshdeskId;
+    if (zidId       && !existing.zid_id)       updates.zid_id        = zidId;
+    if (shopifyId   && !existing.shopify_id)   updates.shopify_id    = shopifyId;
     updates.last_seen_at = new Date().toISOString();
 
     if (Object.keys(updates).length > 1) {
@@ -123,6 +125,8 @@ export async function findOrCreateCustomer(branchId, identity = {}) {
       instagram_id: instagramId ?? null,
       whatsapp_id:  whatsappId  ?? null,
       freshdesk_id: freshdeskId ?? null,
+      zid_id:       zidId       ?? null,
+      shopify_id:   shopifyId   ?? null,
       last_seen_at: new Date().toISOString(),
     })
     .select("*")

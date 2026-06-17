@@ -3,6 +3,7 @@ import { supabase } from "../../lib/supabase";
 import { findOrCreateCustomer, logQueueEvent, generatePersona } from "../../lib/customers";
 import { getEffectiveChecklist, buildChecklistMessage } from "../../lib/checklists";
 import { sendMessage } from "../../lib/messaging";
+import { sendSlackNotification } from "../../lib/slack";
 import { useBranch } from "../../lib/BranchContext";
 import { downloadCSV, exportFilename } from "../../lib/export";
 import Button from "../../components/Button";
@@ -107,6 +108,20 @@ export default function Bookings() {
 
     // Non-blocking: generate persona, send checklist
     const svcName = services.find((s) => s.id === serviceId)?.name ?? "General";
+
+    // Notify Slack who got assigned, what the task is, and when — no-ops
+    // silently if Slack isn't connected or no staff member was assigned.
+    if (staffId) {
+      const staffName = staff.find((s) => s.id === staffId)?.display_name ?? "Unassigned";
+      const when = new Date(scheduledAt).toLocaleString("en-US", {
+        weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+      });
+      sendSlackNotification(
+        branch.id,
+        `📅 *${staffName}* was assigned *${svcName}* for ${name.trim()} — ${when}`
+      ).catch(() => {});
+    }
+
     if (linkedCustomer) {
       Promise.resolve(linkedCustomer)
         .then((customer) => {

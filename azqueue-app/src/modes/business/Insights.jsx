@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { useBranch } from "../../lib/BranchContext";
 import { downloadCSV, exportFilename } from "../../lib/export";
+import { fetchPlatformOverview, CHANNEL_LABELS } from "../../lib/platformOverview";
+import { getGAConfig, fetchGAMetrics } from "../../lib/googleAnalytics";
 import Card, { CardHeader } from "../../components/Card";
 import Stat from "../../components/Stat";
 import Button from "../../components/Button";
@@ -82,6 +84,14 @@ export default function Insights() {
   const [fetchedAt, setFetchedAt] = useState(null);
   const timerRef = useRef(null);
 
+  // Cross-platform rollup (customer_events / wa_conversations / channel_connections)
+  // and Google Analytics — these don't change minute-to-minute like queue
+  // metrics do, so they're fetched once per branch rather than on the 60s timer.
+  const [platform,        setPlatform]        = useState(null);
+  const [platformLoading, setPlatformLoading] = useState(true);
+  const [gaConnected,     setGaConnected]     = useState(false);
+  const [gaMetrics,       setGaMetrics]       = useState(null);
+
   const fetch = useCallback(async (force = false) => {
     if (!branch?.id) return;
     // Honour stale time unless forced
@@ -109,6 +119,29 @@ export default function Insights() {
     timerRef.current = setInterval(() => fetch(true), STALE_MS);
     return () => clearInterval(timerRef.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [branch?.id]);
+
+  // Cross-platform rollup + Google Analytics — fetched once per branch.
+  useEffect(() => {
+    if (!branch?.id) return;
+    let cancelled = false;
+
+    (async () => {
+      setPlatformLoading(true);
+      const [overview, gaConfig] = await Promise.all([
+        fetchPlatformOverview(branch.id, 30),
+        getGAConfig(branch.id),
+      ]);
+      const metrics = gaConfig ? await fetchGAMetrics(branch.id, 30) : null;
+
+      if (cancelled) return;
+      setPlatform(overview);
+      setGaConnected(!!gaConfig);
+      setGaMetrics(metrics);
+      setPlatformLoading(false);
+    })();
+
+    return () => { cancelled = true; };
   }, [branch?.id]);
 
   /* ── Format helpers ─────────────────────────────────────────── */
@@ -224,7 +257,164 @@ export default function Insights() {
           Signals are computed from your branch's own history — not generic industry benchmarks.
         </div>
       </Card>
+
+      {/* ── Cross-platform activity ──────────────────────────────── */}
+      <div className="mt-6">
+        <PlatformActivityCard loading={platformLoading} platform={platform} />
+      </div>
+
+      {/* ── Website traffic (Google Analytics) ───────────────────── */}
+      {gaConnected && (
+        <div className="mt-6">
+          <WebsiteTrafficCard loading={platformLoading} metrics={gaMetrics} />
+        </div>
+      )}
     </div>
+  );
+}
+
+/* ── Cross-platform activity card ─────────────────────────────────────
+ * Rolls up everything already flowing into AzQueue from separately-built
+ * features — Freshdesk/Zid/Shopify imports, WhatsApp AI conversations,
+ * queue activity — into one place, plus which platforms are connected
+ * right now. Pulled from customer_events / wa_conversations /
+ * channel_connections via fetchPlatformOverview (src/lib/platformOverview.js).
+ */
+function PlatformActivityCard({ loading, platform }) {
+  const maxCount = platform?.channelActivity?.length
+    ? Math.max(...platform.channelActivity.map((c) => c.count))
+    : 0;
+
+  return (
+    <Card luxe>
+      <CardHeader
+        title="Cross-platform activity"
+        subtitle={`Last ${platform?.days ?? 30} days · across every connected channel`}
+        right={
+          !loading && platform ? (
+            <span className="ovline text-[9px] text-gold-soft">{platform.totalEvents} events</span>
+          ) : null
+        }
+      />
+
+      {loading ? (
+        <div className="px-5 py-10 text-center text-ink-mute text-xs">Loading…</div>
+      ) : (
+        <>
+          {/* Connected platforms */}
+          <div className="px-5 py-4 border-b border-line flex flex-wrap gap-2">
+            {Object.keys(CHANNEL_LABELS).map((channel) => {
+              const conn = platform?.connectionMap?.[channel];
+              const connected = conn?.status === "connected";
+              return (
+                <span
+                  key={channel}
+                  className={`flex items-center gap-1.5 text-[10px] px-2 py-1 border ${
+                    connected
+                      ? "border-[#506b50] text-[#9bbd9b]"
+                      : "border-line text-ink-mute"
+                  }`}
+                >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${connected ? "bg-[#9bbd9b]" : "bg-ink-mute/40"}`}
+                  />
+                  {CHANNEL_LABELS[channel]}
+                </span>
+              );
+            })}
+          </div>
+
+          {/* Event volume per channel */}
+          {platform?.channelActivity?.length ? (
+            <div className="px-5 py-4 border-b border-line space-y-2.5">
+              {platform.channelActivity.map((c) => (
+                <div key={c.channel} className="flex items-center gap-3">
+                  <div className="w-24 text-[11px] text-ink-soft shrink-0">{c.label}</div>
+                  <div className="flex-1 h-[6px] bg-line/60 relative overflow-hidden">
+                    <div
+                      className="absolute inset-y-0 left-0 bg-gold-soft/60"
+                      style={{ width: `${maxCount ? Math.max(4, (c.count / maxCount) * 100) : 0}%` }}
+                    />
+                  </div>
+                  <div className="w-10 text-right text-[11px] text-ink font-display">{c.count}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="px-5 py-6 text-center text-ink-mute text-xs">
+              No cross-platform activity logged yet in this window.
+            </div>
+          )}
+
+          {/* WhatsApp AI conversations */}
+          <div className="grid grid-cols-3 gap-3 px-5 py-4">
+            <Stat label="WhatsApp chats"  value={platform?.waStats?.total ?? 0}      hint="last 30 days" />
+            <Stat label="Needs a human"   value={platform?.waStats?.needsHuman ?? 0} hint="awaiting handoff" accent />
+            <Stat label="Completed"       value={platform?.waStats?.completed ?? 0}  hint="resolved by AI" />
+          </div>
+
+          <div className="px-5 py-3 border-t border-line text-[10px] text-ink-mute italic font-display">
+            Connect more channels in Settings → Integrations to bring more activity in here.
+          </div>
+        </>
+      )}
+    </Card>
+  );
+}
+
+/* ── Website traffic card (Google Analytics) ──────────────────────────
+ * Only rendered once GA4 is connected. Fetched live on each page load via
+ * the ga4-metrics Edge Function (src/lib/googleAnalytics.js) — nothing
+ * Google-side is cached or stored.
+ */
+function WebsiteTrafficCard({ loading, metrics }) {
+  const rows = metrics?.rows ?? [];
+  const maxSessions = rows.length ? Math.max(...rows.map((r) => r.sessions)) : 0;
+
+  return (
+    <Card luxe>
+      <CardHeader
+        title="Website traffic"
+        subtitle="From Google Analytics (GA4) · last 30 days"
+        right={<span className="ovline text-[9px] text-gold-soft">live</span>}
+      />
+
+      {loading ? (
+        <div className="px-5 py-10 text-center text-ink-mute text-xs">Loading…</div>
+      ) : !metrics ? (
+        <div className="px-5 py-6 text-center text-ink-mute text-xs">
+          Couldn't load Google Analytics data right now. Check the connection in Settings → Integrations.
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-3 gap-3 px-5 py-4 border-b border-line">
+            <Stat label="Sessions"    value={metrics.totals?.sessions ?? 0}    hint="last 30 days" accent />
+            <Stat label="Users"       value={metrics.totals?.activeUsers ?? 0} hint="last 30 days" />
+            <Stat label="Conversions" value={metrics.totals?.conversions ?? 0} hint="last 30 days" />
+          </div>
+
+          {rows.length > 0 && (
+            <div className="px-5 py-4">
+              <div className="ovline text-[9px] text-ink-mute mb-3">Daily sessions</div>
+              <div className="flex items-end gap-[2px] h-16">
+                {rows.map((r) => (
+                  <div
+                    key={r.date}
+                    title={`${r.date}: ${r.sessions} sessions`}
+                    className="flex-1 bg-gold-soft/50 hover:bg-gold-soft transition"
+                    style={{ height: `${maxSessions ? Math.max(4, (r.sessions / maxSessions) * 100) : 4}%` }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="px-5 py-3 border-t border-line text-[10px] text-ink-mute italic font-display">
+            Read-only — AzQueue never writes anything back to Google Analytics.
+          </div>
+        </>
+      )}
+    </Card>
   );
 }
 

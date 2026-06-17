@@ -34,6 +34,7 @@
 import { createClient }  from "https://esm.sh/@supabase/supabase-js@2";
 import { resolveFlow }   from "./flows.ts";
 import { scoreContext, buildSummary } from "./score.ts";
+import { runSupportTurn } from "./support.ts";
 
 const SUPABASE_URL  = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -54,6 +55,31 @@ async function sendWhatsApp(to: string, from: string, body: string) {
     headers: { Authorization: `Basic ${encoded}`, "Content-Type": "application/x-www-form-urlencoded" },
     body: params.toString(),
   });
+}
+
+// ── Slack helper ──────────────────────────────────────────────────────────────
+// Outbound-only: looks up the branch's Slack Incoming Webhook URL (saved by the
+// owner himself via Settings → Integrations → Slack) and posts a plain message.
+// No-ops silently if Slack isn't connected, same as the frontend's sendSlackNotification
+// in src/lib/slack.js — this is the server-side equivalent for use inside Edge Functions.
+async function notifySlack(branchId: string, text: string) {
+  try {
+    const { data } = await supabase
+      .from("channel_connections")
+      .select("config")
+      .eq("branch_id", branchId)
+      .eq("channel", "slack")
+      .maybeSingle();
+    const webhookUrl = data?.config?.webhookUrl;
+    if (!webhookUrl) return;
+    await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+  } catch (e) {
+    console.warn("[wa-bot] Slack notification failed:", e);
+  }
 }
 
 // Twilio expects an empty 200 or TwiML 200 — we reply via REST API above, so return empty 204.
@@ -103,6 +129,8 @@ type ConvRow = {
   lead_score: string | null;
   customer_id: string | null;
   completed: boolean;
+  needs_human: boolean;
+  assigned_team: string | null;
 };
 
 type BranchRow = {
@@ -184,15 +212,26 @@ async function processMessage(
       return `📅 Great! Let's book your consultation.\n\nWhat date works for you?\n_(e.g. "Monday 16 June" or "this Friday")_`;
     }
 
-    // General inquiry → skip straight to handoff
+    // General inquiry → hand over to free-form AI customer service instead
+    // of a static "our team will reach out" message. The conversation stays
+    // open (not completed) — every following message from this customer
+    // routes through the support_ai branch below until the AI itself
+    // decides a human is needed.
     if (chosen.id === "general") {
       await supabase.from("wa_conversations").update({
-        state: "done",
+        state: "support_ai",
         context: { ...ctx, service_category: "General Inquiry" },
-        completed: true,
       }).eq("id", conv.id);
 
-      return `${flow.handoff_msg}\n\n_Or feel free to ask your question here and I'll do my best to help!_`;
+      const transitionMsg =
+        "Sure thing — what can I help you with? Ask me anything and I'll do my best to help right away.";
+
+      await supabase.from("wa_messages").insert([
+        { conversation_id: conv.id, branch_id: branch.id, direction: "in", sender: "customer", body: userText },
+        { conversation_id: conv.id, branch_id: branch.id, direction: "out", sender: "ai", body: transitionMsg },
+      ]);
+
+      return transitionMsg;
     }
 
     // All other services → start qualification questions
@@ -240,6 +279,48 @@ async function processMessage(
     }).eq("id", conv.id);
 
     return flow.handoff_msg;
+  }
+
+  // ── FREE-FORM AI CUSTOMER SERVICE ───────────────────────────
+  // Entered from the "General Inquiry" menu choice above. Stays in this
+  // state indefinitely — there's no "done" for an open-ended support
+  // chat. Two phases:
+  //   1. needs_human === false → AI answers directly, deciding for
+  //      itself (via support.ts) whether/which team to hand off to.
+  //   2. needs_human === true  → a human already owns this conversation.
+  //      We still log the customer's message (so staff see it in the
+  //      transcript) but suppress further auto-replies — replying from
+  //      here on is the assigned team's job, via the wa-reply function.
+  if (state === "support_ai") {
+    if (conv.needs_human) {
+      await supabase.from("wa_messages").insert({
+        conversation_id: conv.id,
+        branch_id: branch.id,
+        direction: "in",
+        sender: "customer",
+        body: userText,
+      });
+      return ""; // no auto-reply — a human owns this conversation now
+    }
+
+    const result = await runSupportTurn(supabase, ANTHROPIC_KEY, branch, conv, userText);
+
+    if (result.handoff) {
+      await supabase.from("wa_conversations").update({
+        needs_human: true,
+        assigned_team: result.team,
+        context: { ...ctx, handoff_reason: result.reason },
+      }).eq("id", conv.id);
+
+      const teamLabel = result.team ? `*${result.team}*` : "a team member";
+      notifySlack(
+        branch.id,
+        `🤝 WhatsApp AI handed off a conversation from ${conv.wa_from} to ${teamLabel}` +
+          (result.reason ? `\n_Reason: ${result.reason}_` : "")
+      ).catch(() => {});
+    }
+
+    return result.reply;
   }
 
   // ── BOOKING FLOW ───────────────────────────────────────────
@@ -389,8 +470,12 @@ Deno.serve(async (req: Request) => {
     // Run state machine
     const reply = await processMessage(branch, conv, fromPhone, body);
 
-    // Send reply via Twilio REST API
-    await sendWhatsApp(fromPhone, toPhone, reply);
+    // Empty reply means "stay silent" — used once a human has taken over
+    // a support_ai conversation (needs_human), so the AI doesn't talk over
+    // whichever staff member is now handling it.
+    if (reply) {
+      await sendWhatsApp(fromPhone, toPhone, reply);
+    }
 
     return ok();
 

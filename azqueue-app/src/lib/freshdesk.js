@@ -148,6 +148,62 @@ export async function getFreshdeskTickets(apiKey, subdomain, contactId) {
 const TICKET_STATUS = { 2: "open", 3: "pending", 4: "resolved", 5: "closed" };
 const TICKET_PRIORITY = { 1: "low", 2: "medium", 3: "high", 4: "urgent" };
 
+// ── Bulk listing (used by the one-time/repeatable data import) ────────────
+
+/**
+ * Fetch a single page of results from a Freshdesk list endpoint.
+ * Handles 429 rate-limiting by waiting for the Retry-After window once.
+ */
+async function fetchFreshdeskPage(url, apiKey) {
+  let res = await fetch(url, { headers: { Authorization: basicAuth(apiKey) } });
+  if (res.status === 429) {
+    const wait = Number(res.headers.get("Retry-After") ?? "2") * 1000;
+    await new Promise((r) => setTimeout(r, wait));
+    res = await fetch(url, { headers: { Authorization: basicAuth(apiKey) } });
+  }
+  if (!res.ok) throw new Error(`Freshdesk request failed (${res.status}): ${url}`);
+  return res.json();
+}
+
+/**
+ * List ALL contacts in the Freshdesk account (paginated, 100/page).
+ * Returns raw Freshdesk contact objects: { id, name, email, phone, mobile, ... }
+ */
+export async function listFreshdeskContacts(apiKey, subdomain) {
+  const all = [];
+  let page = 1;
+  while (true) {
+    const url = `https://${subdomain}.freshdesk.com/api/v2/contacts?per_page=100&page=${page}`;
+    const batch = await fetchFreshdeskPage(url, apiKey);
+    if (!batch?.length) break;
+    all.push(...batch);
+    if (batch.length < 100) break;
+    page++;
+    // Be polite to Freshdesk's rate limits between pages
+    await new Promise((r) => setTimeout(r, 150));
+  }
+  return all;
+}
+
+/**
+ * List ALL agents (staff) in the Freshdesk account.
+ * Returns raw Freshdesk agent objects — agent.contact has { name, email }.
+ */
+export async function listFreshdeskAgents(apiKey, subdomain) {
+  const all = [];
+  let page = 1;
+  while (true) {
+    const url = `https://${subdomain}.freshdesk.com/api/v2/agents?per_page=100&page=${page}`;
+    const batch = await fetchFreshdeskPage(url, apiKey);
+    if (!batch?.length) break;
+    all.push(...batch);
+    if (batch.length < 100) break;
+    page++;
+    await new Promise((r) => setTimeout(r, 150));
+  }
+  return all;
+}
+
 /**
  * All-in-one: given a customer's email/phone, returns a compact Freshdesk
  * summary string suitable for injection into the AI persona prompt.

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/AuthContext";
 import { useBranch } from "../../lib/BranchContext";
+import { useStaff } from "../../hooks/useStaff";
 import { getLimits, getTier, TIER_INFO } from "../../lib/tier";
 import Card, { CardHeader } from "../../components/Card";
 import Button from "../../components/Button";
@@ -21,6 +22,23 @@ import {
   disconnectFreshdesk,
   testFreshdeskCredentials,
 } from "../../lib/freshdesk";
+import { syncFreshdeskData } from "../../lib/freshdeskImport";
+import { getZidStatus, startZidConnect, disconnectZid, syncZidData } from "../../lib/zid";
+import {
+  getShopifyConfig,
+  saveShopifyConfig,
+  disconnectShopify,
+} from "../../lib/shopify";
+import { syncShopifyData } from "../../lib/shopifyImport";
+import { getSlackConfig, saveSlackConfig, disconnectSlack } from "../../lib/slack";
+import { getGAConfig, saveGAConfig, disconnectGA } from "../../lib/googleAnalytics";
+import {
+  listHandoffConversations,
+  getConversationMessages,
+  claimConversation,
+  sendStaffReply,
+  resolveConversation,
+} from "../../lib/whatsappService";
 import { getLoyaltyProgram, saveLoyaltyProgram } from "../../lib/loyalty";
 import { QRCodeSVG } from "qrcode.react";
 
@@ -45,6 +63,7 @@ export default function Settings() {
     { id: "branches", label: "Branches" },
     { id: "services", label: "Services" },
     { id: "staff",    label: "Staff" },
+    { id: "support",  label: "Support Inbox" },
     { id: "modes",    label: "Modes" },
     { id: "checklists",   label: "Checklists" },
     { id: "loyalty",      label: "Loyalty" },
@@ -85,6 +104,7 @@ export default function Settings() {
       {tab === "branches" && <BranchesTab branches={branches} currentId={branch?.id} select={select} reload={reload} userId={user?.id} />}
       {tab === "services" && <ServicesTab branch={branch} />}
       {tab === "staff"    && <StaffTab branch={branch} />}
+      {tab === "support"  && <SupportInboxTab branch={branch} />}
       {tab === "modes"    && <ModesTab branch={branch} reload={reload} />}
       {tab === "checklists"   && <ChecklistsTab branch={branch} />}
       {tab === "loyalty"      && <LoyaltyTab branch={branch} />}
@@ -1057,6 +1077,13 @@ function StaffTab({ branch }) {
     await supabase.from("staff").update({ role: newRole }).eq("id", s.id);
     load();
   }
+  async function updateTeam(s, newTeam) {
+    // Powers the WhatsApp AI handoff (Support Inbox): the AI picks from
+    // whichever distinct team names exist here when it decides where to
+    // route a conversation it can't handle itself.
+    await supabase.from("staff").update({ team: newTeam.trim() || null }).eq("id", s.id);
+    load();
+  }
   async function remove(s) {
     await supabase.from("staff").delete().eq("id", s.id);
     load();
@@ -1116,6 +1143,17 @@ function StaffTab({ branch }) {
                   Configure →
                 </Link>
                 <Button variant="ghost" size="sm" onClick={() => remove(s)}>Remove</Button>
+              </div>
+              {/* Team — used by the WhatsApp AI to decide who a handed-off conversation goes to */}
+              <div className="mt-2 flex items-center gap-1.5">
+                <span className="text-[10px] text-ink-mute">Team</span>
+                <input
+                  type="text"
+                  defaultValue={s.team ?? ""}
+                  placeholder="e.g. Support, Sales, Billing"
+                  onBlur={(e) => updateTeam(s, e.target.value)}
+                  className="w-44 bg-bg-elev border border-line focus:border-gold-deep outline-none px-2 py-0.5 text-xs text-ink"
+                />
               </div>
               {/* Senior Advisor controls */}
               <div className="mt-2.5 flex items-center gap-4 pl-0">
@@ -1180,6 +1218,201 @@ function StaffTab({ branch }) {
           </>
         )}
       </Card>
+    </div>
+  );
+}
+
+/* ── SUPPORT INBOX (WhatsApp AI handoffs) ───────────────────────────── */
+function SupportInboxTab({ branch }) {
+  const { staff: myStaff } = useStaff();
+  const [conversations, setConversations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedId, setSelectedId] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  async function load() {
+    if (!branch?.id) return;
+    setLoading(true);
+    try {
+      const rows = await listHandoffConversations(branch.id);
+      setConversations(rows);
+    } catch (e) {
+      setErrorMsg(e.message);
+    }
+    setLoading(false);
+  }
+  useEffect(() => { load(); }, [branch?.id]);
+
+  async function openConversation(id) {
+    setSelectedId(id);
+    setErrorMsg("");
+    try {
+      const rows = await getConversationMessages(id);
+      setMessages(rows);
+    } catch (e) {
+      setErrorMsg(e.message);
+    }
+  }
+
+  async function handleClaim(id) {
+    setBusy(true);
+    setErrorMsg("");
+    try {
+      await claimConversation(id);
+      await load();
+      if (selectedId === id) await openConversation(id);
+    } catch (e) {
+      setErrorMsg(e.message);
+    }
+    setBusy(false);
+  }
+
+  async function handleSend() {
+    if (!draft.trim() || !selectedId) return;
+    setBusy(true);
+    setErrorMsg("");
+    try {
+      await sendStaffReply(selectedId, draft.trim());
+      setDraft("");
+      await openConversation(selectedId);
+      await load();
+    } catch (e) {
+      setErrorMsg(e.message);
+    }
+    setBusy(false);
+  }
+
+  async function handleResolve(id) {
+    setBusy(true);
+    setErrorMsg("");
+    try {
+      await resolveConversation(id);
+      setSelectedId(null);
+      setMessages([]);
+      await load();
+    } catch (e) {
+      setErrorMsg(e.message);
+    }
+    setBusy(false);
+  }
+
+  if (!branch) return <Empty hint="Select or create a branch first." />;
+
+  const selected = conversations.find((c) => c.id === selectedId);
+
+  return (
+    <div className="space-y-3">
+      <Card luxe className="p-5">
+        <div className="ovline text-gold-soft mb-1.5">WhatsApp Support Inbox</div>
+        <p className="text-[11px] text-ink-soft leading-relaxed">
+          When the WhatsApp AI decides it can't (or shouldn't) handle a question itself, it
+          hands the conversation here instead of going silent — picking a team from the{" "}
+          <span className="text-ink">Team</span> field on the Staff tab. Claim a conversation
+          to take it over, reply directly (it sends over WhatsApp immediately), then{" "}
+          <span className="text-ink">Resolve</span> to hand it back to the AI once you're done.
+        </p>
+      </Card>
+
+      {errorMsg && (
+        <div className="border border-[#a85b5b] bg-[rgba(168,91,91,0.08)] px-4 py-3 text-[11px] text-[#d99]">
+          {errorMsg}
+        </div>
+      )}
+
+      <div className="grid sm:grid-cols-[280px_1fr] gap-3">
+        <Card luxe>
+          <CardHeader title="Handed off" right={<span className="ovline text-[9px]">{conversations.length}</span>} />
+          {loading ? (
+            <div className="px-5 py-8 text-center text-ink-mute text-xs">Loading…</div>
+          ) : conversations.length === 0 ? (
+            <div className="px-5 py-8 text-center text-ink-mute text-xs">
+              Nothing waiting on a human right now.
+            </div>
+          ) : (
+            conversations.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => openConversation(c.id)}
+                className={`w-full text-left px-4 py-3 border-b border-line last:border-b-0 transition ${
+                  selectedId === c.id ? "bg-[rgba(201,168,106,0.08)]" : "hover:bg-bg-elev"
+                }`}
+              >
+                <div className="text-xs text-ink">{c.wa_from}</div>
+                <div className="text-[10px] text-gold-soft mt-0.5">
+                  {c.assigned_team ?? "Unassigned team"}
+                </div>
+                <div className="text-[10px] text-ink-mute mt-0.5">
+                  {c.claimed_by
+                    ? c.claimed_by === myStaff?.id ? "Claimed by you" : "Claimed by teammate"
+                    : "Unclaimed"}
+                </div>
+              </button>
+            ))
+          )}
+        </Card>
+
+        <Card luxe className="flex flex-col min-h-[420px]">
+          {!selected ? (
+            <div className="flex-1 flex items-center justify-center text-ink-mute text-xs">
+              Select a conversation to view the transcript.
+            </div>
+          ) : (
+            <>
+              <div className="px-5 py-3 border-b border-line flex items-center justify-between">
+                <div>
+                  <div className="text-sm text-ink">{selected.wa_from}</div>
+                  <div className="text-[10px] text-gold-soft">{selected.assigned_team ?? "Unassigned team"}</div>
+                </div>
+                <div className="flex gap-2">
+                  {!selected.claimed_by && (
+                    <Button size="sm" variant="ghost" disabled={busy} onClick={() => handleClaim(selected.id)}>
+                      Claim
+                    </Button>
+                  )}
+                  <Button size="sm" variant="ghost" disabled={busy} onClick={() => handleResolve(selected.id)}>
+                    Resolve → back to AI
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-2.5">
+                {messages.map((m) => (
+                  <div
+                    key={m.id}
+                    className={`max-w-[80%] px-3 py-2 text-[12px] leading-relaxed ${
+                      m.sender === "customer"
+                        ? "bg-bg-elev text-ink mr-auto"
+                        : m.sender === "ai"
+                          ? "bg-[rgba(201,168,106,0.10)] text-ink ml-auto"
+                          : "bg-[rgba(116,185,232,0.10)] text-ink ml-auto"
+                    }`}
+                  >
+                    <div className="text-[9px] uppercase tracking-[0.16em] text-ink-mute mb-1">
+                      {m.sender === "customer" ? "Customer" : m.sender === "ai" ? "AI" : "Staff"}
+                    </div>
+                    {m.body}
+                  </div>
+                ))}
+              </div>
+
+              <div className="px-5 py-3 border-t border-line flex gap-2">
+                <input
+                  type="text"
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }}
+                  placeholder="Type a reply — sends over WhatsApp immediately"
+                  className="flex-1 bg-bg-elev border border-line focus:border-gold-deep outline-none px-3 py-2 text-xs text-ink"
+                />
+                <Button size="sm" disabled={busy || !draft.trim()} onClick={handleSend}>Send</Button>
+              </div>
+            </>
+          )}
+        </Card>
+      </div>
     </div>
   );
 }
@@ -1585,6 +1818,40 @@ function IntegrationsTab({ branch }) {
   const [errorMsg, setErrorMsg]   = useState("");
   const [connected, setConnected] = useState(false);
 
+  const [syncState, setSyncState]   = useState("idle"); // idle | running | done | error
+  const [syncProgress, setSyncProgress] = useState(null); // { stage, done, total }
+  const [syncResult, setSyncResult]     = useState(null);
+
+  // ── Zid ───────────────────────────────────────────────────────────
+  const [zidConnected, setZidConnected] = useState(false);
+  const [zidConnecting, setZidConnecting] = useState(false);
+  const [zidBanner, setZidBanner] = useState(null); // { type: 'connected'|'error', reason? }
+  const [zidSyncState, setZidSyncState] = useState("idle"); // idle | running | done | error
+  const [zidSyncResult, setZidSyncResult] = useState(null);
+
+  // ── Shopify ───────────────────────────────────────────────────────
+  const [shopifyToken, setShopifyToken] = useState("");
+  const [shopifyDomain, setShopifyDomain] = useState("");
+  const [shopifyStatus, setShopifyStatus] = useState("idle"); // idle | testing | connected | error
+  const [shopifyErrorMsg, setShopifyErrorMsg] = useState("");
+  const [shopifyConnected, setShopifyConnected] = useState(false);
+  const [shopifySyncState, setShopifySyncState] = useState("idle"); // idle | running | done | error
+  const [shopifySyncProgress, setShopifySyncProgress] = useState(null);
+  const [shopifySyncResult, setShopifySyncResult] = useState(null);
+
+  // ── Slack ─────────────────────────────────────────────────────────
+  const [slackWebhook, setSlackWebhook] = useState("");
+  const [slackStatus, setSlackStatus] = useState("idle"); // idle | testing | connected | error
+  const [slackErrorMsg, setSlackErrorMsg] = useState("");
+  const [slackConnected, setSlackConnected] = useState(false);
+
+  // ── Google Analytics ──────────────────────────────────────────────
+  const [gaJson, setGaJson] = useState("");
+  const [gaPropertyId, setGaPropertyId] = useState("");
+  const [gaStatus, setGaStatus] = useState("idle"); // idle | testing | connected | error
+  const [gaErrorMsg, setGaErrorMsg] = useState("");
+  const [gaConnected, setGaConnected] = useState(false);
+
   useEffect(() => {
     if (!branch?.id) return;
     getFreshdeskConfig(branch.id).then((cfg) => {
@@ -1595,6 +1862,54 @@ function IntegrationsTab({ branch }) {
       }
     });
   }, [branch?.id]);
+
+  useEffect(() => {
+    if (!branch?.id) return;
+    getZidStatus(branch.id).then((s) => setZidConnected(s.status === "connected"));
+  }, [branch?.id]);
+
+  useEffect(() => {
+    if (!branch?.id) return;
+    getShopifyConfig(branch.id).then((cfg) => {
+      if (cfg) {
+        setShopifyConnected(true);
+        setShopifyDomain(cfg.shopDomain);
+        // Don't pre-fill the access token for security — show masked placeholder
+      }
+    });
+  }, [branch?.id]);
+
+  useEffect(() => {
+    if (!branch?.id) return;
+    getSlackConfig(branch.id).then((cfg) => {
+      if (cfg) setSlackConnected(true);
+      // Don't pre-fill the webhook URL for security — show masked placeholder
+    });
+  }, [branch?.id]);
+
+  useEffect(() => {
+    if (!branch?.id) return;
+    getGAConfig(branch.id).then((cfg) => {
+      if (cfg) {
+        setGaConnected(true);
+        setGaPropertyId(cfg.propertyId);
+      }
+    });
+  }, [branch?.id]);
+
+  // After the Zid OAuth redirect lands back here, surface a banner and
+  // clean the URL so refreshing doesn't re-show it.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const zidParam = params.get("zid");
+    if (!zidParam) return;
+    setZidBanner({ type: zidParam, reason: params.get("reason") });
+    if (zidParam === "connected") setZidConnected(true);
+    params.delete("zid");
+    params.delete("reason");
+    const newSearch = params.toString();
+    window.history.replaceState({}, "", window.location.pathname + (newSearch ? `?${newSearch}` : ""));
+  }, []);
 
   async function handleSave() {
     if (!apiKey.trim() || !subdomain.trim()) return;
@@ -1619,6 +1934,140 @@ function IntegrationsTab({ branch }) {
     setApiKey("");
     setSubdomain("");
     setStatus("idle");
+  }
+
+  async function handleSyncNow() {
+    setSyncState("running");
+    setSyncResult(null);
+    setSyncProgress(null);
+    try {
+      const result = await syncFreshdeskData(branch.id, {
+        onProgress: (info) => setSyncProgress(info),
+      });
+      setSyncResult(result);
+      setSyncState("done");
+    } catch (e) {
+      setSyncResult({ errors: [e.message ?? "Import failed."] });
+      setSyncState("error");
+    }
+  }
+
+  async function handleZidConnect() {
+    setZidConnecting(true);
+    setZidBanner(null);
+    try {
+      await startZidConnect(branch.id); // navigates away to Zid's consent screen
+    } catch (e) {
+      setZidBanner({ type: "error", reason: e.message });
+      setZidConnecting(false);
+    }
+  }
+
+  async function handleZidDisconnect() {
+    await disconnectZid(branch.id);
+    setZidConnected(false);
+    setZidBanner(null);
+    setZidSyncState("idle");
+    setZidSyncResult(null);
+  }
+
+  async function handleZidSyncNow() {
+    setZidSyncState("running");
+    setZidSyncResult(null);
+    try {
+      const result = await syncZidData(branch.id);
+      setZidSyncResult(result);
+      setZidSyncState("done");
+    } catch (e) {
+      setZidSyncResult({ errors: [e.message ?? "Import failed."] });
+      setZidSyncState("error");
+    }
+  }
+
+  async function handleShopifySave() {
+    if (!shopifyToken.trim() || !shopifyDomain.trim()) return;
+    setShopifyStatus("testing");
+    setShopifyErrorMsg("");
+    try {
+      await saveShopifyConfig(branch.id, {
+        accessToken: shopifyToken.trim(),
+        shopDomain: shopifyDomain.trim(),
+      });
+      setShopifyStatus("connected");
+      setShopifyConnected(true);
+    } catch (e) {
+      setShopifyStatus("error");
+      setShopifyErrorMsg(e.message ?? "Connection failed.");
+    }
+  }
+
+  async function handleShopifyDisconnect() {
+    await disconnectShopify(branch.id);
+    setShopifyConnected(false);
+    setShopifyToken("");
+    setShopifyDomain("");
+    setShopifyStatus("idle");
+  }
+
+  async function handleShopifySyncNow() {
+    setShopifySyncState("running");
+    setShopifySyncResult(null);
+    setShopifySyncProgress(null);
+    try {
+      const result = await syncShopifyData(branch.id, {
+        onProgress: (info) => setShopifySyncProgress(info),
+      });
+      setShopifySyncResult(result);
+      setShopifySyncState("done");
+    } catch (e) {
+      setShopifySyncResult({ errors: [e.message ?? "Import failed."] });
+      setShopifySyncState("error");
+    }
+  }
+
+  async function handleSlackSave() {
+    if (!slackWebhook.trim()) return;
+    setSlackStatus("testing");
+    setSlackErrorMsg("");
+    try {
+      await saveSlackConfig(branch.id, { webhookUrl: slackWebhook.trim() });
+      setSlackStatus("connected");
+      setSlackConnected(true);
+      setSlackWebhook("");
+    } catch (e) {
+      setSlackStatus("error");
+      setSlackErrorMsg(e.message ?? "Connection failed.");
+    }
+  }
+
+  async function handleSlackDisconnect() {
+    await disconnectSlack(branch.id);
+    setSlackConnected(false);
+    setSlackWebhook("");
+    setSlackStatus("idle");
+  }
+
+  async function handleGASave() {
+    if (!gaJson.trim() || !gaPropertyId.trim()) return;
+    setGaStatus("testing");
+    setGaErrorMsg("");
+    try {
+      await saveGAConfig(branch.id, { serviceAccountJson: gaJson, propertyId: gaPropertyId.trim() });
+      setGaStatus("connected");
+      setGaConnected(true);
+      setGaJson("");
+    } catch (e) {
+      setGaStatus("error");
+      setGaErrorMsg(e.message ?? "Connection failed.");
+    }
+  }
+
+  async function handleGADisconnect() {
+    await disconnectGA(branch.id);
+    setGaConnected(false);
+    setGaJson("");
+    setGaPropertyId("");
+    setGaStatus("idle");
   }
 
   return (
@@ -1695,6 +2144,401 @@ function IntegrationsTab({ branch }) {
           </Button>
           {connected && (
             <Button variant="ghost" onClick={handleDisconnect}>
+              Disconnect
+            </Button>
+          )}
+        </div>
+
+        {connected && (
+          <div className="mt-6 pt-5 border-t border-line">
+            <div className="ovline text-[9px] text-gold-soft mb-1">One-time data import</div>
+            <h4 className="text-sm font-medium text-ink mb-1">Pull in his existing data</h4>
+            <p className="text-[11px] text-ink-soft mb-3 max-w-md leading-relaxed">
+              Imports Freshdesk agents as staff, contacts as customers, and tickets as
+              customer history. Safe to run more than once — already-imported records are
+              skipped, not duplicated.
+            </p>
+
+            <Button
+              variant="ghost"
+              onClick={handleSyncNow}
+              disabled={syncState === "running"}
+            >
+              {syncState === "running"
+                ? syncProgress
+                  ? `Importing ${syncProgress.stage}… ${syncProgress.done}${syncProgress.total ? "/" + syncProgress.total : ""}`
+                  : "Importing…"
+                : "Sync now"}
+            </Button>
+
+            {syncState === "done" && syncResult && (
+              <div className="mt-3 text-[11px] text-[#9bbd9b] bg-[#506b50]/10 border border-[#506b50]/30 px-3 py-2 leading-relaxed">
+                ✓ Import finished — {syncResult.staffCreated} staff added
+                {syncResult.staffSkipped ? ` (${syncResult.staffSkipped} already existed)` : ""},{" "}
+                {syncResult.customersImported} customers imported, {syncResult.eventsLogged} ticket
+                events logged.
+                {syncResult.errors?.length > 0 && (
+                  <div className="mt-1 text-[#d49185]">
+                    {syncResult.errors.length} item(s) skipped due to errors — check that your
+                    Freshdesk plan allows agent/contact listing.
+                  </div>
+                )}
+              </div>
+            )}
+            {syncState === "error" && syncResult && (
+              <div className="mt-3 text-[11px] text-[#d49185] bg-[#b56b5f]/10 border border-[#b56b5f]/30 px-3 py-2">
+                {syncResult.errors?.[0] ?? "Import failed."}
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
+
+      {/* Zid */}
+      <Card luxe className="p-6">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <div className="ovline text-[9px] text-gold-soft mb-1">Zid</div>
+            <h3 className="text-sm font-medium text-ink">E-commerce customers, orders &amp; products</h3>
+            <p className="text-[11px] text-ink-soft mt-1 max-w-md leading-relaxed">
+              Connect your Zid store to pull in customers, order history, and your product
+              catalog. You approve the connection yourself on Zid's own site — AzQueue never
+              sees your Zid login.
+            </p>
+          </div>
+          {zidConnected && (
+            <span className="flex items-center gap-1.5 text-[10px] text-[#9bbd9b] border border-[#506b50] px-2 py-1 shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#9bbd9b]" /> Connected
+            </span>
+          )}
+        </div>
+
+        {zidBanner?.type === "connected" && (
+          <div className="mb-3 text-[11px] text-[#9bbd9b] bg-[#506b50]/10 border border-[#506b50]/30 px-3 py-2">
+            ✓ Zid connected successfully.
+          </div>
+        )}
+        {zidBanner?.type === "error" && (
+          <div className="mb-3 text-[11px] text-[#d49185] bg-[#b56b5f]/10 border border-[#b56b5f]/30 px-3 py-2">
+            Couldn't connect Zid{zidBanner.reason ? ` — ${zidBanner.reason}` : ""}.
+          </div>
+        )}
+
+        <div className="flex gap-3">
+          <Button onClick={handleZidConnect} disabled={zidConnecting}>
+            {zidConnecting ? "Redirecting to Zid…" : zidConnected ? "Reconnect Zid" : "Connect Zid"}
+          </Button>
+          {zidConnected && (
+            <Button variant="ghost" onClick={handleZidDisconnect}>
+              Disconnect
+            </Button>
+          )}
+        </div>
+
+        {zidConnected && (
+          <div className="mt-6 pt-5 border-t border-line">
+            <div className="ovline text-[9px] text-gold-soft mb-1">One-time data import</div>
+            <h4 className="text-sm font-medium text-ink mb-1">Pull in his existing store data</h4>
+            <p className="text-[11px] text-ink-soft mb-3 max-w-md leading-relaxed">
+              Imports Zid customers, logs orders to each customer's timeline, and syncs the
+              product catalog. Safe to run more than once — already-imported records are
+              skipped, not duplicated.
+            </p>
+
+            <Button variant="ghost" onClick={handleZidSyncNow} disabled={zidSyncState === "running"}>
+              {zidSyncState === "running" ? "Importing…" : "Sync now"}
+            </Button>
+
+            {zidSyncState === "done" && zidSyncResult && (
+              <div className="mt-3 text-[11px] text-[#9bbd9b] bg-[#506b50]/10 border border-[#506b50]/30 px-3 py-2 leading-relaxed">
+                ✓ Import finished — {zidSyncResult.customersImported} customers imported,{" "}
+                {zidSyncResult.ordersLogged} orders logged, {zidSyncResult.productsSynced} products
+                synced.
+                {zidSyncResult.errors?.length > 0 && (
+                  <div className="mt-1 text-[#d49185]">
+                    {zidSyncResult.errors.length} item(s) skipped due to errors.
+                  </div>
+                )}
+              </div>
+            )}
+            {zidSyncState === "error" && zidSyncResult && (
+              <div className="mt-3 text-[11px] text-[#d49185] bg-[#b56b5f]/10 border border-[#b56b5f]/30 px-3 py-2">
+                {zidSyncResult.errors?.[0] ?? "Import failed."}
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
+
+      {/* Shopify */}
+      <Card luxe className="p-6">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <div className="ovline text-[9px] text-gold-soft mb-1">Shopify</div>
+            <h3 className="text-sm font-medium text-ink">E-commerce customers, orders &amp; products</h3>
+            <p className="text-[11px] text-ink-soft mt-1 max-w-md leading-relaxed">
+              Connect your Shopify store to pull in customers, order history, and your
+              product catalog. You generate your own access token in your own Shopify
+              Admin — AzQueue never sees your Shopify login.
+            </p>
+          </div>
+          {shopifyConnected && (
+            <span className="flex items-center gap-1.5 text-[10px] text-[#9bbd9b] border border-[#506b50] px-2 py-1 shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#9bbd9b]" /> Connected
+            </span>
+          )}
+        </div>
+
+        {/* How to get your access token */}
+        <div className="bg-[rgba(201,168,106,0.05)] border border-[rgba(201,168,106,0.15)] px-4 py-3 mb-5 text-[11px] text-ink-soft leading-relaxed">
+          <span className="text-gold-soft font-medium">Getting your access token: </span>
+          In your Shopify Admin → <strong className="text-ink">Settings → Apps and sales channels →
+          Develop apps</strong> → Create an app → grant it read access to customers, orders,
+          and products → Install app → reveal the{" "}
+          <strong className="text-ink">Admin API access token</strong> (starts with{" "}
+          <span className="font-mono text-ink">shpat_</span>). Paste it below along with your
+          shop domain (e.g. <span className="font-mono text-ink">yourstore.myshopify.com</span>).
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <div className="ovline text-[9px] text-ink-mute mb-1">Shop domain</div>
+            <input
+              type="text"
+              value={shopifyDomain}
+              onChange={(e) => { setShopifyDomain(e.target.value); setShopifyStatus("idle"); }}
+              placeholder="yourstore.myshopify.com"
+              className="w-full bg-bg-elev border border-line focus:border-gold-deep outline-none text-sm px-3 py-2 text-ink placeholder:text-ink-mute font-mono"
+            />
+          </div>
+          <div>
+            <div className="ovline text-[9px] text-ink-mute mb-1">
+              Admin API access token{shopifyConnected ? " (enter new token to update)" : ""}
+            </div>
+            <input
+              type="password"
+              value={shopifyToken}
+              onChange={(e) => { setShopifyToken(e.target.value); setShopifyStatus("idle"); }}
+              placeholder={shopifyConnected ? "••••••••••••••••" : "shpat_…"}
+              className="w-full bg-bg-elev border border-line focus:border-gold-deep outline-none text-sm px-3 py-2 text-ink placeholder:text-ink-mute font-mono"
+            />
+          </div>
+        </div>
+
+        {shopifyStatus === "error" && (
+          <div className="mt-3 text-[11px] text-[#d49185] bg-[#b56b5f]/10 border border-[#b56b5f]/30 px-3 py-2">
+            {shopifyErrorMsg}
+          </div>
+        )}
+        {shopifyStatus === "connected" && (
+          <div className="mt-3 text-[11px] text-[#9bbd9b] bg-[#506b50]/10 border border-[#506b50]/30 px-3 py-2">
+            ✓ Connected successfully. Use the import below to pull in existing data.
+          </div>
+        )}
+
+        <div className="flex gap-3 mt-5">
+          <Button
+            onClick={handleShopifySave}
+            disabled={shopifyStatus === "testing" || (!shopifyToken.trim() && !shopifyConnected)}
+          >
+            {shopifyStatus === "testing" ? "Testing connection…" : shopifyConnected ? "Update credentials" : "Connect Shopify"}
+          </Button>
+          {shopifyConnected && (
+            <Button variant="ghost" onClick={handleShopifyDisconnect}>
+              Disconnect
+            </Button>
+          )}
+        </div>
+
+        {shopifyConnected && (
+          <div className="mt-6 pt-5 border-t border-line">
+            <div className="ovline text-[9px] text-gold-soft mb-1">One-time data import</div>
+            <h4 className="text-sm font-medium text-ink mb-1">Pull in his existing store data</h4>
+            <p className="text-[11px] text-ink-soft mb-3 max-w-md leading-relaxed">
+              Imports Shopify customers, logs orders to each customer's timeline, and syncs
+              the product catalog. Safe to run more than once — already-imported records are
+              skipped, not duplicated.
+            </p>
+
+            <Button
+              variant="ghost"
+              onClick={handleShopifySyncNow}
+              disabled={shopifySyncState === "running"}
+            >
+              {shopifySyncState === "running"
+                ? shopifySyncProgress
+                  ? `Importing ${shopifySyncProgress.stage}… ${shopifySyncProgress.done}${shopifySyncProgress.total ? "/" + shopifySyncProgress.total : ""}`
+                  : "Importing…"
+                : "Sync now"}
+            </Button>
+
+            {shopifySyncState === "done" && shopifySyncResult && (
+              <div className="mt-3 text-[11px] text-[#9bbd9b] bg-[#506b50]/10 border border-[#506b50]/30 px-3 py-2 leading-relaxed">
+                ✓ Import finished — {shopifySyncResult.customersImported} customers imported,{" "}
+                {shopifySyncResult.ordersLogged} orders logged, {shopifySyncResult.productsSynced}{" "}
+                products synced.
+                {shopifySyncResult.errors?.length > 0 && (
+                  <div className="mt-1 text-[#d49185]">
+                    {shopifySyncResult.errors.length} item(s) skipped due to errors.
+                  </div>
+                )}
+              </div>
+            )}
+            {shopifySyncState === "error" && shopifySyncResult && (
+              <div className="mt-3 text-[11px] text-[#d49185] bg-[#b56b5f]/10 border border-[#b56b5f]/30 px-3 py-2">
+                {shopifySyncResult.errors?.[0] ?? "Import failed."}
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
+
+      {/* Slack */}
+      <Card luxe className="p-6">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <div className="ovline text-[9px] text-gold-soft mb-1">Slack</div>
+            <h3 className="text-sm font-medium text-ink">Task assignments &amp; staff notifications</h3>
+            <p className="text-[11px] text-ink-soft mt-1 max-w-md leading-relaxed">
+              When a booking is assigned to a staff member, AzQueue posts who got it, what
+              the task is, and when it's scheduled to your Slack channel. Also posts when
+              the WhatsApp AI hands a conversation off to a team. Outbound only — AzQueue
+              never reads anything back from Slack.
+            </p>
+          </div>
+          {slackConnected && (
+            <span className="flex items-center gap-1.5 text-[10px] text-[#9bbd9b] border border-[#506b50] px-2 py-1 shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#9bbd9b]" /> Connected
+            </span>
+          )}
+        </div>
+
+        {/* How to get a webhook URL */}
+        <div className="bg-[rgba(201,168,106,0.05)] border border-[rgba(201,168,106,0.15)] px-4 py-3 mb-5 text-[11px] text-ink-soft leading-relaxed">
+          <span className="text-gold-soft font-medium">Getting your webhook URL: </span>
+          In Slack, go to <span className="font-mono text-ink">api.slack.com/apps</span> →{" "}
+          <strong className="text-ink">Create New App</strong> → From scratch → under{" "}
+          <strong className="text-ink">Incoming Webhooks</strong>, switch it on → Add New
+          Webhook to Workspace → choose the channel notifications should land in. Copy the
+          generated URL (starts with{" "}
+          <span className="font-mono text-ink">https://hooks.slack.com/services/</span>) and
+          paste it below.
+        </div>
+
+        <div>
+          <div className="ovline text-[9px] text-ink-mute mb-1">
+            Webhook URL{slackConnected ? " (enter new URL to update)" : ""}
+          </div>
+          <input
+            type="password"
+            value={slackWebhook}
+            onChange={(e) => { setSlackWebhook(e.target.value); setSlackStatus("idle"); }}
+            placeholder={slackConnected ? "••••••••••••••••" : "https://hooks.slack.com/services/…"}
+            className="w-full bg-bg-elev border border-line focus:border-gold-deep outline-none text-sm px-3 py-2 text-ink placeholder:text-ink-mute font-mono"
+          />
+        </div>
+
+        {slackStatus === "error" && (
+          <div className="mt-3 text-[11px] text-[#d49185] bg-[#b56b5f]/10 border border-[#b56b5f]/30 px-3 py-2">
+            {slackErrorMsg}
+          </div>
+        )}
+        {slackStatus === "connected" && (
+          <div className="mt-3 text-[11px] text-[#9bbd9b] bg-[#506b50]/10 border border-[#506b50]/30 px-3 py-2">
+            ✓ Connected — a test message was posted to your channel.
+          </div>
+        )}
+
+        <div className="flex gap-3 mt-5">
+          <Button
+            onClick={handleSlackSave}
+            disabled={slackStatus === "testing" || !slackWebhook.trim()}
+          >
+            {slackStatus === "testing" ? "Testing webhook…" : slackConnected ? "Update webhook" : "Connect Slack"}
+          </Button>
+          {slackConnected && (
+            <Button variant="ghost" onClick={handleSlackDisconnect}>
+              Disconnect
+            </Button>
+          )}
+        </div>
+      </Card>
+
+      {/* Google Analytics */}
+      <Card luxe className="p-6">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <div className="ovline text-[9px] text-gold-soft mb-1">Google Analytics</div>
+            <h3 className="text-sm font-medium text-ink">Website traffic in your Insights dashboard</h3>
+            <p className="text-[11px] text-ink-soft mt-1 max-w-md leading-relaxed">
+              Pulls sessions, active users, and conversions from your GA4 property into
+              AzQueue's Insights tab, alongside your booking and support metrics. Read-only —
+              AzQueue never writes anything back to Google Analytics.
+            </p>
+          </div>
+          {gaConnected && (
+            <span className="flex items-center gap-1.5 text-[10px] text-[#9bbd9b] border border-[#506b50] px-2 py-1 shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#9bbd9b]" /> Connected
+            </span>
+          )}
+        </div>
+
+        {/* How to set up a service account */}
+        <div className="bg-[rgba(201,168,106,0.05)] border border-[rgba(201,168,106,0.15)] px-4 py-3 mb-5 text-[11px] text-ink-soft leading-relaxed">
+          <span className="text-gold-soft font-medium">Setting this up: </span>
+          In Google Cloud Console, enable the <strong className="text-ink">Google Analytics Data API</strong>,
+          then create a service account and download its JSON key. In Google Analytics →{" "}
+          <strong className="text-ink">Admin → Property Access Management</strong>, add that service
+          account's email as a <strong className="text-ink">Viewer</strong>. Your Property ID is a number,
+          found under <strong className="text-ink">Admin → Property Settings</strong> (not the
+          "G-XXXXXXX" measurement ID).
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <div className="ovline text-[9px] text-ink-mute mb-1">Property ID</div>
+            <input
+              type="text"
+              value={gaPropertyId}
+              onChange={(e) => { setGaPropertyId(e.target.value); setGaStatus("idle"); }}
+              placeholder="123456789"
+              className="w-full bg-bg-elev border border-line focus:border-gold-deep outline-none text-sm px-3 py-2 text-ink placeholder:text-ink-mute font-mono"
+            />
+          </div>
+          <div>
+            <div className="ovline text-[9px] text-ink-mute mb-1">
+              Service account JSON key{gaConnected ? " (paste new key to update)" : ""}
+            </div>
+            <textarea
+              value={gaJson}
+              onChange={(e) => { setGaJson(e.target.value); setGaStatus("idle"); }}
+              placeholder={gaConnected ? "••••••••••••••••" : 'Paste the full downloaded .json file contents — { "type": "service_account", … }'}
+              rows={4}
+              className="w-full bg-bg-elev border border-line focus:border-gold-deep outline-none text-xs px-3 py-2 text-ink placeholder:text-ink-mute font-mono resize-y"
+            />
+          </div>
+        </div>
+
+        {gaStatus === "error" && (
+          <div className="mt-3 text-[11px] text-[#d49185] bg-[#b56b5f]/10 border border-[#b56b5f]/30 px-3 py-2">
+            {gaErrorMsg}
+          </div>
+        )}
+        {gaStatus === "connected" && (
+          <div className="mt-3 text-[11px] text-[#9bbd9b] bg-[#506b50]/10 border border-[#506b50]/30 px-3 py-2">
+            ✓ Connected. Website metrics will appear in Insights.
+          </div>
+        )}
+
+        <div className="flex gap-3 mt-5">
+          <Button
+            onClick={handleGASave}
+            disabled={gaStatus === "testing" || (!gaJson.trim() && !gaConnected) || !gaPropertyId.trim()}
+          >
+            {gaStatus === "testing" ? "Testing connection…" : gaConnected ? "Update credentials" : "Connect Google Analytics"}
+          </Button>
+          {gaConnected && (
+            <Button variant="ghost" onClick={handleGADisconnect}>
               Disconnect
             </Button>
           )}
