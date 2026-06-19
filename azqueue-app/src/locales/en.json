@@ -17,6 +17,8 @@
     "name_placeholder": "Your name",
     "phone_label": "Phone",
     "phone_placeholder": "+60 12 345 6789",
+    "email_label": "Email",
+    "email_placeholder": "you@example.com",
     "submit": "Secure my place",
     "submitting": "Securing your spot…",
     "footer": "Your place is reserved the moment you submit. We'll WhatsApp you when you're nearly up.",

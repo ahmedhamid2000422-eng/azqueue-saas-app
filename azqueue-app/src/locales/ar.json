@@ -14,6 +14,8 @@
     "name_placeholder": "اسمك",
     "phone_label": "الهاتف",
     "phone_placeholder": "+60 12 345 6789",
+    "email_label": "البريد الإلكتروني",
+    "email_placeholder": "you@example.com",
     "submit": "احصل على بطاقتي",
     "submitting": "جارٍ تسجيلك…",
     "footer": "سنرسل لك رسالة واتساب عند حلول دورك. لا حاجة لأي تطبيق.",

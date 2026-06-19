@@ -14,6 +14,8 @@
     "name_placeholder": "آپ کا نام",
     "phone_label": "فون",
     "phone_placeholder": "+60 12 345 6789",
+    "email_label": "ای میل",
+    "email_placeholder": "you@example.com",
     "submit": "میرا ٹکٹ حاصل کریں",
     "submitting": "چیک اِن کیا جا رہا ہے…",
     "footer": "آپ کی باری پر ہم WhatsApp کریں گے۔ کسی ایپ کی ضرورت نہیں۔",
