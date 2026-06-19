@@ -8,10 +8,11 @@ import LanguagePicker from "../components/LanguagePicker";
  * Checkin — public customer check-in page.
  * Route: /checkin/:branchId
  *
- * Three screens shown one at a time:
+ * Four screens shown one at a time:
  *   1. Service picker  →  Staff picker (optional)
  *   2. Name + phone form
- *   3. Confirmation (token + position)
+ *   3. Review — confirm details before joining the queue
+ *   4. Confirmation (token + position)
  */
 export default function Checkin() {
   const {
@@ -27,7 +28,7 @@ export default function Checkin() {
     submit,
   } = useCheckin();
 
-  const [screen,           setScreen]           = useState(1); // 1 | 2 | 3
+  const [screen,           setScreen]           = useState(1); // 1 | 2 | 3 | 4
   const [serviceId,        setServiceId]        = useState(null);
   const [preferredStaffId, setPreferredStaffId] = useState(null); // null = anyone
   const [name,             setName]             = useState("");
@@ -37,15 +38,20 @@ export default function Checkin() {
   const preferredStaff  = staffMembers.find((s) => s.id === preferredStaffId) ?? null;
   const isSeniorPick    = !!preferredStaff?.is_senior_advisor;
 
-  /* ── Handle form submit ───────────────────────────────────── */
-  async function handleSubmit(e) {
+  /* ── Screen 2 → Screen 3: move to review, don't submit yet ──── */
+  function handleContinueToReview(e) {
     e.preventDefault();
     if (!name.trim() || !serviceId) return;
+    setScreen(3);
+  }
+
+  /* ── Screen 3: actually join the queue ───────────────────────── */
+  async function handleConfirm() {
     await submit(name, phone, serviceId, preferredStaffId);
   }
 
-  // Move to screen 3 when submission succeeds
-  if (submitted && screen !== 3) setScreen(3);
+  // Move to screen 4 when submission succeeds
+  if (submitted && screen !== 4) setScreen(4);
 
   /* ── Loading ──────────────────────────────────────────────── */
   if (loading) {
@@ -265,7 +271,7 @@ export default function Checkin() {
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleContinueToReview} className="space-y-4">
               {/* Name */}
               <div>
                 <label className="ovline text-[9px] text-ink-mute block mb-2">
@@ -318,13 +324,13 @@ export default function Checkin() {
                 </div>
               )}
 
-              {/* Submit */}
+              {/* Continue to review */}
               <button
                 type="submit"
-                disabled={!name.trim() || submitting}
+                disabled={!name.trim()}
                 className="w-full py-3.5 bg-gold text-[#141410] font-medium text-sm tracking-wide disabled:opacity-30 transition hover:opacity-90 mt-2"
               >
-                {submitting ? "Joining queue…" : "Join queue →"}
+                Review →
               </button>
             </form>
           </div>
@@ -333,7 +339,72 @@ export default function Checkin() {
     );
   }
 
-  /* ── Screen 3: Confirmation ───────────────────────────────── */
+  /* ── Screen 3: Review — confirm details before joining ──────── */
+  if (screen === 3) {
+    return (
+      <Shell brandColor={branch?.brand_color}>
+        <div className="flex-1 flex items-center justify-center px-6 py-12">
+          <div className="w-full max-w-sm">
+
+            {/* Back */}
+            <button
+              onClick={() => setScreen(2)}
+              disabled={submitting}
+              className="flex items-center gap-2 text-ink-mute text-xs mb-10 hover:text-ink transition disabled:opacity-40"
+            >
+              ← Edit
+            </button>
+
+            <div className="mb-8">
+              <h2 className="font-display text-2xl font-light tracking-tightest text-ink mb-1">
+                Confirm your spot
+              </h2>
+              <p className="text-ink-mute text-xs">Check your details before joining the queue.</p>
+            </div>
+
+            <div className="space-y-px bg-line border border-line mb-6">
+              <ReviewRow label="Service" value={selectedService?.name ?? "—"} />
+              <ReviewRow
+                label="Staff"
+                value={preferredStaff ? preferredStaff.display_name : "Next available"}
+              />
+              <ReviewRow label="Name" value={name.trim() || "—"} />
+              <ReviewRow label="Phone" value={phone.trim() || "Not provided"} />
+            </div>
+
+            {/* Senior advisor fee notice */}
+            {isSeniorPick && (
+              <div className="border border-gold/30 bg-[rgba(201,168,106,0.06)] px-4 py-3 mb-6">
+                <div className="text-[11px] text-gold-soft font-medium mb-0.5">
+                  ⭐ Senior Advisor — {preferredStaff.display_name}
+                </div>
+                <div className="text-[10px] text-ink-mute">
+                  An additional ${preferredStaff.advisor_fee ?? 50} consultation fee applies — payable at the counter after your session.
+                </div>
+              </div>
+            )}
+
+            {/* Error */}
+            {error && (
+              <div className="text-[11px] text-[#d49185] border border-[#b56b5f]/30 bg-[#b56b5f]/08 px-3 py-2 mb-4">
+                {error}
+              </div>
+            )}
+
+            <button
+              onClick={handleConfirm}
+              disabled={submitting}
+              className="w-full py-3.5 bg-gold text-[#141410] font-medium text-sm tracking-wide disabled:opacity-30 transition hover:opacity-90"
+            >
+              {submitting ? "Joining queue…" : "Confirm & join queue →"}
+            </button>
+          </div>
+        </div>
+      </Shell>
+    );
+  }
+
+  /* ── Screen 4: Confirmation ───────────────────────────────── */
   const estWait = Math.max(1, position ?? 0) * 10;
 
   return (
@@ -395,6 +466,16 @@ export default function Checkin() {
         </div>
       </div>
     </Shell>
+  );
+}
+
+/* ── Review row — label/value pair on the confirm screen ────────── */
+function ReviewRow({ label, value }) {
+  return (
+    <div className="bg-bg-elev px-4 py-3 flex items-center justify-between gap-3">
+      <span className="ovline text-[9px] text-ink-mute shrink-0">{label}</span>
+      <span className="text-sm text-ink truncate text-right">{value}</span>
+    </div>
   );
 }
 

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { sendBookingConfirmation } from "../lib/notifications";
 import LanguagePicker from "../components/LanguagePicker";
 import Button from "../components/Button";
 import LuxeFrame from "../components/LuxeFrame";
@@ -14,7 +15,8 @@ import LuxeFrame from "../components/LuxeFrame";
  *   2. Pick a day (next 7)
  *   3. Pick an available time slot (from get_available_slots RPC)
  *   4. Enter name + phone
- *   5. Submit → confirmation screen with the booked time
+ *   5. Review screen — confirm details before the booking is saved
+ *   6. Submit → confirmation screen with the booked time
  *
  * The slot picker calls a Postgres function, so customers never see other
  * people's bookings — only the open time slots.
@@ -38,6 +40,7 @@ export default function BookingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [confirmed, setConfirmed] = useState(null); // booking row after success
   const [error, setError] = useState(null);
+  const [reviewing, setReviewing] = useState(false); // showing the review/confirm screen
 
   // Slots for the chosen day + service
   const [slots, setSlots] = useState([]);
@@ -88,14 +91,22 @@ export default function BookingPage() {
     return () => { cancelled = true; };
   }, [branch?.id, serviceId, dayOffset]);
 
-  async function submit(e) {
+  // Screen: validate the form, then show the review screen — nothing is
+  // saved yet, so the customer gets a chance to double-check before we
+  // touch the database.
+  function continueToReview(e) {
     e.preventDefault();
     setError(null);
     if (!serviceId) return setError(t("checkin.errors.pick_service"));
     if (!slot)      return setError(t("booking.pick_time"));
     if (!name.trim()) return setError(t("checkin.errors.enter_name"));
     if (!/^\+?\d[\d\s-]{6,}$/.test(phone)) return setError(t("checkin.errors.valid_phone"));
+    setReviewing(true);
+  }
 
+  // Review screen → actually create the booking.
+  async function confirmBooking() {
+    setError(null);
     setSubmitting(true);
     const { data, error: insErr } = await supabase
       .from("bookings")
@@ -112,6 +123,14 @@ export default function BookingPage() {
     setSubmitting(false);
     if (insErr || !data) return setError(insErr?.message ?? t("common.error"));
 
+    // Fire-and-forget — never block the on-screen confirmation on the
+    // WhatsApp send. If Twilio isn't configured yet, send-notification
+    // just logs a dry-run row; either way the customer still sees their
+    // confirmation screen (QA bug B8 — this call was previously missing
+    // entirely, so no WhatsApp message ever went out for a booking).
+    sendBookingConfirmation(data.id).catch(() => {});
+
+    setReviewing(false);
     setConfirmed(data);
   }
 
@@ -119,6 +138,23 @@ export default function BookingPage() {
   if (loadError) return <Shell brandColor={branch?.brand_color}><div className="text-center py-12 text-ink-soft text-sm">{loadError}</div></Shell>;
 
   if (confirmed) return <Confirmed branch={branch} booking={confirmed} services={services} />;
+
+  if (reviewing) {
+    return (
+      <Review
+        branch={branch}
+        services={services}
+        serviceId={serviceId}
+        slot={slot}
+        name={name}
+        phone={phone}
+        submitting={submitting}
+        error={error}
+        onEdit={() => setReviewing(false)}
+        onConfirm={confirmBooking}
+      />
+    );
+  }
 
   const isGym = branch.business_type === "gym";
   const visibleServices = isGym && levelFilter !== "all"
@@ -136,7 +172,7 @@ export default function BookingPage() {
         <p className="text-ink-soft text-xs mt-3 max-w-xs mx-auto">{t("booking.subtitle")}</p>
       </div>
 
-      <form onSubmit={submit} className="mt-8 space-y-6">
+      <form onSubmit={continueToReview} className="mt-8 space-y-6">
         {/* Service */}
         <div>
           <div className="ovline mb-3">{isGym ? "Pick a class" : t("booking.pick_service")}</div>
@@ -262,8 +298,8 @@ export default function BookingPage() {
 
             {error && <FormError message={error} />}
 
-            <Button type="submit" disabled={submitting} className="w-full">
-              {submitting ? t("booking.submitting") : `${t("booking.submit")} →`}
+            <Button type="submit" className="w-full">
+              Review →
             </Button>
 
             <div className="text-[10px] text-ink-mute text-center tracking-wide pt-2">
@@ -305,6 +341,60 @@ function FaqItem({ q, a }) {
       {open && a && (
         <div className="px-4 pb-3 text-[12px] text-ink-mute leading-relaxed">{a}</div>
       )}
+    </div>
+  );
+}
+
+/* ── Review screen — confirm details before the booking is saved ────── */
+function Review({ branch, services, serviceId, slot, name, phone, submitting, error, onEdit, onConfirm }) {
+  const { t } = useTranslation();
+  const svc = services.find((s) => s.id === serviceId);
+  const when = new Date(slot);
+  return (
+    <Shell brandColor={branch?.brand_color}>
+      <button
+        type="button"
+        onClick={onEdit}
+        disabled={submitting}
+        className="flex items-center gap-2 text-ink-mute text-xs mb-6 hover:text-ink transition disabled:opacity-40"
+      >
+        ← Edit
+      </button>
+
+      <LuxeFrame className="p-8 text-center">
+        <div className="ovline text-gold-soft mb-3">Confirm your booking</div>
+        <h1 className="font-display text-2xl font-light tracking-tightest mb-3">
+          {when.toLocaleDateString([], { weekday: "long", day: "numeric", month: "long" })}
+        </h1>
+        <div className="gold-text font-display text-5xl font-light tracking-tightest leading-none mb-3">
+          {when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        </div>
+
+        <div className="rule-ornament my-5 text-[8px]"><span>✦</span></div>
+
+        <div className="space-y-px bg-line border border-line text-left">
+          <ReviewRow label="Service" value={svc?.name ?? "—"} />
+          <ReviewRow label="Branch" value={branch.name} />
+          <ReviewRow label="Name" value={name.trim() || "—"} />
+          <ReviewRow label="Phone" value={phone.trim() || "—"} />
+        </div>
+
+        {error && <div className="mt-4"><FormError message={error} /></div>}
+
+        <Button onClick={onConfirm} disabled={submitting} className="w-full mt-6">
+          {submitting ? t("booking.submitting") : "Confirm booking →"}
+        </Button>
+      </LuxeFrame>
+    </Shell>
+  );
+}
+
+/* ── Review row — label/value pair ───────────────────────────────────── */
+function ReviewRow({ label, value }) {
+  return (
+    <div className="bg-bg-elev px-4 py-3 flex items-center justify-between gap-3">
+      <span className="ovline text-[9px] text-ink-mute shrink-0">{label}</span>
+      <span className="text-sm text-ink truncate text-right">{value}</span>
     </div>
   );
 }

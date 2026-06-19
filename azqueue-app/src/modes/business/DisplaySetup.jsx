@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { useBranch } from "../../lib/BranchContext";
 import Card, { CardHeader } from "../../components/Card";
@@ -126,14 +126,7 @@ export default function DisplaySetup() {
               <span className="uppercase tracking-[0.2em]">demo data</span>
             </div>
           </div>
-          <div className="relative bg-bg" style={{ aspectRatio: "16/9" }}>
-            <iframe
-              src={`/display/${branch.slug}?demo=1`}
-              title="Display preview"
-              className="absolute inset-0 w-full h-full border-0"
-              style={{ transformOrigin: "top left" }}
-            />
-          </div>
+          <LivePreviewFrame slug={branch.slug} />
           <div className="px-5 py-3 border-t border-line text-[10px] text-ink-mute italic">
             Real customer data appears once you run the queue. The preview uses demo numbers so you can position the screen first.
           </div>
@@ -201,6 +194,54 @@ export default function DisplaySetup() {
           Most owners are running on AzQueue within an afternoon, with the old system still up as a backup.
         </div>
       </Card>
+    </div>
+  );
+}
+
+/* ── Live preview iframe ───────────────────────────────────────────── */
+// QA bug C3 — the preview used to set `transformOrigin: "top left"` on the
+// iframe with no matching `transform`, and size the iframe with w-full/h-full
+// directly to the small preview box. TvDisplay.jsx is built for an actual
+// wall-mounted TV (FullScreenShell uses overflow-hidden, "Now Serving" token
+// floors at a 180px font via clamp()) — rendered straight into a small
+// preview box, that content overflows and gets clipped by overflow-hidden,
+// so the "preview" looked empty/broken. Fix: render the display at a real TV
+// resolution off-iframe, then shrink the whole thing with a measured
+// transform: scale() so it's a faithful miniature instead of a clipped mess.
+const PREVIEW_DESIGN_WIDTH = 1280;
+const PREVIEW_DESIGN_HEIGHT = 720;
+
+function LivePreviewFrame({ slug }) {
+  const wrapRef = useRef(null);
+  const [scale, setScale] = useState(1);
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect?.width;
+      if (w) setScale(w / PREVIEW_DESIGN_WIDTH);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  return (
+    <div ref={wrapRef} className="relative bg-bg overflow-hidden" style={{ aspectRatio: "16/9" }}>
+      <iframe
+        src={`/display/${slug}?demo=1`}
+        title="Display preview"
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: PREVIEW_DESIGN_WIDTH,
+          height: PREVIEW_DESIGN_HEIGHT,
+          border: 0,
+          transform: `scale(${scale})`,
+          transformOrigin: "top left",
+        }}
+      />
     </div>
   );
 }

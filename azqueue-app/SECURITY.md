@@ -38,6 +38,9 @@ opens your site, and that is fine.
 | `STRIPE_SECRET_KEY` (`sk_…`) | Supabase Edge Function secrets | Can charge cards, refund money, create customers. |
 | `STRIPE_WEBHOOK_SECRET` (`whsec_…`) | Supabase Edge Function secrets | Used to verify Stripe webhook authenticity. Leak means forged subscription events. |
 | `TWILIO_AUTH_TOKEN` | Supabase Edge Function secrets | Can send WhatsApp/SMS messages billed to you. |
+| `TWILIO_ACCOUNT_SID` | Supabase Edge Function secrets | Identifies which Twilio account is billed; paired with `TWILIO_AUTH_TOKEN` to authenticate every send. |
+| `TWILIO_WHATSAPP_FROM` | Supabase Edge Function secrets | The WhatsApp sender number used by `send-notification`. Not secret by nature, but kept alongside the others since it controls who messages appear to come from. |
+| `TWILIO_SMS_FROM` | Supabase Edge Function secrets | Same as above, for SMS sends. |
 | `ANTHROPIC_API_KEY` (`sk-ant-…`) | Supabase Edge Function secrets | Bills your account for every AI call. |
 
 If any secret key is ever in a git commit, in `.env`, or in a `VITE_…`
@@ -54,7 +57,10 @@ supabase link --project-ref YOURPROJECT
 # Then for each secret
 supabase secrets set STRIPE_SECRET_KEY=sk_live_…
 supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_…
+supabase secrets set TWILIO_ACCOUNT_SID=…
 supabase secrets set TWILIO_AUTH_TOKEN=…
+supabase secrets set TWILIO_WHATSAPP_FROM=…
+supabase secrets set TWILIO_SMS_FROM=…
 supabase secrets set ANTHROPIC_API_KEY=sk-ant-…
 
 # Verify (shows names, not values)
@@ -67,6 +73,8 @@ supabase functions deploy stripe-webhook --no-verify-jwt
 supabase functions deploy send-notification
 supabase functions deploy ai-assist
 supabase functions deploy admin-stats
+supabase functions deploy wa-bot
+supabase functions deploy wa-reply
 ```
 
 ## Why public-facing pages stay safe

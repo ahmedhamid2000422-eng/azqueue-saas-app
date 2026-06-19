@@ -27,16 +27,42 @@ export async function fetchShadowSlots(branchId) {
 }
 
 /**
- * Add a shadow slot. Silently replaces if one already exists for the
- * same branch / day_of_week / hour (upsert via the unique index).
+ * Add a shadow slot. Replaces if one already exists for the same
+ * branch / day_of_week / hour.
+ *
+ * NOTE: this deliberately does NOT use `.upsert(..., { onConflict })`.
+ * The only unique index covering (branch_id, day_of_week, hour) is the
+ * partial index `shadow_slots_branch_dow_hour` (only enforced where
+ * active = true) — Postgres cannot use a partial index as the ON CONFLICT
+ * arbiter for a plain upsert, so that approach fails every time with
+ * error 42P10 ("no unique or exclusion constraint matching the ON
+ * CONFLICT specification"). Selecting first and branching into an
+ * update/insert avoids needing an arbiter at all (QA bug B4).
  */
 export async function addShadowSlot(branchId, dayOfWeek, hour, durationMin = 60, label = null) {
+  const { data: existing, error: findError } = await supabase
+    .from("shadow_slots")
+    .select("id")
+    .eq("branch_id", branchId)
+    .eq("day_of_week", dayOfWeek)
+    .eq("hour", hour)
+    .maybeSingle();
+  if (findError) throw findError;
+
+  if (existing) {
+    const { data, error } = await supabase
+      .from("shadow_slots")
+      .update({ duration_min: durationMin, label, active: true })
+      .eq("id", existing.id)
+      .select("*")
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
   const { data, error } = await supabase
     .from("shadow_slots")
-    .upsert(
-      { branch_id: branchId, day_of_week: dayOfWeek, hour, duration_min: durationMin, label, active: true },
-      { onConflict: "branch_id,day_of_week,hour" }
-    )
+    .insert({ branch_id: branchId, day_of_week: dayOfWeek, hour, duration_min: durationMin, label, active: true })
     .select("*")
     .single();
   if (error) throw error;

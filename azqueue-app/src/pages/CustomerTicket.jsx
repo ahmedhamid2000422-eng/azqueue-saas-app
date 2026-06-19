@@ -28,6 +28,8 @@ export default function CustomerTicket() {
   const [loading, setLoading] = useState(true);
   const [justJoined, setJustJoined] = useState(false); // show success banner on fresh check-in
   const [loyaltyCard, setLoyaltyCard] = useState(null); // loaded from sessionStorage set during check-in
+  const [confirmingLeave, setConfirmingLeave] = useState(false); // "are you sure?" panel
+  const [leaving, setLeaving] = useState(false); // request in flight
 
   // Initial load
   useEffect(() => {
@@ -48,7 +50,7 @@ export default function CustomerTicket() {
       }
 
       const [{ data: b }, { data: s }] = await Promise.all([
-        supabase.from("branches").select("id, name, city, slug, brand_color, lat, lng").eq("id", t.branch_id).single(),
+        supabase.from("branches").select("id, name, city, slug, brand_color, lat, lng, wa_phone, wa_enabled").eq("id", t.branch_id).single(),
         t.service_id
           ? supabase.from("services").select("id, name, duration_min").eq("id", t.service_id).single()
           : Promise.resolve({ data: null }),
@@ -173,6 +175,20 @@ export default function CustomerTicket() {
     };
   }, [trackingActive, branch?.lat, branch?.lng, ticket?.id, ticket?.status, ticket?.arrived_at]);
 
+  /* ── Leave queue (customer-initiated cancel) ─────────────────────── */
+  async function handleLeaveQueue() {
+    if (!ticket?.id) return;
+    setLeaving(true);
+    const { error: cancelErr } = await supabase
+      .from("tickets")
+      .update({ status: "cancelled" })
+      .eq("id", ticket.id);
+    setLeaving(false);
+    if (cancelErr) return; // leave the confirm panel open so they can retry
+    setConfirmingLeave(false);
+    setTicket((prev) => ({ ...prev, status: "cancelled" }));
+  }
+
   function enableTracking() {
     if (!("geolocation" in navigator)) {
       setTrackingState("unsupported");
@@ -226,6 +242,22 @@ export default function CustomerTicket() {
           ticket={ticket}
           trackingState={trackingState}
           onEnable={enableTracking}
+        />
+      )}
+
+      {/* Need help while waiting — direct line to a live person, not just a static page */}
+      {(ticket.status === "waiting" || ticket.status === "serving") && (
+        <NeedHelpCard branch={branch} ticket={ticket} />
+      )}
+
+      {/* Leave queue — customer-initiated cancel, with a confirm step */}
+      {ticket.status === "waiting" && (
+        <LeaveQueueCard
+          confirming={confirmingLeave}
+          leaving={leaving}
+          onRequest={() => setConfirmingLeave(true)}
+          onCancel={() => setConfirmingLeave(false)}
+          onConfirm={handleLeaveQueue}
         />
       )}
 
@@ -367,6 +399,67 @@ function Cancelled() {
       <div className="ovline text-ink-mute mb-3">Cancelled</div>
       <p className="text-ink-soft text-xs">This ticket was cancelled.</p>
     </LuxeFrame>
+  );
+}
+
+/* ── Need help card — direct path to a live person ──────────────────── */
+function NeedHelpCard({ branch, ticket }) {
+  if (!branch?.wa_enabled || !branch?.wa_phone) return null;
+
+  const msg = encodeURIComponent(
+    `Hi, I'm waiting on ticket ${ticket?.token ?? ""} at ${branch?.name ?? "your branch"} and need some help.`
+  );
+  const href = `https://wa.me/${branch.wa_phone.replace(/\D/g, "")}?text=${msg}`;
+
+  return (
+    <div className="mt-6 border border-line bg-bg-elev p-5 flex items-center justify-between gap-4">
+      <div>
+        <div className="ovline text-[9px] text-gold-soft mb-1">Need help?</div>
+        <div className="text-[11px] text-ink-mute leading-relaxed">
+          Message us on WhatsApp and a team member will reply directly.
+        </div>
+      </div>
+      <a href={href} target="_blank" rel="noopener noreferrer" className="shrink-0">
+        <Button size="sm">Message us →</Button>
+      </a>
+    </div>
+  );
+}
+
+/* ── Leave queue — link + inline "are you sure?" confirm panel ───────── */
+function LeaveQueueCard({ confirming, leaving, onRequest, onCancel, onConfirm }) {
+  if (!confirming) {
+    return (
+      <div className="mt-4 text-center">
+        <button
+          onClick={onRequest}
+          className="text-[11px] text-ink-mute hover:text-[#d49185] tracking-wide transition underline-offset-2 hover:underline"
+        >
+          Leave queue
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-6 border border-[#b56b5f]/30 bg-[#b56b5f]/08 p-5">
+      <div className="text-[11px] text-[#d49185] font-medium mb-1">Leave the queue?</div>
+      <p className="text-[11px] text-ink-soft leading-relaxed mb-4">
+        Are you sure? You'll lose your spot and will need to check in again to rejoin.
+      </p>
+      <div className="flex items-center gap-3">
+        <Button onClick={onConfirm} disabled={leaving} size="sm">
+          {leaving ? "Leaving…" : "Yes, leave queue"}
+        </Button>
+        <button
+          onClick={onCancel}
+          disabled={leaving}
+          className="text-[11px] text-ink-mute hover:text-ink transition disabled:opacity-40"
+        >
+          Stay in queue
+        </button>
+      </div>
+    </div>
   );
 }
 

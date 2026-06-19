@@ -48,8 +48,8 @@ const PILLARS = [
 ];
 
 const STATS = [
-  { value: "200+",    label: "Branches live" },
-  { value: "12",      label: "Countries served" },
+  { value: "29",      label: "Branches across case studies" },
+  { value: "4",       label: "Countries served" },
   { value: "6",       label: "Languages built-in" },
   { value: "99.9%",   label: "Production uptime" },
 ];
@@ -64,7 +64,7 @@ const ROLES = [
 export default function Company() {
   usePageMeta({
     title: "Company — About AzQueue · Queue Management for the Live World",
-    description: "AzQueue is a queue and line management platform for clinics, banks, government offices, and service businesses. Founded in 2024 in Kuala Lumpur, 200+ branches live across 12 countries.",
+    description: "AzQueue is a queue and line management platform for clinics, banks, government offices, and service businesses. Founded in 2024 in Kuala Lumpur.",
     canonical: "/company",
   });
   return (
@@ -165,7 +165,7 @@ function AboutSplit() {
         <div style={{ border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden", background: C.void }}>
           {[
             ["Founded",     "2024 · Kuala Lumpur"],
-            ["Customers",   "200+ branches in 12 countries"],
+            ["Customers",   "Multi-branch clinics, banks & salons"],
             ["Investors",   "Bootstrapped · founder-led"],
             ["Languages",   "EN · MS · AR · UR · FR · ID"],
             ["Headcount",   "Small, senior, distributed"],

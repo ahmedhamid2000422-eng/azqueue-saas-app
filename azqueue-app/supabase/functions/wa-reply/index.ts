@@ -25,20 +25,35 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const SUPABASE_URL  = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY   = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY       = Deno.env.get("SUPABASE_ANON_KEY")!;
-const TWILIO_SID    = Deno.env.get("TWILIO_ACCOUNT_SID")!;
-const TWILIO_TOKEN  = Deno.env.get("TWILIO_AUTH_TOKEN")!;
+// Not asserted with `!` — same optional-at-boot / dry-run convention as
+// wa-bot/index.ts and send-notification/index.ts. A missing Twilio secret
+// shouldn't crash staff "claim"/"resolve" actions, which don't need Twilio
+// at all; only "reply" actually sends a message.
+const TWILIO_SID    = Deno.env.get("TWILIO_ACCOUNT_SID");
+const TWILIO_TOKEN  = Deno.env.get("TWILIO_AUTH_TOKEN");
 
 const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
 async function sendWhatsApp(to: string, from: string, body: string) {
+  if (!TWILIO_SID || !TWILIO_TOKEN) {
+    console.warn(
+      "[wa-reply] Twilio not configured (missing TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN) — dry-run, staff reply NOT sent:",
+      { to, body },
+    );
+    return;
+  }
   const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`;
   const params = new URLSearchParams({ To: `whatsapp:${to}`, From: `whatsapp:${from}`, Body: body });
   const encoded = btoa(`${TWILIO_SID}:${TWILIO_TOKEN}`);
-  await fetch(url, {
+  const res = await fetch(url, {
     method: "POST",
     headers: { Authorization: `Basic ${encoded}`, "Content-Type": "application/x-www-form-urlencoded" },
     body: params.toString(),
   });
+  if (!res.ok) {
+    const errBody = await res.text().catch(() => "");
+    console.error(`[wa-reply] Twilio send failed (HTTP ${res.status}) to ${to}:`, errBody);
+  }
 }
 
 function json(body: unknown, status = 200) {

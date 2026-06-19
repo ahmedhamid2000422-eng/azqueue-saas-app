@@ -4,7 +4,7 @@
 > It combines a self-service check-in kiosk, live staff dashboard, WhatsApp
 > notifications, loyalty cards, and prayer-aware scheduling into one platform.
 > Used by clinics, banks, government offices, salons, pharmacies, and service
-> centers across 12 countries. Walk-ins and bookings share one smart queue.
+> centers. Walk-ins and bookings share one smart queue.
 
 ## What it is
 
@@ -91,9 +91,11 @@ dashboard. Custom translations available on Enterprise plans.
 
 ## Geographic coverage
 
-200+ active branches across 12 countries, with concentration in Southeast Asia
-(Malaysia, Indonesia, Singapore) and the Middle East (UAE, Saudi Arabia, Qatar).
-The platform supports multi-region data residency on Enterprise plans.
+AzQueue is based in Kuala Lumpur and is built for Southeast Asia and the
+Middle East, with prayer-aware scheduling and Arabic/Bahasa Malaysia language
+support. Customer deployments to date include Malaysia, Singapore, the UAE,
+and Saudi Arabia. The platform supports multi-region data residency on
+Enterprise plans.
 
 ## Documentation & support
 

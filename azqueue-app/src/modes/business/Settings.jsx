@@ -824,7 +824,13 @@ function BranchesTab({ branches, currentId, select, reload, userId }) {
             <p className="text-[12px] text-ink-soft leading-relaxed mb-3">
               {tierName} allows {limits.maxBranches} {limits.maxBranches === 1 ? "branch" : "branches"}. Upgrade to add more locations.
             </p>
-            <Link to="/#pricing"><Button size="sm">Compare tiers →</Button></Link>
+            {/* QA bug C1: this used to be a react-router <Link to="/#pricing">,
+                which replaced the whole app with the public landing page and
+                threw away the staff member's place in Settings. Open the
+                pricing section in a new tab instead so Settings stays put. */}
+            <a href="/#pricing" target="_blank" rel="noopener noreferrer">
+              <Button size="sm">Compare tiers →</Button>
+            </a>
           </div>
         ) : !adding ? (
           <Button onClick={() => setAdding(true)}>+ Add a new branch</Button>
@@ -1034,6 +1040,7 @@ function StaffTab({ branch }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("staff");
+  const [error, setError] = useState(null);
   const limits = getLimits(user);
   const tierName = TIER_INFO[getTier(user)]?.name ?? "Essential";
 
@@ -1052,6 +1059,7 @@ function StaffTab({ branch }) {
 
   async function invite() {
     if (!name.trim() || !email.trim()) return;
+    setError(null);
     // Insert a pending staff row. The 0002 migration trigger will link user_id
     // automatically the moment this email signs up.
     const payload = {
@@ -1060,14 +1068,19 @@ function StaffTab({ branch }) {
       role,
       invite_email: email.trim().toLowerCase(),
     };
-    const { error } = await supabase.from("staff").insert(payload);
+    let { error: insertError } = await supabase.from("staff").insert(payload);
     // If the column doesn't exist (0002 not run yet), retry without invite_email
-    if (error && /invite_email/.test(error.message || "")) {
-      await supabase.from("staff").insert({
+    if (insertError && /invite_email/.test(insertError.message || "")) {
+      const retry = await supabase.from("staff").insert({
         branch_id: branch.id,
         display_name: `${name.trim()} (${email.trim()})`,
         role,
       });
+      insertError = retry.error;
+    }
+    if (insertError) {
+      setError(insertError.message ?? "Could not add this teammate. Please try again.");
+      return; // keep the form filled in so nothing is silently lost
     }
     setName(""); setEmail(""); setRole("staff");
     load();
@@ -1089,16 +1102,20 @@ function StaffTab({ branch }) {
     load();
   }
   async function toggleAdvisor(s) {
+    setError(null);
     const next = !s.is_senior_advisor;
-    await supabase.from("staff")
+    const { error: updateError } = await supabase.from("staff")
       .update({ is_senior_advisor: next, advisor_fee: next ? (s.advisor_fee ?? 50) : s.advisor_fee })
       .eq("id", s.id);
+    if (updateError) return setError(updateError.message ?? "Could not update Senior Advisor status.");
     load();
   }
   async function updateAdvisorFee(s, fee) {
     const parsed = parseFloat(fee);
     if (isNaN(parsed) || parsed < 0) return;
-    await supabase.from("staff").update({ advisor_fee: parsed }).eq("id", s.id);
+    setError(null);
+    const { error: updateError } = await supabase.from("staff").update({ advisor_fee: parsed }).eq("id", s.id);
+    if (updateError) return setError(updateError.message ?? "Could not update the advisor fee.");
     load();
   }
 
@@ -1194,6 +1211,12 @@ function StaffTab({ branch }) {
           </span>
         </div>
 
+        {error && (
+          <div className="mb-4 text-[12px] text-[#d49185] bg-[#b56b5f]/10 border border-[#b56b5f]/30 px-3 py-2">
+            {error}
+          </div>
+        )}
+
         {staff.length >= limits.maxStaff ? (
           <div className="border border-[#506b50] bg-[rgba(80,107,80,0.06)] p-5">
             <div className="ovline text-[#9bbd9b] mb-2">Seat limit reached</div>
@@ -1201,7 +1224,11 @@ function StaffTab({ branch }) {
               Your <span className="text-ink">{tierName}</span> plan allows {limits.maxStaff} staff per branch. To invite more,
               upgrade — every higher tier raises the cap.
             </p>
-            <Link to="/#pricing"><Button size="sm">Compare tiers →</Button></Link>
+            {/* QA bug C1 — see matching comment above; open in a new tab so
+                Settings/the staff list isn't replaced by the landing page. */}
+            <a href="/#pricing" target="_blank" rel="noopener noreferrer">
+              <Button size="sm">Compare tiers →</Button>
+            </a>
           </div>
         ) : (
           <>
@@ -1494,6 +1521,41 @@ function ModesTab({ branch, reload }) {
             </div>
             <div className="text-[10px] text-ink-mute leading-relaxed">
               Students book recurring classes by level, confirm attendance, and build a session history — e.g. a gym or dojo.
+            </div>
+          </button>
+          {/* QA bug C2 — wa-bot/flows.ts has shipped full "design" and
+              "architecture" WhatsApp flows since 0019/0029, but this list
+              only ever offered "queue" and "gym", so those branches could
+              never actually be created. Added here + widened the DB check
+              constraint in migration 0036. */}
+          <button
+            onClick={() => setBusinessType("design")}
+            className={`p-4 border text-left transition ${
+              businessType === "design"
+                ? "border-gold bg-[rgba(201,168,106,0.08)]"
+                : "border-line hover:border-[#3a3a3f]"
+            }`}
+          >
+            <div className={`font-display text-sm font-light mb-1 ${businessType === "design" ? "text-gold-soft" : "text-ink"}`}>
+              Design studio
+            </div>
+            <div className="text-[10px] text-ink-mute leading-relaxed">
+              Leads come in for kitchen, bathroom, or full home renovation projects — e.g. an interior design studio.
+            </div>
+          </button>
+          <button
+            onClick={() => setBusinessType("architecture")}
+            className={`p-4 border text-left transition ${
+              businessType === "architecture"
+                ? "border-gold bg-[rgba(201,168,106,0.08)]"
+                : "border-line hover:border-[#3a3a3f]"
+            }`}
+          >
+            <div className={`font-display text-sm font-light mb-1 ${businessType === "architecture" ? "text-gold-soft" : "text-ink"}`}>
+              Architecture firm
+            </div>
+            <div className="text-[10px] text-ink-mute leading-relaxed">
+              Leads come in for design consultations, site assessments, and permits — e.g. an architecture practice.
             </div>
           </button>
         </div>
@@ -2562,6 +2624,7 @@ function LoyaltyTab({ branch }) {
   const [loading,  setLoading]  = useState(true);
   const [busy,     setBusy]     = useState(false);
   const [saved,    setSaved]    = useState(false);
+  const [error,    setError]    = useState(null);
 
   const [progName, setProgName] = useState("Loyalty Card");
   const [punches,  setPunches]  = useState(10);
@@ -2585,6 +2648,7 @@ function LoyaltyTab({ branch }) {
     if (!branch?.id || busy) return;
     setBusy(true);
     setSaved(false);
+    setError(null);
     try {
       const p = await saveLoyaltyProgram(branch.id, {
         name: progName.trim() || "Loyalty Card",
@@ -2595,7 +2659,7 @@ function LoyaltyTab({ branch }) {
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
-      alert("Failed to save: " + err.message);
+      setError(err?.message ?? "Failed to save the loyalty program.");
     } finally {
       setBusy(false);
     }
@@ -2670,6 +2734,12 @@ function LoyaltyTab({ branch }) {
             </div>
           </div>
         </div>
+
+        {error && (
+          <div className="mt-4 text-[12px] text-[#d49185] bg-[#b56b5f]/10 border border-[#b56b5f]/30 px-3 py-2">
+            {error}
+          </div>
+        )}
 
         <div className="flex items-center gap-4 mt-6">
           <Button onClick={handleSave} disabled={busy}>

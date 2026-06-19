@@ -32,8 +32,13 @@ export function downloadCSV(filename, rows, columns) {
   a.download = filename;
   document.body.appendChild(a);
   a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  // Some browsers (notably Safari, used on the kiosk iPads) can silently
+  // cancel a blob download if the triggering <a> is removed from the DOM
+  // immediately after click() — defer cleanup so the download has started.
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 1000);
 }
 
 /** Suggest a filename of the form "azqueue-{branch}-{kind}-YYYY-MM-DD.csv" */

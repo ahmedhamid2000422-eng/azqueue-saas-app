@@ -4,6 +4,7 @@ import { findOrCreateCustomer, logQueueEvent, generatePersona } from "../../lib/
 import { getEffectiveChecklist, buildChecklistMessage } from "../../lib/checklists";
 import { sendMessage } from "../../lib/messaging";
 import { sendSlackNotification } from "../../lib/slack";
+import { sendBookingConfirmation } from "../../lib/notifications";
 import { useBranch } from "../../lib/BranchContext";
 import { downloadCSV, exportFilename } from "../../lib/export";
 import Button from "../../components/Button";
@@ -93,7 +94,7 @@ export default function Bookings() {
       } catch { /* non-fatal — booking still proceeds without a linked profile */ }
     }
 
-    const { error } = await supabase.from("bookings").insert({
+    const { data: newBooking, error } = await supabase.from("bookings").insert({
       branch_id: branch.id,
       service_id: serviceId,
       staff_id: staffId || null,
@@ -102,9 +103,17 @@ export default function Bookings() {
       customer_phone: phone.trim(),
       scheduled_at: new Date(scheduledAt).toISOString(),
       status: "confirmed",
-    });
+    }).select("id").single();
     setBusy(false);
     if (error) return setError(error.message);
+
+    // WhatsApp booking confirmation (QA bug B8) — this was previously never
+    // sent for staff-created bookings; only a Slack notice to the assigned
+    // staff member, plus a checklist message IF the service required one.
+    // A plain confirmation should always go out regardless of checklist.
+    if (newBooking?.id) {
+      sendBookingConfirmation(newBooking.id).catch(() => {});
+    }
 
     // Non-blocking: generate persona, send checklist
     const svcName = services.find((s) => s.id === serviceId)?.name ?? "General";
@@ -273,7 +282,17 @@ export default function Bookings() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="ghost" size="sm" onClick={() => exportBookings(bookings, services, branch)}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              try {
+                exportBookings(bookings, services, branch);
+              } catch (err) {
+                setError(err?.message ?? "Could not export CSV.");
+              }
+            }}
+          >
             Export CSV
           </Button>
           <Button onClick={() => setShowForm((x) => !x)}>

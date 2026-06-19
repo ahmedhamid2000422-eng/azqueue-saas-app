@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import SiteNav from "../components/SiteNav";
 import SiteFooter from "../components/SiteFooter";
 import useIsMobile from "../lib/useIsMobile";
+import CustomerJourneyDemo from "../components/CustomerJourneyDemo";
 
 // Shared mobile context so every section can read `mob` without prop-drilling
 const MobCtx = createContext(false);
@@ -142,7 +143,7 @@ export default function Landing() {
           "priceCurrency": "USD",
           "availability": "https://schema.org/InStock",
         },
-        "description": "Queue and booking management system for service businesses. Walk-ins and bookings in one smart queue — with WhatsApp AI receptionist, Islamic prayer-aware scheduling, loyalty cards, and live staff dashboard. Used in 12+ countries.",
+        "description": "Queue and booking management system for service businesses. Walk-ins and bookings in one smart queue — with WhatsApp AI receptionist, Islamic prayer-aware scheduling, loyalty cards, and live staff dashboard.",
         "featureList": [
           "WhatsApp AI Receptionist",
           "Virtual queue & walk-in check-in",
@@ -173,6 +174,7 @@ export default function Landing() {
       <PrayerSection />
       <WhatsAppFlow />
       <HowItWorks />
+      <CustomerJourneySection />
       <CaseStudies />
       <Testimonials />
       <SavingsCalculator />
@@ -331,7 +333,7 @@ function LogoCloud() {
   return (
     <section style={{ padding: "52px 0", borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`, background: C.void, overflow: "hidden" }}>
       <div style={{ textAlign: "center", marginBottom: 28, padding: "0 48px" }}>
-        <div style={{ ...T.label, color: C.muted }}>Trusted by clinics, banks, salons &amp; service centers in 12 countries</div>
+        <div style={{ ...T.label, color: C.muted }}>Trusted by clinics, banks, and salons</div>
       </div>
       <div style={{ position: "relative" }}>
         <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 140, background: `linear-gradient(90deg, ${C.void}, transparent)`, zIndex: 1, pointerEvents: "none" }} />
@@ -833,6 +835,42 @@ function HowItWorks() {
             </div>
           ))}
         </div>
+      </div>
+    </section>
+  );
+}
+
+/* ── Customer Journey Demo ────────────────────────────────────────── */
+// QA bug C4 — CustomerJourneyDemo.jsx (the auto-cycling phone/wall/dashboard
+// walkthrough) previously only existed inside the authenticated DisplaySetup
+// wizard, so a prospective customer evaluating AzQueue from the public site
+// never saw it. It's a self-contained component (its own state, no required
+// props) styled with the same Tailwind theme tokens (gold/ink/bg-elev, etc.)
+// that tailwind.config.js explicitly keeps in sync with this page's inline
+// color palette, so it drops in here without any visual mismatch.
+function CustomerJourneySection() {
+  const [ref, visible] = useInView(0.08);
+  const mob = useMob();
+  return (
+    <section ref={ref} style={{ padding: mob ? "60px 20px" : "120px 48px", background: C.card, borderTop: `1px solid ${C.border}` }}>
+      <div style={{ maxWidth: 1160, margin: "0 auto", opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(14px)", transition: "all 0.7s ease" }}>
+        <div style={{ textAlign: "center", marginBottom: mob ? 36 : 56 }}>
+          <div style={{ ...T.label, marginBottom: 16 }}>See it end to end</div>
+          <h2 style={{ ...T.h2, fontSize: mob ? 26 : 34, color: C.ink, margin: "0 auto 16px", maxWidth: 680 }}>
+            Walk through one customer's visit, start to finish.
+          </h2>
+          <p style={{ ...T.body, margin: "0 auto", maxWidth: 560, fontSize: 15 }}>
+            Same three screens your business will actually use — customer phone, wall display, staff dashboard — playing out a real check-in.
+          </p>
+        </div>
+        {mob ? (
+          <div style={{ fontSize: 13, color: C.muted, textAlign: "center", padding: "24px 0" }}>
+            This interactive walkthrough works best on a larger screen —{" "}
+            <Link to="/product" style={{ color: C.goldLit }}>see the full product tour</Link> instead.
+          </div>
+        ) : (
+          <CustomerJourneyDemo />
+        )}
       </div>
     </section>
   );

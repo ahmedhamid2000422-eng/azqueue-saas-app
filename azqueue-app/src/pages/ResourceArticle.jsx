@@ -156,7 +156,7 @@ const GUIDES = {
         ]}/>
 
         <Callout label="The 70/30 rule">
-          Most queue improvements come from changing what the wait feels like, not how long it actually is. In our deployment data across 200+ branches, customer satisfaction improved 60–80% within two months of switching to AzQueue — while actual wait times dropped only 10–15%. The psychology does the heavy lifting; the operational gains are a bonus on top.
+          Most queue improvements come from changing what the wait feels like, not how long it actually is. Across the businesses we've worked with, customer satisfaction tends to improve faster than actual wait times do once a business switches to AzQueue. The psychology does the heavy lifting; the operational gains are a bonus on top.
         </Callout>
 
         <H>Further reading</H>

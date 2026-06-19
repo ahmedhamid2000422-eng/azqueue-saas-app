@@ -46,7 +46,7 @@ export default function TierGate({ requires, feature, reason, children }) {
 
         <div className="flex flex-wrap gap-3 justify-center">
           <Link to="/business/settings"><Button>Upgrade to {reqInfo.name} →</Button></Link>
-          <Link to="/"><Button variant="ghost">Compare tiers</Button></Link>
+          <a href="/#pricing" target="_blank" rel="noopener noreferrer"><Button variant="ghost">Compare tiers</Button></a>
         </div>
 
         <div className="text-[10px] text-ink-mute mt-5">
