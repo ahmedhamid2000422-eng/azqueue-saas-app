@@ -17,6 +17,7 @@ import LanguagePicker from "../components/LanguagePicker";
  */
 export default function CustomerTicket() {
   const { ticketId } = useParams();
+  const { t } = useTranslation();
 
   const [ticket, setTicket] = useState(null);
   const [branch, setBranch] = useState(null);
