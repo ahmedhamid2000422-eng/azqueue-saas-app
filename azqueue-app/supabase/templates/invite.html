@@ -1,0 +1,112 @@
+<!--
+  AzQueue — "Invite user" email template (separate from "Confirm signup")
+  Used for: staff being invited to join a branch's team (sent when an admin
+  uses Supabase Dashboard → Authentication → Users → "Invite user", or when
+  calling supabase.auth.admin.inviteUserByEmail(...) from a server context).
+
+  Supabase Dashboard: Authentication → Email Templates → "Invite user"
+  Paste the HTML below into that template editor, or — if using the
+  Supabase CLI — reference this file from supabase/config.toml via:
+
+    [auth.email.template.invite]
+    subject = "You've been invited to join AzQueue"
+    content_path = "./supabase/templates/invite.html"
+
+  Supabase template variables available here:
+    {{ .ConfirmationURL }}  — the link the invitee clicks to set a password
+    {{ .Email }}            — the invited address
+    {{ .SiteURL }}          — your configured Site URL
+    {{ .Data.branch_name }} — OPTIONAL: only populated if the invite was sent
+                              via inviteUserByEmail(email, { data: { branch_name } })
+                              instead of the Dashboard's manual "Invite user" button.
+                              Falls back to generic copy below if unset.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>You've been invited to AzQueue</title>
+</head>
+<body style="margin:0; padding:0; background-color:#080807; font-family: Inter, -apple-system, Segoe UI, Helvetica, Arial, sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#080807;">
+    <tr>
+      <td align="center" style="padding: 48px 20px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px; background-color:#0c0c0b; border:1px solid rgba(255,255,255,0.07); border-radius:14px; overflow:hidden;">
+
+          <!-- Header / wordmark -->
+          <tr>
+            <td style="padding: 40px 44px 0;">
+              <div style="font-size:11px; font-weight:600; letter-spacing:0.18em; text-transform:uppercase; color:#b8955a;">AzQueue · Staff invite</div>
+            </td>
+          </tr>
+
+          <!-- Headline -->
+          <tr>
+            <td style="padding: 22px 44px 0;">
+              <div style="font-family: Georgia, 'Times New Roman', serif; font-size:26px; font-weight:500; letter-spacing:-0.01em; line-height:1.25; color:#f0ede6;">
+                You've been added to the team{{ if .Data.branch_name }} at <em style="font-style:italic; color:#d4b478;">{{ .Data.branch_name }}</em>{{ end }}.
+              </div>
+            </td>
+          </tr>
+
+          <!-- Body copy -->
+          <tr>
+            <td style="padding: 18px 44px 0;">
+              <p style="margin:0; font-size:14px; line-height:1.7; color:#9a968d;">
+                Someone on your team invited <strong style="color:#d4b478;">{{ .Email }}</strong> to join their AzQueue workspace as staff. Set your password to activate your login and get access to the staff dashboard.
+              </p>
+            </td>
+          </tr>
+
+          <!-- CTA button -->
+          <tr>
+            <td style="padding: 32px 44px 0;">
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="border-radius:8px; background-color:#b8955a;">
+                    <a href="{{ .ConfirmationURL }}" target="_blank"
+                       style="display:inline-block; padding:14px 30px; font-size:13px; font-weight:600; letter-spacing:0.01em; color:#080807; text-decoration:none; border-radius:8px;">
+                      Accept invite &amp; set password
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Fallback link -->
+          <tr>
+            <td style="padding: 24px 44px 0;">
+              <p style="margin:0; font-size:12px; line-height:1.6; color:#60605a;">
+                Button not working? Paste this link into your browser:<br />
+                <a href="{{ .ConfirmationURL }}" style="color:#9a968d; word-break:break-all;">{{ .ConfirmationURL }}</a>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Divider -->
+          <tr>
+            <td style="padding: 36px 44px 0;">
+              <div style="height:1px; background-color:rgba(255,255,255,0.07);"></div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 22px 44px 40px;">
+              <p style="margin:0; font-size:11px; line-height:1.6; color:#60605a;">
+                If you weren't expecting this invite, you can ignore this email — no account will be created until the link above is used.
+              </p>
+              <p style="margin:10px 0 0; font-size:11px; letter-spacing:0.04em; color:#3a3935;">
+                AzQueue · Queue &amp; line management for service businesses
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
