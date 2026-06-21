@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, useSearchParams, useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { distanceMeters, estimateEtaSec, arrivalState, formatDistance, formatEta } from "../lib/arrival";
@@ -18,6 +18,15 @@ import LanguagePicker from "../components/LanguagePicker";
 export default function CustomerTicket() {
   const { ticketId } = useParams();
   const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  // Same flag CustomerCheckIn.jsx uses — the iPad kiosk lands here right after
+  // a walk-in submits, and needs to show a confirmation then reset itself for
+  // the next person rather than sit on one customer's personal ticket forever.
+  const isKiosk = searchParams.get("kiosk") === "1";
+  const KIOSK_RESET_SECONDS = 12;
+  const [kioskResetIn, setKioskResetIn] = useState(KIOSK_RESET_SECONDS);
 
   const [ticket, setTicket] = useState(null);
   const [branch, setBranch] = useState(null);
@@ -81,6 +90,24 @@ export default function CustomerTicket() {
     } catch {}
   }, []);
 
+  // Kiosk auto-reset — once the ticket has loaded, count down and send the
+  // shared iPad back to its own check-in screen so the next walk-in can use it.
+  useEffect(() => {
+    if (!isKiosk || !ticket || !branch?.slug) return;
+    setKioskResetIn(KIOSK_RESET_SECONDS);
+    const interval = setInterval(() => {
+      setKioskResetIn((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          navigate(`/q/${branch.slug}?kiosk=1`, { replace: true });
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isKiosk, ticket?.id, branch?.slug, navigate]);
+
   // Recompute position whenever the ticket or its branch changes
   useEffect(() => {
     if (!ticket?.branch_id) return;
@@ -129,8 +156,11 @@ export default function CustomerTicket() {
     if (!("geolocation" in navigator)) setTrackingState("unsupported");
   }, []);
 
-  // Stop tracking once the customer is being served or done
-  const trackingActive = trackingState === "granted"
+  // Stop tracking once the customer is being served or done.
+  // Never on the kiosk — it's a shared device, not the customer's own phone,
+  // so a GPS permission prompt there doesn't make sense.
+  const trackingActive = !isKiosk
+    && trackingState === "granted"
     && ticket?.status === "waiting"
     && branch?.lat != null
     && branch?.lng != null;
@@ -204,6 +234,24 @@ export default function CustomerTicket() {
 
   if (loading) return <Shell brandColor={branch?.brand_color}><div className="text-center py-20 ovline text-ink-mute">Loading…</div></Shell>;
   if (error)   return <Shell brandColor={branch?.brand_color}><div className="text-center py-12 text-ink-soft text-sm">{error}</div></Shell>;
+
+  // Kiosk confirmation screen — large, no personal-device features (no leave-queue,
+  // no GPS prompt, no WhatsApp link), and it resets itself for the next walk-in.
+  if (isKiosk) {
+    return (
+      <Shell brandColor={branch?.brand_color}>
+        <KioskConfirmation
+          ticket={ticket}
+          branch={branch}
+          service={service}
+          position={position}
+          avg={avgServiceMin}
+          resetIn={kioskResetIn}
+          onReset={() => branch?.slug && navigate(`/q/${branch.slug}?kiosk=1`, { replace: true })}
+        />
+      </Shell>
+    );
+  }
 
   return (
     <Shell brandColor={branch?.brand_color}>
@@ -280,6 +328,63 @@ export default function CustomerTicket() {
         {t("ticket.keep_open")}
       </div>
     </Shell>
+  );
+}
+
+/* ── Kiosk confirmation screen ────────────────────────────────────────
+   Shown on the shared iPad right after a walk-in checks in. Big and simple
+   on purpose — this is read from across a counter, not held in a hand —
+   and it auto-resets so the next person isn't stuck looking at someone
+   else's ticket. */
+function KioskConfirmation({ ticket, branch, service, position, avg, resetIn, onReset }) {
+  const etaMin = position == null ? null : Math.max(1, position * avg);
+  const served = ticket.status === "serving";
+  const done = ticket.status === "completed" || ticket.status === "cancelled" || ticket.status === "no_show";
+
+  return (
+    <LuxeFrame className="p-10 text-center">
+      <div className="ovline text-[#9bbd9b] mb-4 flex items-center justify-center gap-2">
+        <span className="pip breathe" />
+        {served ? "You're up now" : done ? "All set" : "You're in the queue!"}
+      </div>
+
+      <div className="gold-text font-display text-8xl font-light tracking-tightest leading-none">
+        {ticket.token}
+      </div>
+      <div className="text-base text-ink-soft mt-4 tracking-wide">
+        {ticket.customer_name}
+      </div>
+
+      <div className="rule-ornament my-6 text-[8px]"><span>✦</span></div>
+
+      {!done && (
+        <div className="grid grid-cols-2 gap-px bg-line border border-line">
+          <div className="bg-bg-elev p-4 text-center">
+            <div className="ovline text-[9px]">Service</div>
+            <div className="text-base mt-1">{service?.name ?? "—"}</div>
+          </div>
+          <div className="bg-bg-elev p-4 text-center">
+            <div className="ovline text-[9px]">{served ? "Status" : "Est. wait"}</div>
+            <div className="font-display text-xl mt-1 gold-text-soft">
+              {served ? "Now serving" : etaMin == null ? "—" : `~${etaMin}m`}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="mt-8 text-[11px] text-ink-mute tracking-wide">
+        {branch?.wa_phone
+          ? "A text confirmation has been sent to your phone."
+          : "Please keep an eye on the screen for your number."}
+      </div>
+
+      <button
+        onClick={onReset}
+        className="mt-6 text-[10px] tracking-[0.2em] uppercase text-gold-soft hover:text-gold transition"
+      >
+        Check in next customer ({resetIn}s) →
+      </button>
+    </LuxeFrame>
   );
 }
 
