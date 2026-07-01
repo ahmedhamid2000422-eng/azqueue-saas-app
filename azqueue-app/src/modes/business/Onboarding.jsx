@@ -455,7 +455,7 @@ export default function Onboarding() {
 
   // Step 2
   const [location, setLocation] = useState(null); // {lat, lng} or null
-  const [locStatus, setLocStatus] = useState("idle"); // idle | granted | denied
+  const [locStatus, setLocStatus] = useState("idle"); // idle | pending | granted | denied
 
   // Step 3
   const initialServices = INDUSTRY_TREE.service.subTypes.barbershop.services;
@@ -508,6 +508,7 @@ export default function Onboarding() {
       setLocStatus("denied");
       return;
     }
+    setLocStatus("pending");
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
@@ -634,18 +635,47 @@ export default function Onboarding() {
 
               {locStatus === "granted" && location ? (
                 <div className="border border-[#506b50] bg-[rgba(80,107,80,0.06)] p-4">
-                  <div className="ovline text-[#9bbd9b] mb-1">Location set</div>
+                  <div className="ovline text-[#9bbd9b] mb-1">✓ Location set</div>
                   <div className="font-mono text-[11px] text-gold-soft">
                     {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
                   </div>
                   <div className="text-[10px] text-ink-mute mt-1">Prayer times will be calculated for this point.</div>
+                  <button
+                    type="button"
+                    className="text-[10px] text-ink-mute underline mt-2"
+                    onClick={() => { setLocation(null); setLocStatus("idle"); }}
+                  >
+                    Reset
+                  </button>
                 </div>
               ) : locStatus === "denied" ? (
                 <div className="border border-line p-4">
                   <div className="ovline text-ink-mute mb-1">Location skipped</div>
-                  <div className="text-[11px] text-ink-soft">
+                  <div className="text-[11px] text-ink-soft mb-3">
                     No problem — we'll use Kuala Lumpur as a default. You can set a real location later in Settings.
                   </div>
+                  <button
+                    type="button"
+                    className="text-[10px] text-ink-mute underline"
+                    onClick={() => setLocStatus("idle")}
+                  >
+                    Try again
+                  </button>
+                </div>
+              ) : locStatus === "pending" ? (
+                <div className="border border-line p-4">
+                  <div className="ovline text-gold-soft mb-1">Waiting for permission…</div>
+                  <div className="text-[11px] text-ink-soft">
+                    Check your browser's permission popup and click <strong>Allow</strong>.
+                    If nothing appeared, your browser may have blocked it — click Skip below.
+                  </div>
+                  <button
+                    type="button"
+                    className="text-[10px] text-ink-mute underline mt-3 block"
+                    onClick={() => setLocStatus("denied")}
+                  >
+                    Skip location
+                  </button>
                 </div>
               ) : (
                 <div className="border border-line p-4">
@@ -653,7 +683,16 @@ export default function Onboarding() {
                   <div className="text-[11px] text-ink-soft mb-3">
                     Your browser will ask once. We don't track you — we just store the lat/lng for prayer-time math.
                   </div>
-                  <Button onClick={geolocate}>Use my current location</Button>
+                  <div className="flex gap-3 items-center">
+                    <Button onClick={geolocate}>Use my current location</Button>
+                    <button
+                      type="button"
+                      className="text-[10px] text-ink-mute underline"
+                      onClick={() => setLocStatus("denied")}
+                    >
+                      Skip for now
+                    </button>
+                  </div>
                 </div>
               )}
             </Section>
