@@ -25,20 +25,28 @@ function quote(v) {
 
 export function downloadCSV(filename, rows, columns) {
   const csv = toCSV(rows, columns);
+  if (!csv) return; // nothing to download
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
+  // `target="_blank"` ensures that if the browser navigates instead of
+  // downloading, it opens a new tab rather than wiping the SPA.
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  a.style.cssText = "position:fixed;visibility:hidden;";
   document.body.appendChild(a);
-  a.click();
-  // Some browsers (notably Safari, used on the kiosk iPads) can silently
-  // cancel a blob download if the triggering <a> is removed from the DOM
-  // immediately after click() — defer cleanup so the download has started.
+  // Use a non-bubbling MouseEvent so React Router's document-level click
+  // listener never intercepts this and tries to handle the blob URL as an
+  // SPA navigation — that was causing the white-screen on Bookings.
+  a.dispatchEvent(new MouseEvent("click", { bubbles: false, cancelable: true, view: window }));
+  // Defer cleanup: some browsers (Safari on kiosk iPads) cancel a download
+  // if the <a> is removed from the DOM before the transfer has started.
   setTimeout(() => {
-    document.body.removeChild(a);
+    if (document.body.contains(a)) document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  }, 1000);
+  }, 1500);
 }
 
 /** Suggest a filename of the form "azqueue-{branch}-{kind}-YYYY-MM-DD.csv" */

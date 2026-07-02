@@ -23,6 +23,14 @@ export default function Schedule() {
   const [fixBusy, setFixBusy] = useState(false);
   const [fixApplied, setFixApplied] = useState(false);
 
+  // Inline "add slot" form state
+  const [addingSlot, setAddingSlot] = useState(null); // { slot: "09:00", staffId: "uuid"|"any" }
+  const [addName,    setAddName]    = useState("");
+  const [addPhone,   setAddPhone]   = useState("");
+  const [addService, setAddService] = useState("");
+  const [addBusy,    setAddBusy]    = useState(false);
+  const [addError,   setAddError]   = useState(null);
+
   async function load() {
     if (!branch?.id) return;
     const dayStart = new Date(date); dayStart.setHours(0, 0, 0, 0);
@@ -59,6 +67,7 @@ export default function Schedule() {
     setStaff(stf ?? []);
     setBookings(bks ?? []);
     setServices(svcs ?? []);
+    if (svcs?.length) setAddService((prev) => prev || svcs[0].id);
     setDurationStats(buildDurationStats(recent ?? [], svcNameMap));
     setActiveTickets(active ?? []);
     setFixApplied(false);
@@ -101,12 +110,9 @@ export default function Schedule() {
     return () => { cancelled = true; };
   }, [branch?.lat, branch?.lng]);
 
-  if (!dbReady) {
-    return <div className="p-8 max-w-xl"><h1 className="font-display text-3xl font-light tracking-tightest mb-3">Schedule</h1><p className="text-ink-soft text-sm">Run the database migration to enable scheduling.</p></div>;
-  }
-  if (!branch) return <div className="p-8 text-ink-mute ovline">Select a branch.</div>;
-
   // ── Derived: service name map, staff load, reflow issues ─────────────
+  // IMPORTANT: all useMemo hooks must run unconditionally before any early
+  // returns — otherwise React throws error #310 (hook count mismatch).
   const serviceNameMap = useMemo(
     () => Object.fromEntries(services.map((s) => [s.id, s.name])),
     [services]
@@ -123,6 +129,11 @@ export default function Schedule() {
     () => autoFixSchedule(bookings, serviceNameMap, durationStats, staff),
     [bookings, serviceNameMap, durationStats, staff]
   );
+
+  if (!dbReady) {
+    return <div className="p-8 max-w-xl"><h1 className="font-display text-3xl font-light tracking-tightest mb-3">Schedule</h1><p className="text-ink-soft text-sm">Run the database migration to enable scheduling.</p></div>;
+  }
+  if (!branch) return <div className="p-8 text-ink-mute ovline">Select a branch.</div>;
 
   // Auto-assign: for each booking that has no staff_id and is complex/extended,
   // pick the best available staff member and update the booking in DB
@@ -160,6 +171,35 @@ export default function Schedule() {
     await load();
     setFixApplied(true);
     setFixBusy(false);
+  }
+
+  function openAddSlot(slot, staffId) {
+    setAddingSlot({ slot, staffId });
+    setAddName(""); setAddPhone(""); setAddError(null);
+    // Default to first service
+    if (services.length && !addService) setAddService(services[0].id);
+  }
+
+  async function submitAddSlot(e) {
+    e?.preventDefault();
+    if (!addName.trim() || !addingSlot) return;
+    setAddBusy(true); setAddError(null);
+    const [h, m] = addingSlot.slot.split(":").map(Number);
+    const at = new Date(date);
+    at.setHours(h, m, 0, 0);
+    const { error: insErr } = await supabase.from("bookings").insert({
+      branch_id:      branch.id,
+      service_id:     addService || null,
+      staff_id:       addingSlot.staffId === "any" ? null : addingSlot.staffId,
+      customer_name:  addName.trim(),
+      customer_phone: addPhone.trim() || null,
+      scheduled_at:   at.toISOString(),
+      status:         "confirmed",
+    });
+    setAddBusy(false);
+    if (insErr) { setAddError(insErr.message); return; }
+    setAddingSlot(null);
+    load();
   }
 
   // Display: staff columns (or "Any" if none)
@@ -291,7 +331,68 @@ export default function Schedule() {
                     </div>
                   );
                 }
-                return <div key={s.id} className={`px-3 py-4 ${border}`} />;
+                const isAdding = addingSlot?.slot === t && addingSlot?.staffId === s.id;
+                if (isAdding) {
+                  return (
+                    <div key={s.id} className={`px-2 py-2 ${border} bg-[rgba(201,168,106,0.04)]`}>
+                      <form onSubmit={submitAddSlot} className="space-y-1.5">
+                        <input
+                          autoFocus
+                          type="text"
+                          placeholder="Name *"
+                          value={addName}
+                          onChange={(e) => setAddName(e.target.value)}
+                          className="w-full bg-bg-elev border border-gold-deep/50 focus:border-gold-deep outline-none text-[11px] px-2 py-1 text-ink placeholder:text-ink-mute"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Phone"
+                          value={addPhone}
+                          onChange={(e) => setAddPhone(e.target.value)}
+                          className="w-full bg-bg-elev border border-line focus:border-gold-deep outline-none text-[11px] px-2 py-1 text-ink placeholder:text-ink-mute"
+                        />
+                        {services.length > 0 && (
+                          <select
+                            value={addService}
+                            onChange={(e) => setAddService(e.target.value)}
+                            className="w-full bg-bg-elev border border-line focus:border-gold-deep outline-none text-[11px] px-2 py-1 text-ink"
+                          >
+                            {services.map((sv) => (
+                              <option key={sv.id} value={sv.id}>{sv.name}</option>
+                            ))}
+                          </select>
+                        )}
+                        {addError && <div className="text-[10px] text-[#d49185]">{addError}</div>}
+                        <div className="flex gap-1 pt-0.5">
+                          <button
+                            type="submit"
+                            disabled={addBusy || !addName.trim()}
+                            className="flex-1 text-[10px] bg-gold-deep/80 hover:bg-gold-deep text-[#1a1814] py-1 disabled:opacity-40 transition font-medium"
+                          >
+                            {addBusy ? "…" : "Add"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAddingSlot(null)}
+                            className="px-2 text-[10px] border border-line text-ink-mute hover:text-ink transition"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  );
+                }
+                return (
+                  <div
+                    key={s.id}
+                    onClick={() => openAddSlot(t, s.id)}
+                    className={`px-3 py-4 ${border} cursor-pointer hover:bg-[rgba(201,168,106,0.04)] group transition`}
+                    title={`Add booking at ${t} for ${s.display_name}`}
+                  >
+                    <span className="text-[9px] text-ink-mute/0 group-hover:text-ink-mute/60 transition select-none">+ slot</span>
+                  </div>
+                );
               })}
             </div>
           );

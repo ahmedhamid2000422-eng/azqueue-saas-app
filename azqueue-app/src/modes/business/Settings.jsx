@@ -1046,11 +1046,15 @@ function StaffTab({ branch }) {
 
   async function load() {
     if (!branch?.id) return;
-    const { data } = await supabase
+    const { data, error: loadErr } = await supabase
       .from("staff")
       .select("*")
       .eq("branch_id", branch.id)
       .order("created_at");
+    if (loadErr) {
+      setError(loadErr.message ?? "Could not load staff list.");
+      return;
+    }
     setStaff(data ?? []);
   }
   useEffect(() => { load(); }, [branch?.id]);

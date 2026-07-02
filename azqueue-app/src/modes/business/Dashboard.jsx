@@ -19,6 +19,7 @@ import Onboarding from "./Onboarding";
 import StaffProfile from "./StaffProfile";
 import Reviews from "./Reviews";
 import OwnerDashboard from "./OwnerDashboard";
+import ClientIntelligence from "./ClientIntelligence";
 
 const QUEUE_NAV = [
   { label: "Overview",  path: "/overview" },
@@ -30,6 +31,7 @@ const QUEUE_NAV = [
   { label: "Leads",     path: "/leads",     badge: "WA" },
   { label: "Insights",  path: "/insights" },
   { label: "Reviews",   path: "/reviews" },
+  { label: "Intel",    path: "/intelligence", badge: "AI" },
   { label: "Manager",  path: "/manager", badge: "PRO" },
   { label: "Display",  path: "/display" },
   { label: "Settings", path: "/settings" },
@@ -74,8 +76,9 @@ export default function BusinessDashboard() {
             <Route path="customers"  element={<Customers />} />
             <Route path="leads"      element={<Leads />} />
             <Route path="insights"   element={<Insights />} />
-            <Route path="reviews"    element={<Reviews />} />
-            <Route path="manager"    element={<Manager />} />
+            <Route path="reviews"       element={<Reviews />} />
+            <Route path="intelligence" element={<ClientIntelligence />} />
+            <Route path="manager"      element={<Manager />} />
             <Route path="display"    element={<DisplaySetup />} />
             <Route path="onboarding" element={<Onboarding />} />
             <Route path="staff/:id"  element={<StaffProfile />} />
