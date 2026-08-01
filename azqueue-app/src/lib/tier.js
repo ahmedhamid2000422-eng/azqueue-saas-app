@@ -10,7 +10,15 @@
  *   - Manager dashboard nav (gated to manager tier)
  *   - DisplaySetup (some features gated)
  *   - AI Assist (Personal Flow always-on; business needs Executive+)
+ *
+ * ─── PAYWALL TOGGLE ──────────────────────────────────────────────────────────
+ * Set PAYWALL_ENABLED = false to bypass all tier gates (all users get manager
+ * limits). Set to true to re-enable subscription enforcement. Stripe/billing
+ * code is fully intact either way — this is a front-end gate bypass only.
+ * ─────────────────────────────────────────────────────────────────────────────
  */
+
+export const PAYWALL_ENABLED = false;
 
 export const TIERS = ["essential", "professional", "executive", "manager"];
 
@@ -97,6 +105,7 @@ export const TIER_LIMITS = {
 };
 
 export function getTier(user) {
+  if (!PAYWALL_ENABLED) return "manager"; // paywall bypass
   return user?.user_metadata?.tier || "essential";
 }
 
@@ -105,6 +114,7 @@ export function getLimits(user) {
 }
 
 export function tierAtLeast(user, minimum) {
+  if (!PAYWALL_ENABLED) return true; // paywall bypass
   const cur = TIER_INFO[getTier(user)]?.rank ?? 0;
   const min = TIER_INFO[minimum]?.rank ?? 0;
   return cur >= min;

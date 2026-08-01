@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDisplay } from "../hooks/useDisplay";
 
 /**
@@ -40,6 +40,24 @@ export default function Display() {
     second: "2-digit",
     hour12: true,
   });
+
+  /* ── Flash animation when a ticket is called (C5) ──────────── */
+  const [flashingId, setFlashingId] = useState(null);
+  const prevCalledAt = useRef({});
+
+  useEffect(() => {
+    serving.forEach((t) => {
+      const prev = prevCalledAt.current[t.id];
+      if (t.called_at && t.called_at !== prev) {
+        setFlashingId(t.id);
+        setTimeout(
+          () => setFlashingId((cur) => (cur === t.id ? null : cur)),
+          3000
+        );
+      }
+      prevCalledAt.current[t.id] = t.called_at;
+    });
+  }, [serving]);
 
   /* ── Fullscreen toggle ──────────────────────────────────────── */
   function toggleFullscreen() {
@@ -103,6 +121,20 @@ export default function Display() {
       className="min-h-screen flex flex-col select-none overflow-hidden"
       style={{ background: "#0b0b0c", color: "#f2f0ea" }}
     >
+      <style>{`
+        @keyframes azq-flash {
+          0%   { box-shadow: 0 0 0px rgba(201,168,106,0); }
+          20%  { box-shadow: 0 0 60px rgba(201,168,106,0.65); }
+          60%  { box-shadow: 0 0 40px rgba(201,168,106,0.45); }
+          100% { box-shadow: 0 0 0px rgba(201,168,106,0); }
+        }
+        @keyframes azq-name-flash {
+          0%,100% { color: #f2f0ea; }
+          20%,40% { color: #c9a86a; text-shadow: 0 0 18px rgba(201,168,106,0.9); }
+        }
+        .azq-card-flash  { animation: azq-flash      3s ease-out forwards; }
+        .azq-name-flash  { animation: azq-name-flash 3s ease-out forwards; }
+      `}</style>
       {/* ── Top bar ─────────────────────────────────────────── */}
       <header
         className="flex items-center justify-between px-10 shrink-0"
@@ -177,10 +209,11 @@ export default function Display() {
         >
           {stationCards.map(({ winNum, station, staffMember, ticket, color }) => {
             const isServing = !!ticket;
+            const isFlashing = !!ticket && flashingId === ticket.id;
             return (
               <div
                 key={winNum}
-                className="flex flex-col p-8 transition-all duration-700"
+                className={`flex flex-col p-8 transition-all duration-700${isFlashing ? " azq-card-flash" : ""}`}
                 style={{
                   border: isServing
                     ? `2px solid ${color}44`
@@ -224,7 +257,7 @@ export default function Display() {
 
                 {/* Customer name / Available */}
                 <div
-                  className="mt-4"
+                  className={`mt-4${isFlashing ? " azq-name-flash" : ""}`}
                   style={{
                     fontSize: 18,
                     color: isServing ? "#f2f0ea" : "#3a3a3f",
@@ -232,7 +265,7 @@ export default function Display() {
                     fontWeight: 400,
                   }}
                 >
-                  {isServing ? ticket.customer_name : "Available"}
+                  {isServing ? (ticket.customer_name || "Guest") : "Available"}
                 </div>
 
                 {/* Service name */}

@@ -30,9 +30,11 @@ import PersonalDashboard from "./modes/personal/Dashboard";
 import StaffDashboard from "./modes/staff/Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 export default function App() {
   return (
+    <ErrorBoundary>
     <Routes>
       <Route path="/"        element={<Landing />} />
       <Route path="/login"   element={<Login />} />
@@ -78,7 +80,9 @@ export default function App() {
         path="/business/*"
         element={
           <ProtectedRoute>
-            <BusinessDashboard />
+            <ErrorBoundary>
+              <BusinessDashboard />
+            </ErrorBoundary>
           </ProtectedRoute>
         }
       />
@@ -87,7 +91,9 @@ export default function App() {
         path="/personal/*"
         element={
           <ProtectedRoute>
-            <PersonalDashboard />
+            <ErrorBoundary>
+              <PersonalDashboard />
+            </ErrorBoundary>
           </ProtectedRoute>
         }
       />
@@ -96,12 +102,15 @@ export default function App() {
         path="/staff/*"
         element={
           <ProtectedRoute>
-            <StaffDashboard />
+            <ErrorBoundary>
+              <StaffDashboard />
+            </ErrorBoundary>
           </ProtectedRoute>
         }
       />
 
       <Route path="*" element={<NotFound />} />
     </Routes>
+    </ErrorBoundary>
   );
 }

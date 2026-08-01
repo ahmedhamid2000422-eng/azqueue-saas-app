@@ -7,6 +7,7 @@ import { useAutopilot } from "../../hooks/useAutopilot";
 import { logServiceTime } from "../../lib/autopilot";
 import { sendCallNotice, sendThanks } from "../../lib/notifications";
 import { sendCalledNotification } from "../../lib/notify";
+import { announceTicket } from "../../lib/tts";
 import { arrivalState, formatEta } from "../../lib/arrival";
 import { loadOpenEscalations, resolveEscalation } from "../../lib/sla";
 import { getLimits } from "../../lib/tier";
@@ -388,6 +389,29 @@ export default function Queue() {
       .eq("id", next.id);
     if (e) { setBusy(false); return setError(e.message); }
     sendCallNotice(next.id);
+    // Voice announcement (C3) — announce ticket + counter via Web Speech API
+    const counterLabel = (next.assigned_station_id && stationMap[next.assigned_station_id])
+      ? stationMap[next.assigned_station_id]
+      : null;
+    announceTicket({
+      token:        next.token,
+      customerName: next.customer_name,
+      counter:      counterLabel,
+      branchId:     branch?.id,
+    });
+    // Twilio SMS (C7) — direct SMS when ticket is called, if customer has a phone
+    if (next.customer_phone) {
+      const myStaff   = staffList.find((s) => s.id === user?.id);
+      const staffName = myStaff?.display_name ?? (user?.email?.split("@")[0] ?? "Staff");
+      sendCalledNotification(
+        next.customer_phone,
+        next.customer_name ?? "Customer",
+        next.token,
+        counterLabel ?? "Counter 1",
+        staffName,
+        branch?.name,
+      );
+    }
     await reload();
     setBusy(false);
   }
@@ -852,7 +876,7 @@ export default function Queue() {
           </div>
           <div className="text-sm text-ink-soft mt-4 mb-2 tracking-wide">
             {serving
-              ? <>{serving.customer_name} <span className="text-ink-mute">· {serving.customer_phone}</span></>
+              ? <>{serving.customer_name || <span className="text-ink-mute italic">Guest</span>} <span className="text-ink-mute">· {serving.customer_phone}</span></>
               : <span className="text-ink-mute">No customer in service</span>}
           </div>
           {serving && (() => {

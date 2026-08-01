@@ -5,6 +5,7 @@ import { useAuth } from "../../lib/AuthContext";
 import { useBranch } from "../../lib/BranchContext";
 import { useStaff } from "../../hooks/useStaff";
 import { getLimits, getTier, TIER_INFO } from "../../lib/tier";
+import { isTtsEnabled, setTtsEnabled } from "../../lib/tts";
 import Card, { CardHeader } from "../../components/Card";
 import Button from "../../components/Button";
 import {
@@ -1472,11 +1473,29 @@ function RoleField({ value, onChange }) {
 
 /* ── MODES (toggles) ───────────────────────────────────────────────── */
 function ModesTab({ branch, reload }) {
+  const [ttsOn,      setTtsOn]      = useState(() => isTtsEnabled(branch?.id));
+  const [toggleErr,  setToggleErr]  = useState(null);
+
+  // Keep ttsOn in sync when the active branch changes
+  useEffect(() => {
+    if (branch?.id) setTtsOn(isTtsEnabled(branch.id));
+  }, [branch?.id]);
+
   if (!branch) return <Empty hint="Select or create a branch first." />;
 
   async function toggle(field, value) {
-    await supabase.from("branches").update({ [field]: value }).eq("id", branch.id);
+    setToggleErr(null);
+    const { error } = await supabase
+      .from("branches")
+      .update({ [field]: value })
+      .eq("id", branch.id);
+    if (error) { setToggleErr(error.message); return; }
     await reload();
+  }
+
+  function toggleTts(v) {
+    setTtsEnabled(branch.id, v);
+    setTtsOn(v);
   }
 
   async function setBusinessType(type) {
@@ -1566,6 +1585,11 @@ function ModesTab({ branch, reload }) {
       </Card>
 
       <Card luxe className="p-7 space-y-5">
+        {toggleErr && (
+          <div className="text-[11px] text-[#d49185] bg-[#b56b5f]/10 border border-[#b56b5f]/30 px-3 py-2">
+            {toggleErr}
+          </div>
+        )}
         <Toggle
           label="Autopilot"
           desc="Auto-call next customer at adaptive pace"
@@ -1578,6 +1602,12 @@ function ModesTab({ branch, reload }) {
           on={!!branch.islamic_mode}
           setOn={(v) => toggle("islamic_mode", v)}
           green
+        />
+        <Toggle
+          label="Voice Announcements"
+          desc="Announce ticket number and counter via speaker when a customer is called"
+          on={ttsOn}
+          setOn={toggleTts}
         />
       </Card>
     </div>

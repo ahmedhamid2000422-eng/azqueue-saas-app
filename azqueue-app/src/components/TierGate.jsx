@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { TIER_INFO, getTier } from "../lib/tier";
+import { TIER_INFO, getTier, PAYWALL_ENABLED } from "../lib/tier";
 import { useAuth } from "../lib/AuthContext";
 import Card from "./Card";
 import Button from "./Button";
@@ -16,6 +16,10 @@ import Button from "./Button";
  */
 export default function TierGate({ requires, feature, reason, children }) {
   const { user } = useAuth();
+
+  // Paywall bypass — when PAYWALL_ENABLED is false all gates are open
+  if (!PAYWALL_ENABLED) return children;
+
   const cur = getTier(user);
   const curRank = TIER_INFO[cur]?.rank ?? 0;
   const reqRank = TIER_INFO[requires]?.rank ?? 0;

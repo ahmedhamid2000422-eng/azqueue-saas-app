@@ -4,9 +4,7 @@
  * Data saved to: supabase public.survey_responses
  */
 import { useState, useEffect, useRef } from "react";
-
-const SUPABASE_URL  = "https://haiighdwffvbjfepfttf.supabase.co";
-const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhhaWlnaGR3ZmZ2YmpmZXBmdHRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2MTg3MzIsImV4cCI6MjA5MzE5NDczMn0.tYp8SdXvNKvOOPffQG58_lqvlKBNOwtM57_3_9Lqjik";
+import { supabase } from "../lib/supabase";
 
 const QUESTIONS = [
   {
@@ -193,17 +191,8 @@ export default function MarketSurveyPage() {
       referrer:           document.referrer.slice(0, 200) || null,
     };
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/survey_responses`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "apikey": SUPABASE_ANON,
-          "Authorization": `Bearer ${SUPABASE_ANON}`,
-          "Prefer": "return=minimal",
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) console.warn("Survey submit failed:", res.status, await res.text());
+      const { error: sbErr } = await supabase.from("survey_responses").insert(payload);
+      if (sbErr) console.warn("Survey submit failed:", sbErr.message);
     } catch (e) {
       console.warn("Survey network error:", e.message);
     }
