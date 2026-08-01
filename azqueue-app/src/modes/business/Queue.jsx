@@ -18,6 +18,14 @@ import { saveScore, scoreEmoji, scoreColour } from "../../lib/satisfaction";
 import { addPunch, addBonusPunch, getCustomerCard, hasUnclaimedReward, punchDots, redeemReward } from "../../lib/loyalty";
 import Button from "../../components/Button";
 import Card, { CardHeader } from "../../components/Card";
+
+/** Convert seconds to a short human-readable string e.g. "2m 30s" or "45s" */
+function formatSec(sec) {
+  if (sec == null || sec < 0) return "—";
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+}
 import Stat from "../../components/Stat";
 import Badge from "../../components/Badge";
 import SetupChecklist from "../../components/SetupChecklist";

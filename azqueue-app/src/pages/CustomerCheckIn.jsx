@@ -80,7 +80,7 @@ export default function CustomerCheckIn() {
 
     if (!serviceId)        return setFormError(t("checkin.errors.pick_service"));
     if (!name.trim())      return setFormError(t("checkin.errors.enter_name"));
-    if (!/^\+?\d[\d\s-]{6,}$/.test(phone)) return setFormError(t("checkin.errors.valid_phone"));
+    if ((phone.replace(/\D/g, "").length) < 7) return setFormError(t("checkin.errors.valid_phone"));
 
     setSubmitting(true);
 
