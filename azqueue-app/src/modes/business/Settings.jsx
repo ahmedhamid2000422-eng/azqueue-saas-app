@@ -630,16 +630,16 @@ function WhatsAppConfig({ branch, reload }) {
   return (
     <Card luxe className="p-6 mt-6">
       <CardHeader
-        title="WhatsApp AI Receptionist"
-        subtitle="Auto-qualify leads from WhatsApp — works for tax, gym, and design businesses."
+        title="WhatsApp Auto-Reply"
+        subtitle="Reply to customer WhatsApp messages automatically using AI."
       />
 
       {/* Enable toggle */}
       <div className="flex items-center justify-between py-3 border-b border-line">
         <div>
-          <div className="text-sm text-ink font-display font-light">Enable WhatsApp receptionist</div>
+          <div className="text-sm text-ink font-display font-light">Turn on WhatsApp auto-reply</div>
           <div className="text-[10px] text-ink-mute mt-0.5">
-            Incoming WhatsApp messages will be handled by the AI bot
+            When someone messages your WhatsApp number, the AI replies for you
           </div>
         </div>
         <button
@@ -652,21 +652,21 @@ function WhatsAppConfig({ branch, reload }) {
 
       {/* WhatsApp number */}
       <div className="py-4 border-b border-line">
-        <label className="ovline text-[9px] mb-2 block">Your WhatsApp number (E.164)</label>
+        <label className="ovline text-[9px] mb-2 block">Your business WhatsApp number</label>
         <input
           value={phone}
           onChange={e => setPhone(e.target.value)}
-          placeholder="+60123456789"
+          placeholder="+16471234567"
           className="w-full bg-transparent border border-line px-3 py-2 text-sm text-ink focus:border-gold-deep outline-none font-mono"
         />
         <p className="text-[10px] text-ink-mute mt-1.5">
-          This must match the number registered in your Twilio WhatsApp sender.
+          Include your country code (e.g. +1 for Canada/USA, +44 for UK).
         </p>
       </div>
 
       {/* Custom welcome message */}
       <div className="py-4 border-b border-line">
-        <label className="ovline text-[9px] mb-2 block">Custom welcome message (optional)</label>
+        <label className="ovline text-[9px] mb-2 block">First message customers receive (optional)</label>
         <textarea
           value={welcome}
           onChange={e => setWelcome(e.target.value)}
@@ -674,27 +674,33 @@ function WhatsAppConfig({ branch, reload }) {
           placeholder={`Hi! Welcome to {{branch}}. How can I help you today?`}
           className="w-full bg-transparent border border-line px-3 py-2 text-sm text-ink focus:border-gold-deep outline-none resize-none"
         />
-        <p className="text-[10px] text-ink-mute mt-1">Use {"{{branch}}"} to insert your branch name.</p>
+        <p className="text-[10px] text-ink-mute mt-1">Leave blank to use the default greeting. Use {"{{branch}}"} to insert your branch name.</p>
       </div>
 
-      {/* Webhook URL */}
-      <div className="py-4 border-b border-line">
-        <label className="ovline text-[9px] mb-2 block">Twilio webhook URL</label>
-        <div className="flex items-center gap-2">
-          <code className="flex-1 text-[10px] text-gold-soft font-mono bg-[rgba(201,168,106,0.05)] border border-gold/20 px-3 py-2 truncate">
-            {fnUrl}
-          </code>
-          <button
-            onClick={() => navigator.clipboard?.writeText(fnUrl)}
-            className="shrink-0 px-2.5 py-2 border border-line text-[9px] text-ink-mute hover:border-gold-deep hover:text-gold-soft transition"
-          >
-            Copy
-          </button>
+      {/* Webhook URL — collapsed behind a "Setup instructions" disclosure */}
+      <details className="py-4 border-b border-line">
+        <summary className="ovline text-[9px] cursor-pointer text-ink-mute hover:text-ink select-none">
+          ▸ Setup instructions (for your IT person)
+        </summary>
+        <div className="mt-3 space-y-2">
+          <p className="text-[10px] text-ink-mute leading-relaxed">
+            1. In your Twilio account, go to <strong>Messaging → WhatsApp Senders</strong>.<br />
+            2. Under "A message comes in", paste the URL below.<br />
+            3. Save and send a test WhatsApp message to your number.
+          </p>
+          <div className="flex items-center gap-2 mt-2">
+            <code className="flex-1 text-[10px] text-gold-soft font-mono bg-[rgba(201,168,106,0.05)] border border-gold/20 px-3 py-2 truncate">
+              {fnUrl}
+            </code>
+            <button
+              onClick={() => navigator.clipboard?.writeText(fnUrl)}
+              className="shrink-0 px-2.5 py-2 border border-line text-[9px] text-ink-mute hover:border-gold-deep hover:text-gold-soft transition"
+            >
+              Copy
+            </button>
+          </div>
         </div>
-        <p className="text-[10px] text-ink-mute mt-1.5">
-          Paste this into Twilio → Messaging → WhatsApp Senders → "A message comes in" webhook.
-        </p>
-      </div>
+      </details>
 
       <div className="pt-4 flex gap-3 items-center">
         <Button onClick={save} disabled={busy}>{busy ? "Saving…" : "Save WhatsApp settings"}</Button>

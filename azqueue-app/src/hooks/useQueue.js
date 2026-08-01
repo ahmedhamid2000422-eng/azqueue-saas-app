@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { sendCalledNotification } from "../lib/notify";
+import { sendCalledNotification, sendWaitUpdate } from "../lib/notify";
 
 /**
  * useQueue — all queue state and mutations for ONE staff member at ONE branch.
@@ -228,6 +228,18 @@ export function useQueue({ staff, branch, station }) {
         staff?.display_name ?? "your staff member"
       );
     }
+
+    // Notify waiting customers who are now near the front (positions 1 & 2)
+    // after this ticket was called. Non-blocking.
+    try {
+      const stillWaiting = waiting.filter((t) => t.id !== claimed.id);
+      [0, 1].forEach((idx) => {
+        const t = stillWaiting[idx];
+        if (t?.customer_phone && t.customer_name) {
+          sendWaitUpdate(t.customer_phone, t.customer_name, idx + 1, branch?.name ?? "AzQueue");
+        }
+      });
+    } catch { /* never break queue flow */ }
 
     setBusy(false);
     return claimed;

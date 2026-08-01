@@ -265,9 +265,30 @@ export default function Schedule() {
         <div className={`grid border-b border-line`} style={{ gridTemplateColumns: `80px repeat(${cols.length}, minmax(0, 1fr))` }}>
           <div className="px-3 py-3 ovline text-[8px] border-r border-line bg-[rgba(201,168,106,0.03)]" />
           {cols.map((s, i) => (
-            <div key={s.id} className={`px-3 py-3 ovline text-[8px] bg-[rgba(201,168,106,0.03)] ${i < cols.length - 1 ? "border-r border-line" : ""}`}>
-              {s.display_name}
-              {s.role && <span className="text-ink-mute ml-1">· {s.role}</span>}
+            <div key={s.id} className={`px-3 py-3 ovline text-[8px] bg-[rgba(201,168,106,0.03)] ${i < cols.length - 1 ? "border-r border-line" : ""} ${s.status === "off" ? "opacity-40" : ""}`}>
+              <div className="flex items-center justify-between gap-1">
+                <span>
+                  {s.display_name}
+                  {s.role && <span className="text-ink-mute ml-1">· {s.role}</span>}
+                </span>
+                {s.id !== "any" && (
+                  <button
+                    onClick={async () => {
+                      const next = s.status === "off" ? "active" : "off";
+                      await supabase.from("staff").update({ status: next }).eq("id", s.id);
+                      load();
+                    }}
+                    title={s.status === "off" ? "Mark as available" : "Close for today"}
+                    className={`text-[7px] border px-1.5 py-0.5 transition whitespace-nowrap ${
+                      s.status === "off"
+                        ? "border-[#506b50]/60 text-[#9bbd9b]/80 hover:text-[#9bbd9b]"
+                        : "border-line text-ink-mute hover:border-[#b56b5f]/50 hover:text-[#d49185]"
+                    }`}
+                  >
+                    {s.status === "off" ? "Reopen" : "Close"}
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
