@@ -696,25 +696,6 @@ function WhatsAppConfig({ branch, reload }) {
         </p>
       </div>
 
-      {/* Lead JSON schema reference */}
-      <div className="py-4 border-b border-line">
-        <label className="ovline text-[9px] mb-2 block">Lead data schema</label>
-        <pre className="text-[9px] text-ink-mute font-mono leading-relaxed bg-[rgba(255,255,255,0.02)] border border-line p-3 overflow-x-auto">{`{
-  "service_category": "",
-  "property_type":    "",
-  "location":         "",
-  "budget_range":     "",
-  "timeline":         "",
-  "requirements":     "",
-  "next_action":      "Book consultation | Follow up | Send estimate | Nurture",
-  "lead_score":       "HOT | WARM | COLD",
-  "summary":          ""
-}`}</pre>
-        <p className="text-[10px] text-ink-mute mt-1.5">
-          Every completed conversation populates this JSON into the customer record, visible in the Leads tab.
-        </p>
-      </div>
-
       <div className="pt-4 flex gap-3 items-center">
         <Button onClick={save} disabled={busy}>{busy ? "Saving…" : "Save WhatsApp settings"}</Button>
         {saved && <span className="text-[10px] text-[#9bbd9b]">Saved.</span>}
@@ -741,6 +722,48 @@ function CopyCheckinLink({ url }) {
 }
 
 /* ── BRANCHES (CRUD) ───────────────────────────────────────────────── */
+function SetLocationButton({ branch, reload }) {
+  const [status, setStatus] = useState("idle"); // idle | loading | done | error
+
+  async function setLoc() {
+    if (!("geolocation" in navigator)) { setStatus("error"); return; }
+    setStatus("loading");
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        const { error } = await supabase.from("branches").update({ lat, lng }).eq("id", branch.id);
+        if (error) { setStatus("error"); return; }
+        setStatus("done");
+        await reload();
+        setTimeout(() => setStatus("idle"), 2500);
+      },
+      () => setStatus("error"),
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }
+
+  const hasLoc = branch.lat != null;
+  return (
+    <button
+      onClick={setLoc}
+      disabled={status === "loading"}
+      title={hasLoc ? `${branch.lat?.toFixed(4)}, ${branch.lng?.toFixed(4)} — click to update` : "Set location for accurate prayer times"}
+      className={`text-[9px] ovline border px-2 py-1 transition disabled:opacity-40 whitespace-nowrap ${
+        status === "done"    ? "border-[#506b50] text-[#9bbd9b]" :
+        status === "error"   ? "border-[#b56b5f] text-[#d49185]" :
+        hasLoc               ? "border-[#506b50]/50 text-[#9bbd9b]/70 hover:border-[#506b50] hover:text-[#9bbd9b]" :
+                               "border-line text-ink-mute hover:border-gold-deep hover:text-gold-soft"
+      }`}
+    >
+      {status === "loading" ? "Locating…" :
+       status === "done"    ? "Location saved ✓" :
+       status === "error"   ? "Location failed" :
+       hasLoc               ? "📍 Update location" :
+                              "📍 Set location"}
+    </button>
+  );
+}
+
 function CopyBookingLink({ slug }) {
   const [copied, setCopied] = useState(false);
   const origin = typeof window !== "undefined" ? window.location.origin : "https://azqueue.io";
@@ -799,24 +822,30 @@ function BranchesTab({ branches, currentId, select, reload, userId }) {
           branches.map((b) => (
             <div
               key={b.id}
-              className={`px-5 py-4 border-b border-line last:border-b-0 grid grid-cols-[1fr_auto_auto_auto] gap-3 items-center ${
+              className={`px-5 py-4 border-b border-line last:border-b-0 ${
                 currentId === b.id ? "bg-[rgba(201,168,106,0.04)]" : ""
               }`}
             >
-              <div>
-                <div className="text-sm text-ink flex items-center gap-2">
-                  {b.name}
-                  {currentId === b.id && <span className="ovline text-[7px] text-gold-soft">selected</span>}
+              <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 items-center">
+                <div>
+                  <div className="text-sm text-ink flex items-center gap-2">
+                    {b.name}
+                    {currentId === b.id && <span className="ovline text-[7px] text-gold-soft">selected</span>}
+                  </div>
+                  <div className="text-[10px] text-ink-mute mt-0.5">
+                    {b.city ?? "—"} <span className="text-line-2">·</span> /q/{b.slug}
+                    {b.lat != null && (
+                      <span className="ml-2 text-[#9bbd9b]">📍 {b.lat.toFixed(3)}, {b.lng.toFixed(3)}</span>
+                    )}
+                  </div>
                 </div>
-                <div className="text-[10px] text-ink-mute mt-0.5">
-                  {b.city ?? "—"} <span className="text-line-2">·</span> /q/{b.slug}
-                </div>
+                <SetLocationButton branch={b} reload={reload} />
+                <CopyBookingLink slug={b.slug} />
+                <Button variant="ghost" size="sm" onClick={() => select(b.id)} disabled={currentId === b.id}>
+                  {currentId === b.id ? "Active" : "Switch"}
+                </Button>
+                <DeleteBranchButton branch={b} reload={reload} disabled={branches.length === 1} />
               </div>
-              <CopyBookingLink slug={b.slug} />
-              <Button variant="ghost" size="sm" onClick={() => select(b.id)} disabled={currentId === b.id}>
-                {currentId === b.id ? "Active" : "Switch"}
-              </Button>
-              <DeleteBranchButton branch={b} reload={reload} disabled={branches.length === 1} />
             </div>
           ))
         )}

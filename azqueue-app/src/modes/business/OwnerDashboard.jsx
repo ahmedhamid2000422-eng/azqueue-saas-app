@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { useBranch } from "../../lib/BranchContext";
 import Card, { CardHeader } from "../../components/Card";
@@ -268,12 +268,21 @@ export default function OwnerDashboard() {
                     </div>
                   )}
 
-                  {/* Assigned staff */}
-                  <div className="text-[10px] text-ink-mute border-t border-line pt-2 mt-auto">
-                    {staff
-                      ? <span>{staff.display_name} · <span style={{ color: statusLabel[staff.status]?.dot ?? "#888" }}>{statusLabel[staff.status]?.label ?? staff.status}</span></span>
-                      : <span className="italic">Unassigned</span>
-                    }
+                  {/* Assigned staff — with dropdown to reassign */}
+                  <div className="border-t border-line pt-2 mt-auto">
+                    {staff ? (
+                      <div className="text-[10px] text-ink-mute mb-1.5">
+                        {staff.display_name} · <span style={{ color: statusLabel[staff.status]?.dot ?? "#888" }}>{statusLabel[staff.status]?.label ?? staff.status}</span>
+                      </div>
+                    ) : (
+                      <div className="text-[10px] text-ink-mute italic mb-1.5">Unassigned</div>
+                    )}
+                    <AssignStaffSelect
+                      stationId={st.id}
+                      currentPreparerId={st.preparer_id}
+                      roster={roster}
+                      onAssigned={reload}
+                    />
                   </div>
                 </div>
               );
@@ -286,7 +295,7 @@ export default function OwnerDashboard() {
       <Card luxe>
         <CardHeader
           title="Staff on shift"
-          subtitle="Status and today's completed visits"
+          subtitle="Toggle availability for today"
         />
         {roster.length === 0 ? (
           <div className="px-5 py-10 text-center text-xs text-ink-mute">
@@ -296,22 +305,23 @@ export default function OwnerDashboard() {
           <div className="divide-y divide-line">
             {roster.map((s) => {
               const st = statusLabel[s.status] ?? { label: s.status, dot: "#888" };
+              const isOff = s.status === "off";
               return (
                 <div
                   key={s.id}
-                  className="px-5 py-4 flex items-center justify-between hover:bg-[rgba(201,168,106,0.02)] transition"
+                  className={`px-5 py-4 flex items-center justify-between transition ${isOff ? "opacity-50" : "hover:bg-[rgba(201,168,106,0.02)]"}`}
                 >
                   <div className="flex items-center gap-3">
                     <span
                       className="pip"
-                      style={{ background: st.dot, opacity: s.status === "off" ? 0.35 : 1 }}
+                      style={{ background: st.dot, opacity: isOff ? 0.35 : 1 }}
                     />
                     <div>
                       <div className="text-sm text-ink">{s.display_name}</div>
                       <div className="ovline text-[8px] text-ink-mute mt-0.5">{s.role}</div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-4">
                     {s.currentTicket && (
                       <span className="text-xs text-gold-soft font-display">
                         {s.currentTicket.token}
@@ -322,6 +332,24 @@ export default function OwnerDashboard() {
                       <div className="ovline text-[8px] text-ink-mute">served today</div>
                     </div>
                     <span className="ovline text-[9px]" style={{ color: st.dot }}>{st.label}</span>
+                    {/* Available / Away toggle — only toggle off↔active, never override serving */}
+                    {s.status !== "serving" && (
+                      <button
+                        onClick={async () => {
+                          const next = isOff ? "active" : "off";
+                          await supabase.from("staff").update({ status: next }).eq("id", s.id);
+                          reload();
+                        }}
+                        className={`text-[8px] ovline border px-2 py-0.5 transition whitespace-nowrap ${
+                          isOff
+                            ? "border-[#506b50]/60 text-[#9bbd9b]/80 hover:border-[#506b50] hover:text-[#9bbd9b]"
+                            : "border-line text-ink-mute hover:border-[#b56b5f]/60 hover:text-[#d49185]"
+                        }`}
+                        title={isOff ? "Mark as available" : "Mark as away today"}
+                      >
+                        {isOff ? "Mark available" : "Mark away"}
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -333,5 +361,36 @@ export default function OwnerDashboard() {
         </div>
       </Card>
     </div>
+  );
+}
+
+/* ── Assign staff to a station ──────────────────────────────────────── */
+function AssignStaffSelect({ stationId, currentPreparerId, roster, onAssigned }) {
+  const [busy, setBusy] = useState(false);
+
+  async function assign(staffId) {
+    setBusy(true);
+    await supabase
+      .from("stations")
+      .update({ preparer_id: staffId || null })
+      .eq("id", stationId);
+    setBusy(false);
+    onAssigned();
+  }
+
+  return (
+    <select
+      value={currentPreparerId ?? ""}
+      onChange={(e) => assign(e.target.value)}
+      disabled={busy}
+      className="w-full text-[9px] ovline bg-transparent border border-line text-ink-mute px-2 py-1 hover:border-gold-deep/50 focus:outline-none focus:border-gold-deep transition disabled:opacity-40"
+    >
+      <option value="">Unassigned</option>
+      {roster.map((s) => (
+        <option key={s.id} value={s.id} disabled={s.status === "off"}>
+          {s.display_name}{s.status === "off" ? " (away)" : ""}
+        </option>
+      ))}
+    </select>
   );
 }

@@ -827,7 +827,7 @@ export default function Queue() {
           <div>
             <div className="ovline text-[9px]">Customer link</div>
             <a href={customerUrl} target="_blank" rel="noreferrer" className="font-mono text-[10px] text-gold-soft hover:text-gold underline-offset-2 hover:underline break-all">
-              /q/{branch.slug}
+              {customerUrl}
             </a>
           </div>
           <button
