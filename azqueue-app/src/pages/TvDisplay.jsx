@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { fetchPrayerTimes, getPauseStatus, getNextPrayer } from "../lib/prayerTimes";
+import { announceTicket } from "../lib/tts";
 
 /**
  * Public TV display — full-screen wall surface in the waiting area.
@@ -200,6 +201,26 @@ export default function TvDisplay() {
   const layout = layoutParam === "auto"
     ? (counters.length >= 2 ? "multi" : "single")
     : layoutParam;
+
+  // ── Announce newly-called tickets on the TV display ──────────
+  // Track called_at per ticket; when it changes the ticket was just called.
+  const prevCalledAt = useRef({});
+  useEffect(() => {
+    serving.forEach((tk) => {
+      const prev = prevCalledAt.current[tk.id];
+      if (tk.called_at && tk.called_at !== prev) {
+        const staffName = staff.find((s) => s.id === tk.staff_id)?.display_name;
+        const counter   = staffName ? `${staffName}'s counter` : "the counter";
+        announceTicket({
+          token:        tk.token,
+          customerName: tk.customer_name,
+          counter,
+          branchId:     branch?.id,
+        });
+      }
+      prevCalledAt.current[tk.id] = tk.called_at;
+    });
+  }, [serving, staff, branch?.id]);
 
   // ── Render ───────────────────────────────────────────────────
   if (loading) return (
