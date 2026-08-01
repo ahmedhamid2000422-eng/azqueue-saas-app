@@ -17,8 +17,8 @@ import Button from "./Button";
 export default function TierGate({ requires, feature, reason, children }) {
   const { user } = useAuth();
 
-  // Paywall bypass — when PAYWALL_ENABLED is false all gates are open
-  if (!PAYWALL_ENABLED) return children;
+  // Paywall bypass — disabled unless VITE_PAYWALL_ENABLED=true is set in Vercel
+  if (!PAYWALL_ENABLED || import.meta.env.VITE_PAYWALL_ENABLED !== "true") return children;
 
   const cur = getTier(user);
   const curRank = TIER_INFO[cur]?.rank ?? 0;

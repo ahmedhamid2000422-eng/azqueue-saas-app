@@ -26,6 +26,9 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // Activate new service worker immediately on all open tabs
+        skipWaiting: true,
+        clientsClaim: true,
         // Don't cache auth/realtime endpoints or standalone HTML pages — always go to network
         navigateFallbackDenylist: [/^\/api/, /\/auth\/v1/, /\/realtime\/v1/, /\/survey\.html/],
         runtimeCaching: [

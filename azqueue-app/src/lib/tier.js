@@ -18,7 +18,9 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-export const PAYWALL_ENABLED = false;
+// Paywall toggle. Set VITE_PAYWALL_ENABLED=true in Vercel env vars to re-enable.
+// Omitting the var (or setting it to anything other than "true") keeps it OFF.
+export const PAYWALL_ENABLED = import.meta.env.VITE_PAYWALL_ENABLED === "true";
 
 export const TIERS = ["essential", "professional", "executive", "manager"];
 
