@@ -202,177 +202,245 @@ export default function TvDisplay() {
     : layoutParam;
 
   // ── Render ───────────────────────────────────────────────────
-  if (loading) return <FullScreenShell><div className="ovline text-ink-mute">{t("common.loading")}</div></FullScreenShell>;
-  if (error || !branch) return <FullScreenShell><div className="ovline text-[#d49185]">{t("common.error")}</div></FullScreenShell>;
+  if (loading) return (
+    <TvShell>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh" }}>
+        <div style={{ color: "#6b6a64", fontSize: "2vw", letterSpacing: "0.2em", textTransform: "uppercase" }}>Loading…</div>
+      </div>
+    </TvShell>
+  );
+  if (error || !branch) return (
+    <TvShell>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh" }}>
+        <div style={{ color: "#d49185", fontSize: "2vw" }}>Display not found</div>
+      </div>
+    </TvShell>
+  );
 
   const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const isPaused = pauseStatus?.state === "paused";
 
   return (
-    <FullScreenShell variant={pauseStatus?.state === "paused" ? "sage" : "gold"}>
-      <Atmosphere variant={pauseStatus?.state === "paused" ? "sage" : "gold"} />
+    <TvShell>
+      {/* Subtle ambient glow */}
+      <div aria-hidden style={{
+        position: "absolute", inset: 0, pointerEvents: "none",
+        background: isPaused
+          ? "radial-gradient(ellipse 80% 60% at 50% -10%, rgba(127,163,127,0.15), transparent 65%)"
+          : "radial-gradient(ellipse 80% 60% at 50% -10%, rgba(201,168,106,0.12), transparent 65%)",
+      }} />
 
-      <div className="relative h-screen flex flex-col p-12">
-        <DisplayHeader
-          branch={branch}
-          time={time}
-          pauseStatus={pauseStatus}
-          nextPrayer={nextPrayer}
-          t={t}
-        />
+      <div style={{ position: "relative", height: "100vh", display: "flex", flexDirection: "column", padding: "3vh 4vw" }}>
 
-        <main className="flex-1 grid grid-cols-[1fr_minmax(280px,420px)] gap-10 items-start min-h-0">
-          {pauseStatus?.state === "paused" ? (
-            <PausedHero pauseStatus={pauseStatus} t={t} />
+        {/* ── Header ── */}
+        <header style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: "2vh", marginBottom: "3vh",
+        }}>
+          <div>
+            <div style={{ color: "#c9a86a", fontSize: "1.6vw", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+              {branch.name}
+            </div>
+            {branch.city && (
+              <div style={{ color: "#6b6a64", fontSize: "1vw", marginTop: "0.3vh", letterSpacing: "0.1em" }}>
+                {branch.city}
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "3vw" }}>
+            {/* Prayer / approaching indicator */}
+            {isPaused ? (
+              <div style={{ display: "flex", alignItems: "center", gap: "0.8vw" }}>
+                <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#9bbd9b", display: "inline-block", animation: "breathe 2s ease-in-out infinite" }} />
+                <span style={{ color: "#9bbd9b", fontSize: "1.1vw", letterSpacing: "0.1em" }}>
+                  {pauseStatus.prayer} · Paused
+                </span>
+              </div>
+            ) : pauseStatus?.state === "approaching" ? (
+              <span style={{ color: "#9bbd9b", fontSize: "1.1vw", letterSpacing: "0.08em" }}>
+                {pauseStatus.prayer} in {Math.round(pauseStatus.msUntil / 60000)}m
+              </span>
+            ) : nextPrayer ? (
+              <span style={{ color: "#6b6a64", fontSize: "1vw" }}>
+                {nextPrayer.name} · {nextPrayer.time}
+              </span>
+            ) : null}
+
+            {/* Clock */}
+            <div style={{ fontFamily: "monospace", fontSize: "3.5vw", color: "#f0ede6", fontWeight: 300, letterSpacing: "0.05em" }}>
+              {time}
+            </div>
+
+            {/* Live pip */}
+            <div style={{ display: "flex", alignItems: "center", gap: "0.6vw" }}>
+              <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#4ade80", display: "inline-block", animation: "breathe 2s ease-in-out infinite" }} />
+              <span style={{ color: "#4ade80", fontSize: "0.9vw", letterSpacing: "0.2em", textTransform: "uppercase" }}>Live</span>
+            </div>
+          </div>
+        </header>
+
+        {/* ── Main content ── */}
+        <main style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 36%", gap: "4vw", minHeight: 0 }}>
+
+          {/* Left: Now Serving */}
+          {isPaused ? (
+            <TvPausedHero pauseStatus={pauseStatus} />
           ) : layout === "multi" && counters.length >= 1 ? (
-            <CounterGrid counters={counters} t={t} />
+            <TvMultiCounters counters={counters} />
           ) : (
-            <SingleNowServing
-              counter={counters[0]}
-              t={t}
-            />
+            <TvSingleServing counter={counters[0]} />
           )}
 
-          <UpNextPanel waiting={waiting} services={services} t={t} branchSlug={branch.slug} branded={branded} />
+          {/* Right: Up Next */}
+          <TvUpNext waiting={waiting} services={services} branded={branded} branchSlug={branch.slug} />
         </main>
       </div>
-    </FullScreenShell>
+
+      <style>{`
+        @keyframes breathe {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
+        }
+        @keyframes tvSlideIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+    </TvShell>
   );
 }
 
-/* ── Header strip ─────────────────────────────────────────────── */
-function DisplayHeader({ branch, time, pauseStatus, nextPrayer, t }) {
+/* ── Full dark shell ────────────────────────────────────────── */
+function TvShell({ children }) {
   return (
-    <header className="flex items-center justify-between mb-10">
-      <div>
-        <div className="ovline text-[12px] text-gold-soft mb-1">{branch.name}</div>
-        <div className="text-[11px] text-ink-mute tracking-wide">{branch.city}</div>
-      </div>
-
-      <div className="flex items-center gap-8">
-        {pauseStatus?.state === "paused" ? (
-          <div className="flex items-center gap-2">
-            <span className="pip breathe" style={{ background: "#9bbd9b" }} />
-            <span className="text-[14px] text-[#9bbd9b]">
-              {t("display.paused", { prayer: pauseStatus.prayer })}
-            </span>
-          </div>
-        ) : pauseStatus?.state === "approaching" ? (
-          <div className="flex items-center gap-2">
-            <span className="pip breathe" />
-            <span className="text-[14px] text-[#9bbd9b]">
-              {pauseStatus.prayer} · {Math.round(pauseStatus.msUntil / 60000)}m
-            </span>
-          </div>
-        ) : nextPrayer ? (
-          <span className="text-[12px] text-ink-mute">
-            {nextPrayer.name} · <span className="font-mono">{nextPrayer.time}</span>
-          </span>
-        ) : null}
-
-        <div className="font-mono text-[14px] text-ink">{time}</div>
-
-        <div className="flex items-center gap-2">
-          <span className="pip breathe" />
-          <span className="text-[12px] text-[#9bbd9b] uppercase tracking-[0.22em]">{t("display.live")}</span>
-        </div>
-      </div>
-    </header>
+    <div style={{
+      position: "relative",
+      background: "#0d0c0a",
+      color: "#f0ede6",
+      minHeight: "100vh",
+      overflow: "hidden",
+      fontFamily: "'Inter', 'Helvetica Neue', sans-serif",
+    }}>
+      {children}
+    </div>
   );
 }
 
-/* ── Single big "Now Serving" (legacy / single-counter branches) ─ */
-function SingleNowServing({ counter, t }) {
+/* ── Single large "Now Serving" ─────────────────────────────── */
+function TvSingleServing({ counter }) {
   if (!counter) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <div className="ovline text-[14px] mb-6">{t("display.now_serving")}</div>
-          <div className="text-[28px] text-ink-mute font-display italic">
-            {t("display.no_one_serving")}
-          </div>
+      <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", height: "100%" }}>
+        <div style={{ color: "#6b6a64", fontSize: "1.2vw", letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: "3vh" }}>
+          Now Serving
+        </div>
+        <div style={{ color: "#3a3830", fontSize: "18vw", fontWeight: 200, lineHeight: 1, letterSpacing: "-0.02em" }}>
+          —
+        </div>
+        <div style={{ color: "#6b6a64", fontSize: "2vw", marginTop: "3vh", fontStyle: "italic" }}>
+          No one serving yet
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col justify-center h-full">
-      <div className="ovline text-[14px] mb-6">{t("display.now_serving")}</div>
+    <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", height: "100%", animation: "tvSlideIn 0.4s ease-out" }}>
+      {/* Label */}
+      <div style={{ color: "#6b6a64", fontSize: "1.2vw", letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: "2vh" }}>
+        Now Serving
+      </div>
+
+      {/* Big token */}
       <div
         key={counter.ticket.token}
-        className="drift-up gold-text font-display font-light tracking-tightest leading-none"
-        style={{ fontSize: "clamp(180px, 22vw, 360px)" }}
+        style={{
+          fontSize: "clamp(120px, 20vw, 380px)",
+          fontWeight: 200,
+          lineHeight: 1,
+          letterSpacing: "-0.02em",
+          color: "#c9a86a",
+          textShadow: "0 0 80px rgba(201,168,106,0.25)",
+        }}
       >
         {counter.ticket.token}
       </div>
-      <div className="rule-ornament my-8 text-[12px]"><span>✦</span></div>
-      <div className="text-[24px] text-ink mb-2">{counter.ticket.customer_name}</div>
-      <div className="text-[14px] text-ink-mute tracking-wide">
-        {counter.service ?? ""}
-        {counter.staff && <span className="text-line-2 mx-2">·</span>}
-        {counter.staff && <span className="text-gold-soft">with {counter.staff.display_name}</span>}
+
+      {/* Divider */}
+      <div style={{ width: "8vw", height: 2, background: "linear-gradient(90deg, #c9a86a, transparent)", margin: "3vh 0" }} />
+
+      {/* Customer name */}
+      <div style={{ fontSize: "3.5vw", color: "#f0ede6", fontWeight: 300, marginBottom: "1.5vh" }}>
+        {counter.ticket.customer_name}
+      </div>
+
+      {/* Service + staff */}
+      <div style={{ fontSize: "1.4vw", color: "#6b6a64", letterSpacing: "0.05em" }}>
+        {counter.service && <span>{counter.service}</span>}
+        {counter.service && counter.staff && <span style={{ margin: "0 0.8vw", color: "#3a3830" }}>·</span>}
+        {counter.staff && <span style={{ color: "#9bbd9b" }}>with {counter.staff.display_name}</span>}
       </div>
     </div>
   );
 }
 
-/* ── Multi-counter grid (2+ staff serving simultaneously) ──────── */
-function CounterGrid({ counters, t }) {
-  // Up to 4 counters fit elegantly; beyond that we get a tighter grid
+/* ── Multi-counter grid ──────────────────────────────────────── */
+function TvMultiCounters({ counters }) {
   const cols = counters.length <= 2 ? 1 : 2;
-  const fontSize = counters.length <= 2
-    ? "clamp(120px, 16vw, 220px)"
-    : counters.length <= 4
-      ? "clamp(80px, 10vw, 160px)"
-      : "clamp(60px, 7vw, 120px)";
+  const tokenSize = counters.length <= 2 ? "14vw" : counters.length <= 4 ? "9vw" : "7vw";
+  const nameSize  = counters.length <= 2 ? "2.5vw" : "1.8vw";
 
   return (
-    <div
-      className="grid gap-4 h-full"
-      style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
-    >
+    <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: "1.5vw", height: "100%", alignContent: "start" }}>
       {counters.map((c, i) => (
-        <CounterCard key={c.ticket.id} counter={c} fontSize={fontSize} index={i} t={t} />
+        <div key={c.ticket.id} style={{
+          border: "1px solid rgba(201,168,106,0.15)",
+          background: "rgba(201,168,106,0.03)",
+          padding: "2.5vh 2vw",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+          animation: "tvSlideIn 0.4s ease-out",
+        }}>
+          {/* Counter label */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1vh" }}>
+            <span style={{ color: "#c9a86a", fontSize: "0.9vw", letterSpacing: "0.2em", textTransform: "uppercase" }}>
+              Counter {String(i + 1).padStart(2, "0")}
+              {c.staff && <span style={{ color: "#6b6a64", margin: "0 0.5vw" }}>·</span>}
+              {c.staff && <span style={{ color: "#f0ede6" }}>{c.staff.display_name}</span>}
+            </span>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#4ade80", animation: "breathe 2s ease-in-out infinite", display: "inline-block" }} />
+          </div>
+
+          {/* Now Serving label */}
+          <div style={{ color: "#6b6a64", fontSize: "0.85vw", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: "0.5vh" }}>
+            Now Serving
+          </div>
+
+          {/* Token */}
+          <div key={c.ticket.token} style={{ fontSize: tokenSize, fontWeight: 200, color: "#c9a86a", lineHeight: 1, letterSpacing: "-0.02em" }}>
+            {c.ticket.token}
+          </div>
+
+          {/* Divider */}
+          <div style={{ width: "4vw", height: 1, background: "rgba(201,168,106,0.3)", margin: "1.5vh 0" }} />
+
+          {/* Name + service */}
+          <div style={{ fontSize: nameSize, color: "#f0ede6", fontWeight: 300, marginBottom: "0.5vh" }}>
+            {c.ticket.customer_name}
+          </div>
+          <div style={{ fontSize: "0.9vw", color: "#6b6a64" }}>{c.service ?? ""}</div>
+
+          {/* Elapsed */}
+          <TvElapsed startedAt={c.ticket.started_at} />
+        </div>
       ))}
     </div>
   );
 }
 
-function CounterCard({ counter, fontSize, index, t }) {
-  return (
-    <div className="relative corner-marks luxe-panel border border-line p-7 flex flex-col justify-between">
-      <span className="cm cm-tl" /><span className="cm cm-tr" /><span className="cm cm-bl" /><span className="cm cm-br" />
-      <div className="flex items-center justify-between">
-        <span className="ovline text-[11px] text-gold-soft">
-          Counter {String(index + 1).padStart(2, "0")}
-          {counter.staff && <span className="text-ink-mute mx-2">·</span>}
-          {counter.staff && <span className="text-ink">{counter.staff.display_name}</span>}
-        </span>
-        <span className="ovline text-[10px] text-[#9bbd9b] flex items-center">
-          <span className="pip breathe mr-1.5" /> {t("display.live")}
-        </span>
-      </div>
-
-      <div className="text-center my-4">
-        <div className="ovline text-[10px] mb-3">{t("display.now_serving")}</div>
-        <div
-          key={counter.ticket.token}
-          className="drift-up gold-text font-display font-light tracking-tightest leading-none"
-          style={{ fontSize }}
-        >
-          {counter.ticket.token}
-        </div>
-        <div className="rule-ornament my-4 text-[8px]"><span>✦</span></div>
-        <div className="text-[16px] text-ink mb-1 truncate">{counter.ticket.customer_name}</div>
-        <div className="text-[10px] text-ink-mute tracking-wide truncate">{counter.service}</div>
-      </div>
-
-      <ElapsedTime startedAt={counter.ticket.started_at} />
-    </div>
-  );
-}
-
-function ElapsedTime({ startedAt }) {
+function TvElapsed({ startedAt }) {
   const [now, setNow] = useState(new Date());
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
@@ -383,96 +451,100 @@ function ElapsedTime({ startedAt }) {
   const m = Math.floor(elapsed / 60);
   const s = elapsed % 60;
   return (
-    <div className="text-center text-[9px] text-ink-mute font-mono tracking-wide">
+    <div style={{ fontFamily: "monospace", fontSize: "0.8vw", color: "#3a3830", marginTop: "1vh", letterSpacing: "0.1em" }}>
       {String(m).padStart(2, "0")}:{String(s).padStart(2, "0")} elapsed
     </div>
   );
 }
 
-/* ── Up Next column ──────────────────────────────────────────── */
-function UpNextPanel({ waiting, services, t, branchSlug, branded }) {
-  return (
-    <div className="h-full flex flex-col">
-      <div className="flex items-baseline justify-between mb-6">
-        <div className="ovline text-[14px]">{t("display.up_next")}</div>
-        <span className="text-[12px] text-ink-mute font-mono">{waiting.length}</span>
-      </div>
-
-      <div className="flex-1 space-y-3 overflow-hidden">
-        {waiting.length === 0 ? (
-          <div className="text-[14px] text-ink-mute italic">—</div>
-        ) : waiting.slice(0, 8).map((tk, i) => (
-          <div
-            key={tk.id}
-            className="grid grid-cols-[100px_1fr] gap-4 items-baseline border-b border-line py-3"
-            style={{ opacity: 1 - i * 0.07 }}
-          >
-            <div className="font-display text-gold-soft" style={{ fontSize: "clamp(28px, 3vw, 42px)" }}>
-              {(tk.priority ?? 0) > 0 && <span className="text-[16px] text-gold mr-1">★</span>}
-              {tk.token}
-            </div>
-            <div>
-              <div className="text-[18px] text-ink truncate">{tk.customer_name}</div>
-              <div className="text-[11px] text-ink-mute uppercase tracking-[0.18em]">
-                {services[tk.service_id] ?? ""}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="rule-ornament mt-6 text-[10px]"><span>·</span></div>
-      {branded && (
-        <div className="text-[10px] text-ink-mute uppercase tracking-[0.22em] text-center mt-3">
-          azqueue.io · {branchSlug}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ── Paused-for-prayer hero (replaces center area) ────────────── */
-function PausedHero({ pauseStatus, t }) {
+/* ── Prayer pause hero ────────────────────────────────────────── */
+function TvPausedHero({ pauseStatus }) {
   const minLeft = Math.max(0, Math.round(pauseStatus.msLeft / 60000));
   return (
-    <div className="flex flex-col justify-center h-full">
-      <div className="ovline text-[14px] mb-6 text-[#9bbd9b]">{t("display.paused", { prayer: pauseStatus.prayer })}</div>
-      <div
-        className="font-display sage-text font-light tracking-tightest leading-none"
-        style={{ fontSize: "clamp(120px, 14vw, 240px)" }}
-      >
+    <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", height: "100%" }}>
+      <div style={{ color: "#9bbd9b", fontSize: "1.2vw", letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: "2vh" }}>
+        Paused for Prayer
+      </div>
+      <div style={{ fontSize: "clamp(80px, 14vw, 260px)", fontWeight: 200, color: "#9bbd9b", lineHeight: 1, textShadow: "0 0 60px rgba(127,163,127,0.2)" }}>
         {pauseStatus.prayer}
       </div>
-      <div className="rule-ornament my-8 text-[12px]"><span>✦</span></div>
-      <div className="text-[20px] text-[#9bbd9b]">{t("display.paused", { prayer: pauseStatus.prayer })}</div>
-      <div className="text-[14px] text-ink-mute mt-3 tracking-wide">
+      <div style={{ width: "8vw", height: 2, background: "linear-gradient(90deg, #9bbd9b, transparent)", margin: "3vh 0" }} />
+      <div style={{ fontSize: "2vw", color: "#9bbd9b", fontWeight: 300 }}>
         Resumes in {minLeft} min
       </div>
     </div>
   );
 }
 
-function Atmosphere({ variant }) {
+/* ── Up Next right column ─────────────────────────────────────── */
+function TvUpNext({ waiting, services, branded, branchSlug }) {
   return (
-    <div
-      aria-hidden
-      className="pointer-events-none absolute inset-0"
-      style={{
-        background: variant === "sage"
-          ? "radial-gradient(60% 80% at 50% 0%, rgba(127,163,127,0.12), transparent 70%), radial-gradient(40% 60% at 20% 80%, rgba(127,163,127,0.05), transparent 70%)"
-          : "radial-gradient(60% 80% at 50% 0%, rgba(201,168,106,0.08), transparent 70%), radial-gradient(40% 60% at 20% 80%, rgba(201,168,106,0.04), transparent 70%)",
-      }}
-    />
-  );
-}
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", borderLeft: "1px solid rgba(255,255,255,0.06)", paddingLeft: "3vw" }}>
+      {/* Section header */}
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: "2.5vh" }}>
+        <div style={{ color: "#6b6a64", fontSize: "1.1vw", letterSpacing: "0.25em", textTransform: "uppercase" }}>
+          Up Next
+        </div>
+        <div style={{ fontFamily: "monospace", fontSize: "1.4vw", color: "#3a3830" }}>
+          {waiting.length}
+        </div>
+      </div>
 
-function FullScreenShell({ children, variant = "gold" }) {
-  return (
-    <div
-      className="relative bg-bg text-ink min-h-screen overflow-hidden"
-      style={variant === "sage" ? { background: "linear-gradient(180deg, #0c100d 0%, #0a0d0a 100%)" } : undefined}
-    >
-      {children}
+      {/* Queue list */}
+      <div style={{ flex: 1, overflowY: "hidden" }}>
+        {waiting.length === 0 ? (
+          <div style={{ color: "#3a3830", fontSize: "1.5vw", fontStyle: "italic", marginTop: "2vh" }}>
+            Queue is empty
+          </div>
+        ) : (
+          waiting.slice(0, 7).map((tk, i) => (
+            <div
+              key={tk.id}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "auto 1fr",
+                gap: "1.5vw",
+                alignItems: "center",
+                borderBottom: "1px solid rgba(255,255,255,0.05)",
+                padding: "1.8vh 0",
+                opacity: Math.max(0.25, 1 - i * 0.1),
+              }}
+            >
+              {/* Token */}
+              <div style={{
+                fontSize: i === 0 ? "4vw" : "3vw",
+                fontWeight: 200,
+                color: i === 0 ? "#c9a86a" : "#8a8880",
+                lineHeight: 1,
+                minWidth: "6vw",
+                letterSpacing: "-0.02em",
+              }}>
+                {(tk.priority ?? 0) > 0 && <span style={{ fontSize: "1.2vw", color: "#c9a86a", marginRight: "0.2vw" }}>★</span>}
+                {tk.token}
+              </div>
+
+              {/* Name + service */}
+              <div>
+                <div style={{ fontSize: i === 0 ? "1.8vw" : "1.4vw", color: i === 0 ? "#f0ede6" : "#9a9890", fontWeight: 300, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {tk.customer_name}
+                </div>
+                {services[tk.service_id] && (
+                  <div style={{ fontSize: "0.85vw", color: "#4a4840", letterSpacing: "0.1em", textTransform: "uppercase", marginTop: "0.2vh" }}>
+                    {services[tk.service_id]}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Footer */}
+      {branded && (
+        <div style={{ marginTop: "auto", paddingTop: "2vh", borderTop: "1px solid rgba(255,255,255,0.04)", color: "#2a2820", fontSize: "0.75vw", letterSpacing: "0.2em", textTransform: "uppercase" }}>
+          azqueue.io
+        </div>
+      )}
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import { sendConfirmation } from "../lib/notifications";
+import { sendCheckinConfirmation } from "../lib/notify";
 import { findOrCreateCustomer, logQueueEvent, generatePersona } from "../lib/customers";
 import { getCustomerCard, punchDots, hasUnclaimedReward } from "../lib/loyalty";
 import { getEffectiveChecklist, buildChecklistMessage } from "../lib/checklists";
@@ -111,7 +111,21 @@ export default function CustomerCheckIn() {
       return setFormError(t("checkin.errors.could_not_checkin"));
     }
 
-    sendConfirmation(ticket.id);
+    // SMS confirmation via browser-direct Twilio (non-blocking)
+    if (phone.trim()) {
+      supabase
+        .from("tickets")
+        .select("id", { count: "exact", head: true })
+        .eq("branch_id", branch.id)
+        .eq("status", "waiting")
+        .neq("id", ticket.id)
+        .then(({ count }) => {
+          sendCheckinConfirmation(phone.trim(), name.trim(), tokenData, count ?? 0, branch.name);
+        })
+        .catch(() => {
+          sendCheckinConfirmation(phone.trim(), name.trim(), tokenData, 0, branch.name);
+        });
+    }
 
     // Create / update the customer profile so they appear in the Customers page.
     // Non-blocking — a failure here never prevents the customer from getting their ticket.

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useCheckin } from "../hooks/useCheckin";
 import LanguagePicker from "../components/LanguagePicker";
@@ -27,6 +27,18 @@ export default function Checkin() {
     position,
     submit,
   } = useCheckin();
+
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isKiosk = searchParams.get("kiosk") === "1";
+
+  // Kiosk redirect — once branch loads, send old /checkin/:id?kiosk=1 bookmarks
+  // to the new /q/:slug?kiosk=1 page which has full kiosk auto-reset support.
+  useEffect(() => {
+    if (isKiosk && branch?.slug) {
+      navigate(`/q/${branch.slug}?kiosk=1`, { replace: true });
+    }
+  }, [isKiosk, branch?.slug, navigate]);
 
   const [screen,           setScreen]           = useState(1); // 1 | 2 | 3 | 4
   const [serviceId,        setServiceId]        = useState(null);

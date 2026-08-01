@@ -303,14 +303,16 @@ function GeneralTab({ branch, reload }) {
   const [city,       setCity]       = useState(branch?.city ?? "");
   const [tz,         setTz]         = useState(branch?.timezone ?? "Asia/Kuala_Lumpur");
   const [brandColor, setBrandColor] = useState(branch?.brand_color ?? DEFAULT_BRAND_COLOR);
-  const [busy,  setBusy]  = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [busy,      setBusy]      = useState(false);
+  const [saved,     setSaved]     = useState(false);
+  const [saveError, setSaveError] = useState(null);
 
   useEffect(() => {
     setName(branch?.name ?? "");
     setCity(branch?.city ?? "");
     setTz(branch?.timezone ?? "Asia/Kuala_Lumpur");
     setBrandColor(branch?.brand_color ?? DEFAULT_BRAND_COLOR);
+    setSaveError(null);
   }, [branch?.id]);
 
   if (!branch) return <Empty hint="Select or create a branch first." />;
@@ -318,10 +320,16 @@ function GeneralTab({ branch, reload }) {
   async function save() {
     setBusy(true);
     setSaved(false);
-    await supabase
+    setSaveError(null);
+    const { error } = await supabase
       .from("branches")
       .update({ name, city, timezone: tz, brand_color: brandColor })
       .eq("id", branch.id);
+    if (error) {
+      setSaveError(error.message);
+      setBusy(false);
+      return;
+    }
     await reload();
     setBusy(false);
     setSaved(true);
@@ -330,7 +338,8 @@ function GeneralTab({ branch, reload }) {
 
   const { soft, deep } = deriveTints(brandColor);
 
-  const checkinUrl = `${typeof window !== "undefined" ? window.location.origin : "https://azqueue.io"}/checkin/${branch.id}`;
+  // Use /q/:slug — the clean customer check-in route, not the legacy /checkin/:id UUID path
+  const checkinUrl = `${typeof window !== "undefined" ? window.location.origin : "https://azqueue.io"}/q/${branch.slug}`;
 
   return (
     <div className="space-y-4">
@@ -345,6 +354,7 @@ function GeneralTab({ branch, reload }) {
         <div className="flex gap-3 items-center">
           <Button onClick={save} disabled={busy}>{busy ? "Saving…" : "Save changes"}</Button>
           {saved && <span className="text-[10px] text-[#9bbd9b]">Saved.</span>}
+          {saveError && <span className="text-[10px] text-[#d49185]">Error: {saveError}</span>}
         </div>
       </Card>
 
