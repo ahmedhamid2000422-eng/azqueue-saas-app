@@ -46,6 +46,9 @@ export default function BookingPage() {
   const [slots, setSlots] = useState([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
 
+  // Capacity cap — true when the day has hit max_daily_bookings
+  const [atCapacity, setAtCapacity] = useState(false);
+
   // Initial load — branch + services
   useEffect(() => {
     let cancelled = false;
@@ -77,19 +80,37 @@ export default function BookingPage() {
     (async () => {
       setSlotsLoading(true);
       const day = addDays(new Date(), dayOffset).toISOString().slice(0, 10);
-      const { data } = await supabase.rpc("get_available_slots", {
-        p_branch_id: branch.id,
-        p_day: day,
-        p_service_id: serviceId,
-      });
+
+      // Check daily capacity cap (non-blocking — runs in parallel with slot fetch)
+      const capacityCheck = branch.max_daily_bookings
+        ? supabase
+            .from("bookings")
+            .select("id", { count: "exact", head: true })
+            .eq("branch_id", branch.id)
+            .in("status", ["confirmed", "arrived", "pending"])
+            .gte("scheduled_at", day + "T00:00:00")
+            .lt("scheduled_at", day + "T23:59:59.999")
+        : Promise.resolve({ count: 0 });
+
+      const [{ data }, { count }] = await Promise.all([
+        supabase.rpc("get_available_slots", {
+          p_branch_id: branch.id,
+          p_day: day,
+          p_service_id: serviceId,
+        }),
+        capacityCheck,
+      ]);
+
       if (!cancelled) {
+        const capped = branch.max_daily_bookings != null && (count ?? 0) >= branch.max_daily_bookings;
+        setAtCapacity(capped);
         setSlots((data ?? []).map((r) => r.slot_at));
         setSlot(null); // reset when service/day changes
         setSlotsLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [branch?.id, serviceId, dayOffset]);
+  }, [branch?.id, serviceId, dayOffset, branch?.max_daily_bookings]);
 
   // Screen: validate the form, then show the review screen — nothing is
   // saved yet, so the customer gets a chance to double-check before we
@@ -263,6 +284,26 @@ export default function BookingPage() {
           <div className="ovline mb-3">{t("booking.pick_time")}</div>
           {slotsLoading ? (
             <div className="px-4 py-6 text-center text-ink-mute text-xs">{t("common.loading")}</div>
+          ) : atCapacity ? (
+            /* ── Fully booked — walk-in fallback ────────────────────────── */
+            <div className="border border-line bg-bg-elev p-6 text-center">
+              <div className="text-2xl mb-3">🔒</div>
+              <p className="font-display text-base font-light tracking-tight text-ink mb-1">
+                Fully booked for this day
+              </p>
+              <p className="text-xs text-ink-soft mb-5">
+                All appointment slots are taken. You can still join the walk-in queue — we'll serve you in order of arrival.
+              </p>
+              <Link
+                to={`/q/${branch.slug}`}
+                className="inline-block bg-[#0f1a14] text-gold-soft text-[11px] ovline px-5 py-2.5 hover:bg-[#1a2b1e] transition"
+              >
+                Join walk-in queue →
+              </Link>
+              <p className="text-[10px] text-ink-mute mt-4">
+                Try a different day if you'd prefer to book ahead.
+              </p>
+            </div>
           ) : slots.length === 0 ? (
             <div className="px-4 py-6 text-center text-ink-mute text-xs italic">{t("booking.no_slots")}</div>
           ) : (

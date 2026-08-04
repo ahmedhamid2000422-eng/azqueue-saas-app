@@ -143,6 +143,22 @@ export async function sendWaitUpdate(phone, name, position, branchName = "AzQueu
  * @param {string} branchName  Gym/branch display name
  * @param {string} [bookingId] Booking UUID — when provided, link to /confirm/:id is appended
  */
+/**
+ * Custom broadcast alert — staff-typed message sent to a single customer.
+ * Call once per customer in a loop; each send is fire-and-forget.
+ *
+ * @param {string} phone       Customer phone
+ * @param {string} name        Customer name (used to personalise greeting)
+ * @param {string} message     The custom alert text the staff typed
+ * @param {string} [branchName] Branch display name appended as footer
+ */
+export async function sendBroadcastAlert(phone, name, message, branchName = "AzQueue") {
+  if (!phone || !message) return;
+  const greeting = name ? `Hi ${name},\n` : "";
+  const body = `${greeting}${message}\n— ${branchName}`;
+  await sendSms(phone, body);
+}
+
 export async function sendClassReminder(phone, name, className, when, branchName, bookingId) {
   if (!phone) return;
   const dt = new Date(when);

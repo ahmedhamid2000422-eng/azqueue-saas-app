@@ -299,10 +299,11 @@ function deriveTints(hex) {
 }
 
 function GeneralTab({ branch, reload }) {
-  const [name,       setName]       = useState(branch?.name ?? "");
-  const [city,       setCity]       = useState(branch?.city ?? "");
-  const [tz,         setTz]         = useState(branch?.timezone ?? "Asia/Kuala_Lumpur");
-  const [brandColor, setBrandColor] = useState(branch?.brand_color ?? DEFAULT_BRAND_COLOR);
+  const [name,            setName]            = useState(branch?.name ?? "");
+  const [city,            setCity]            = useState(branch?.city ?? "");
+  const [tz,              setTz]              = useState(branch?.timezone ?? "Asia/Kuala_Lumpur");
+  const [brandColor,      setBrandColor]      = useState(branch?.brand_color ?? DEFAULT_BRAND_COLOR);
+  const [maxBookings,     setMaxBookings]     = useState(branch?.max_daily_bookings ?? "");
   const [busy,      setBusy]      = useState(false);
   const [saved,     setSaved]     = useState(false);
   const [saveError, setSaveError] = useState(null);
@@ -312,6 +313,7 @@ function GeneralTab({ branch, reload }) {
     setCity(branch?.city ?? "");
     setTz(branch?.timezone ?? "Asia/Kuala_Lumpur");
     setBrandColor(branch?.brand_color ?? DEFAULT_BRAND_COLOR);
+    setMaxBookings(branch?.max_daily_bookings ?? "");
     setSaveError(null);
   }, [branch?.id]);
 
@@ -321,9 +323,16 @@ function GeneralTab({ branch, reload }) {
     setBusy(true);
     setSaved(false);
     setSaveError(null);
+    const parsed = parseInt(maxBookings, 10);
     const { error } = await supabase
       .from("branches")
-      .update({ name, city, timezone: tz, brand_color: brandColor })
+      .update({
+        name,
+        city,
+        timezone: tz,
+        brand_color: brandColor,
+        max_daily_bookings: (!maxBookings || isNaN(parsed) || parsed <= 0) ? null : parsed,
+      })
       .eq("id", branch.id);
     if (error) {
       setSaveError(error.message);
@@ -349,6 +358,14 @@ function GeneralTab({ branch, reload }) {
           <Field label="City"        value={city} onChange={setCity} />
           <Field label="Timezone"    value={tz}   onChange={setTz} />
           <Field label="Slug"        value={branch.slug ?? ""} onChange={() => {}} readOnly />
+          <Field
+            label="Max bookings per day"
+            value={maxBookings}
+            onChange={setMaxBookings}
+            type="number"
+            placeholder="Unlimited"
+            hint="When this limit is reached the booking page shows 'Fully booked — try walk-in'. Leave blank for no limit."
+          />
         </div>
         <div className="rule-ornament my-5 text-[8px]"><span>·</span></div>
         <div className="flex gap-3 items-center">
@@ -1132,6 +1149,25 @@ function StaffTab({ branch }) {
       setError(insertError.message ?? "Could not add this teammate. Please try again.");
       return; // keep the form filled in so nothing is silently lost
     }
+
+    // Send professional invitation email (non-blocking — never fails the invite)
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      await supabase.functions.invoke("invite-staff", {
+        body: {
+          email:       email.trim().toLowerCase(),
+          displayName: name.trim(),
+          role,
+          branchName:  branch.name,
+          inviterName: session?.user?.user_metadata?.full_name
+                       ?? session?.user?.email?.split("@")[0]
+                       ?? undefined,
+        },
+      });
+    } catch {
+      // Email failure is silent — the staff row is already created
+    }
+
     setName(""); setEmail(""); setRole("staff");
     load();
   }
@@ -1684,7 +1720,7 @@ function Empty({ hint }) {
   );
 }
 
-function Field({ label, value, onChange, placeholder, type = "text", readOnly, autoFocus }) {
+function Field({ label, value, onChange, placeholder, type = "text", readOnly, autoFocus, hint }) {
   return (
     <div>
       <div className="ovline mb-1.5 text-[9px]">{label}</div>
@@ -1699,6 +1735,7 @@ function Field({ label, value, onChange, placeholder, type = "text", readOnly, a
           readOnly ? "border-line text-ink-mute" : "border-line focus:border-gold-deep"
         }`}
       />
+      {hint && <p className="text-[10px] text-ink-mute mt-1 leading-relaxed">{hint}</p>}
     </div>
   );
 }

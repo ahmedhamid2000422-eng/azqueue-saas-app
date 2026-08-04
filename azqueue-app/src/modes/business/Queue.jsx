@@ -6,7 +6,7 @@ import { useBranch } from "../../lib/BranchContext";
 import { useAutopilot } from "../../hooks/useAutopilot";
 import { logServiceTime } from "../../lib/autopilot";
 import { sendCallNotice, sendThanks } from "../../lib/notifications";
-import { sendCalledNotification } from "../../lib/notify";
+import { sendCalledNotification, sendBroadcastAlert } from "../../lib/notify";
 import { announceTicket } from "../../lib/tts";
 import { arrivalState, formatEta } from "../../lib/arrival";
 import { loadOpenEscalations, resolveEscalation } from "../../lib/sla";
@@ -77,6 +77,12 @@ export default function Queue() {
 
   // SMS "Your turn" button: ticketId → "sending" | "sent" | "error"
   const [smsSent, setSmsSent] = useState({});
+
+  // Broadcast alert modal
+  const [alertOpen,    setAlertOpen]    = useState(false);
+  const [alertMessage, setAlertMessage] = useState("");
+  const [alertSending, setAlertSending] = useState(false);
+  const [alertResult,  setAlertResult]  = useState(null); // { sent, failed }
 
   // Escalation state
   const [escalations, setEscalations] = useState([]);
@@ -632,6 +638,47 @@ export default function Queue() {
     }
   }
 
+  // ── Broadcast SMS alert ──────────────────────────────────────────────
+  // Sends a staff-typed message to every customer currently in the queue
+  // (waiting or serving) who has a phone number.
+  async function sendBroadcast() {
+    if (!alertMessage.trim() || alertSending) return;
+    setAlertSending(true);
+    setAlertResult(null);
+
+    const targets = tickets.filter(
+      (t) => ["waiting", "serving"].includes(t.status) && t.customer_phone
+    );
+
+    let sent = 0, failed = 0;
+    await Promise.all(
+      targets.map(async (t) => {
+        try {
+          await sendBroadcastAlert(
+            t.customer_phone,
+            t.customer_name ?? "",
+            alertMessage.trim(),
+            branch?.name ?? "AzQueue",
+          );
+          sent++;
+        } catch {
+          failed++;
+        }
+      })
+    );
+
+    setAlertSending(false);
+    setAlertResult({ sent, failed, total: targets.length });
+    if (targets.length === 0 || sent + failed === targets.length) {
+      // Auto-close after showing result
+      setTimeout(() => {
+        setAlertOpen(false);
+        setAlertMessage("");
+        setAlertResult(null);
+      }, 3000);
+    }
+  }
+
   // ── Manager escalation overrides ───────────────────────────────────
 
   // Resolve an escalation (manager only)
@@ -784,6 +831,74 @@ export default function Queue() {
           onSkip={() => submitSurveyAndComplete(0, "")}
         />
       )}
+      {/* ── Broadcast Alert Modal ─────────────────────────────────────── */}
+      {alertOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-bg border border-line w-full max-w-md p-7 shadow-2xl">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <div className="ovline text-[9px] text-gold-soft mb-1">Queue Broadcast</div>
+                <h2 className="font-display text-xl font-light tracking-tight">Send alert to queue</h2>
+              </div>
+              <button
+                onClick={() => { setAlertOpen(false); setAlertMessage(""); setAlertResult(null); }}
+                className="text-ink-mute hover:text-ink text-lg leading-none"
+                disabled={alertSending}
+              >
+                ✕
+              </button>
+            </div>
+
+            {alertResult ? (
+              <div className="text-center py-4">
+                {alertResult.total === 0 ? (
+                  <p className="text-ink-soft text-sm">No customers in queue with a phone number.</p>
+                ) : (
+                  <>
+                    <div className="text-2xl mb-2">{alertResult.failed === 0 ? "✓" : "⚠"}</div>
+                    <p className="text-sm text-ink">
+                      Sent to <strong>{alertResult.sent}</strong> of {alertResult.total} customers
+                      {alertResult.failed > 0 && ` · ${alertResult.failed} failed`}
+                    </p>
+                  </>
+                )}
+              </div>
+            ) : (
+              <>
+                <p className="text-xs text-ink-soft mb-4">
+                  This message will be sent via SMS to all <strong>{tickets.filter(t => ["waiting","serving"].includes(t.status) && t.customer_phone).length}</strong> customers
+                  currently in queue who have a phone number.
+                </p>
+                <textarea
+                  value={alertMessage}
+                  onChange={(e) => setAlertMessage(e.target.value)}
+                  placeholder="e.g. We're running about 20 minutes behind schedule. Thank you for your patience!"
+                  rows={4}
+                  className="w-full bg-bg-elev border border-line focus:border-gold-deep outline-none text-sm px-3 py-2.5 text-ink placeholder:text-ink-mute resize-none mb-4"
+                  autoFocus
+                />
+                <div className="flex gap-3">
+                  <button
+                    onClick={sendBroadcast}
+                    disabled={!alertMessage.trim() || alertSending}
+                    className="flex-1 bg-[#0f1a14] text-gold-soft text-[11px] ovline px-4 py-2.5 hover:bg-[#1a2b1e] transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {alertSending ? "Sending…" : "📢 Send to all in queue"}
+                  </button>
+                  <button
+                    onClick={() => { setAlertOpen(false); setAlertMessage(""); }}
+                    disabled={alertSending}
+                    className="text-[11px] ovline px-4 py-2.5 border border-line text-ink-mute hover:text-ink hover:border-line-2 transition disabled:opacity-40"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       <RewardToast
         reward={loyaltyReward}
         onClose={() => setLoyaltyReward(null)}
@@ -830,19 +945,29 @@ export default function Queue() {
               {customerUrl}
             </a>
           </div>
-          <button
-            onClick={() => reload()}
-            disabled={busy}
-            className="text-[9px] border border-line px-2.5 py-1 text-ink-mute hover:text-ink hover:border-line-2 transition disabled:opacity-40 ovline"
-            title="Force refresh — use this if a QR check-in isn't showing up"
-          >
-            ↺ Refresh
-            {lastRefreshed && (
-              <span className="ml-1.5 opacity-50">
-                {lastRefreshed.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-              </span>
-            )}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setAlertOpen(true)}
+              disabled={tickets.filter(t => ["waiting","serving"].includes(t.status)).length === 0}
+              className="text-[9px] border border-line px-2.5 py-1 text-ink-mute hover:text-amber-400 hover:border-amber-800 transition disabled:opacity-30 ovline"
+              title="Send a custom SMS alert to all customers currently in queue"
+            >
+              📢 Alert queue
+            </button>
+            <button
+              onClick={() => reload()}
+              disabled={busy}
+              className="text-[9px] border border-line px-2.5 py-1 text-ink-mute hover:text-ink hover:border-line-2 transition disabled:opacity-40 ovline"
+              title="Force refresh — use this if a QR check-in isn't showing up"
+            >
+              ↺ Refresh
+              {lastRefreshed && (
+                <span className="ml-1.5 opacity-50">
+                  {lastRefreshed.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
       </header>
 
