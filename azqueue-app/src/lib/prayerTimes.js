@@ -42,14 +42,20 @@ function ddmmyyyy(d = new Date()) {
 }
 
 /**
- * Fetch today's prayer times for a given lat/lng.
+ * Fetch prayer times for a given lat/lng and optional date (defaults to today).
  * Returns { fajr, dhuhr, asr, maghrib, isha, jumah } in HH:MM format.
+ *
+ * @param {object} opts
+ * @param {number}  opts.lat  - latitude
+ * @param {number}  opts.lng  - longitude
+ * @param {Date}   [opts.date] - date to fetch for (defaults to today)
  */
-export async function fetchPrayerTimes({ lat, lng } = {}) {
+export async function fetchPrayerTimes({ lat, lng, date: dateArg } = {}) {
   // No coordinates → use sensible default
   if (lat == null || lng == null) return FALLBACK_KL;
 
-  const date = todayDate();
+  const d = dateArg instanceof Date ? dateArg : new Date();
+  const date = d.toISOString().slice(0, 10); // YYYY-MM-DD
   const key = cacheKey(lat, lng, date);
 
   // 1. Cache hit
@@ -62,7 +68,7 @@ export async function fetchPrayerTimes({ lat, lng } = {}) {
 
   // 2. Fetch from Aladhan
   try {
-    const url = `https://api.aladhan.com/v1/timings/${ddmmyyyy()}?latitude=${lat}&longitude=${lng}&method=2`;
+    const url = `https://api.aladhan.com/v1/timings/${ddmmyyyy(d)}?latitude=${lat}&longitude=${lng}&method=2`;
     const res = await fetch(url);
     if (!res.ok) throw new Error(`Aladhan ${res.status}`);
     const json = await res.json();

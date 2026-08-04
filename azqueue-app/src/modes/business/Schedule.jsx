@@ -104,11 +104,11 @@ export default function Schedule() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const t = await fetchPrayerTimes({ lat: branch?.lat, lng: branch?.lng });
+      const t = await fetchPrayerTimes({ lat: branch?.lat, lng: branch?.lng, date });
       if (!cancelled) setPrayerTimes(t);
     })();
     return () => { cancelled = true; };
-  }, [branch?.lat, branch?.lng]);
+  }, [branch?.lat, branch?.lng, date]);
 
   // ── Derived: service name map, staff load, reflow issues ─────────────
   // IMPORTANT: all useMemo hooks must run unconditionally before any early
