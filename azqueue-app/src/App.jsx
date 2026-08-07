@@ -21,6 +21,7 @@ import SurveyPage from "./pages/SurveyPage";
 import MarketSurveyPage from "./pages/MarketSurveyPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import Legal from "./pages/Legal";
+import BusinessLegal from "./pages/BusinessLegal";
 import Checkin from "./pages/Checkin";
 import Display from "./pages/Display";
 import ResetPassword from "./pages/ResetPassword";
@@ -56,6 +57,8 @@ export default function App() {
       <Route path="/t/:ticketId"       element={<CustomerTicket />} />
       <Route path="/display/:slug"     element={<TvDisplay />} />
       <Route path="/b/:slug"           element={<BookingPage />} />
+      <Route path="/b/:slug/privacy"   element={<BusinessLegal />} />
+      <Route path="/b/:slug/terms"     element={<BusinessLegal />} />
       <Route path="/survey/:slug"      element={<SurveyPage />} />
       <Route path="/survey"            element={<SurveyPage />} />
       <Route path="/market-survey"     element={<MarketSurveyPage />} />
