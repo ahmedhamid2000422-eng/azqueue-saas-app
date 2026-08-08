@@ -73,6 +73,10 @@ function TermsContent({ name }) {
         `You may opt out of the SMS program at any time by replying STOP to any message from us. You will receive a single confirmation and will not be contacted via SMS again unless you re-subscribe.`,
         `To re-subscribe, reply START to our number. For assistance, reply HELP.`,
       ]}/>
+      <Section title="No third-party sharing" paragraphs={[
+        `Your mobile phone number and SMS opt-in consent are collected solely for the purpose of sending you transactional messages from ${name}. This information is never sold, shared, or transferred to third parties or affiliates for marketing or promotional purposes.`,
+        `Opt-in data will not be used for any purpose other than delivering the SMS notifications described above.`,
+      ]}/>
       <Section title="Carrier disclaimer" paragraphs={[
         `Carriers are not liable for delayed or undelivered messages.`,
       ]}/>
