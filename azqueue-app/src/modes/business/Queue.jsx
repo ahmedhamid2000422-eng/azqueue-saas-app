@@ -77,6 +77,7 @@ export default function Queue() {
 
   // SMS "Your turn" button: ticketId → "sending" | "sent" | "error"
   const [smsSent, setSmsSent] = useState({});
+  const [clearConfirm, setClearConfirm] = useState(false);
 
   // Broadcast alert modal
   const [alertOpen,    setAlertOpen]    = useState(false);
@@ -747,6 +748,20 @@ export default function Queue() {
     setBusy(false);
   }
 
+  async function clearQueue() {
+    setBusy(true);
+    setError(null);
+    const { error: e } = await supabase
+      .from("tickets")
+      .update({ status: "cancelled", completed_at: new Date().toISOString() })
+      .eq("branch_id", branch.id)
+      .in("status", ["waiting", "serving"]);
+    setClearConfirm(false);
+    if (e) { setBusy(false); return setError(e.message); }
+    await reload();
+    setBusy(false);
+  }
+
   /* ── Autopilot ─────────────────────────────────────────────────── */
   const autopilot = useAutopilot({
     branch,
@@ -831,6 +846,27 @@ export default function Queue() {
           onSkip={() => submitSurveyAndComplete(0, "")}
         />
       )}
+      {/* ── Clear Queue Confirmation ─────────────────────────────────── */}
+      {clearConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-bg border border-line w-full max-w-sm p-7 shadow-2xl">
+            <div className="ovline text-[9px] text-[#d49185] mb-2">End of day</div>
+            <h2 className="font-display text-xl font-light tracking-tight mb-3">Clear entire queue?</h2>
+            <p className="text-sm text-ink-soft mb-6">
+              This will cancel all {waiting.length + (serving ? 1 : 0)} remaining ticket{(waiting.length + (serving ? 1 : 0)) !== 1 ? "s" : ""} in the queue. This cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <Button onClick={clearQueue} disabled={busy} className="flex-1" style={{ background: "#6b2e2e", borderColor: "#6b2e2e" }}>
+                Yes, clear queue
+              </Button>
+              <Button variant="ghost" onClick={() => setClearConfirm(false)} disabled={busy} className="flex-1">
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Broadcast Alert Modal ─────────────────────────────────────── */}
       {alertOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -953,6 +989,14 @@ export default function Queue() {
               title="Send a custom SMS alert to all customers currently in queue"
             >
               📢 Alert queue
+            </button>
+            <button
+              onClick={() => setClearConfirm(true)}
+              disabled={waiting.length === 0 && !serving}
+              className="text-[9px] border border-line px-2.5 py-1 text-ink-mute hover:text-[#d49185] hover:border-red-900 transition disabled:opacity-30 ovline"
+              title="Cancel all remaining tickets — use at end of day"
+            >
+              🗑 Clear queue
             </button>
             <button
               onClick={() => reload()}
