@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import { supabase } from "../lib/supabaseClient";
+import { useParams, useLocation } from "react-router-dom";
+import { supabase } from "../lib/supabase";
 import SiteNav from "../components/SiteNav";
 import SiteFooter from "../components/SiteFooter";
 
@@ -87,9 +87,12 @@ function TermsContent({ name }) {
 }
 
 export default function BusinessLegal() {
-  const { slug, doc } = useParams();
+  const { slug } = useParams();
+  const { pathname } = useLocation();
   const [businessName, setBusinessName] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const isPrivacy = pathname.endsWith("/privacy");
 
   useEffect(() => {
     async function load() {
@@ -109,9 +112,7 @@ export default function BusinessLegal() {
     load();
   }, [slug]);
 
-  useEffect(() => { window.scrollTo(0, 0); }, [doc]);
-
-  const isPrivacy = doc === "privacy";
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
   const title = isPrivacy ? "Privacy Policy" : "Terms of Service";
 
   return (
