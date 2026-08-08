@@ -35,6 +35,7 @@ export default function CustomerCheckIn() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [smsConsent, setSmsConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
 
@@ -111,8 +112,8 @@ export default function CustomerCheckIn() {
       return setFormError(t("checkin.errors.could_not_checkin"));
     }
 
-    // SMS confirmation via browser-direct Twilio (non-blocking)
-    if (phone.trim()) {
+    // SMS confirmation via browser-direct Twilio (non-blocking) — only if customer opted in
+    if (smsConsent && phone.trim()) {
       supabase
         .from("tickets")
         .select("id", { count: "exact", head: true })
@@ -277,6 +278,24 @@ export default function CustomerCheckIn() {
           isKiosk={isKiosk}
           optional
         />
+
+        {/* SMS consent — separate optional checkbox, unchecked by default (A2P 10DLC requirement) */}
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={smsConsent}
+            onChange={e => setSmsConsent(e.target.checked)}
+            className="mt-0.5 shrink-0 accent-[#c9a86a]"
+          />
+          <span className="text-[11px] text-ink-mute leading-relaxed">
+            I agree to receive SMS text messages from {branch?.name} about my queue status and appointment updates.
+            Message frequency varies (typically 1–5 per visit). Msg &amp; data rates may apply.
+            Reply <strong>STOP</strong> to cancel, <strong>HELP</strong> for help.{" "}
+            <a href={`/b/${slug}/privacy`} target="_blank" rel="noopener noreferrer" className="underline hover:text-ink">Privacy Policy</a>
+            {" · "}
+            <a href={`/b/${slug}/terms`} target="_blank" rel="noopener noreferrer" className="underline hover:text-ink">Terms</a>
+          </span>
+        </label>
 
         {formError && (
           <div className="text-[12px] text-[#d49185] bg-[#b56b5f]/10 border border-[#b56b5f]/30 px-3 py-2">

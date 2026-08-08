@@ -37,6 +37,7 @@ export default function BookingPage() {
   const [slot, setSlot] = useState(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [smsConsent, setSmsConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [confirmed, setConfirmed] = useState(null); // booking row after success
   const [error, setError] = useState(null);
@@ -149,7 +150,7 @@ export default function BookingPage() {
     // just logs a dry-run row; either way the customer still sees their
     // confirmation screen (QA bug B8 — this call was previously missing
     // entirely, so no WhatsApp message ever went out for a booking).
-    sendBookingConfirmation(data.id).catch(() => {});
+    if (smsConsent) sendBookingConfirmation(data.id).catch(() => {});
 
     setReviewing(false);
     setConfirmed(data);
@@ -336,6 +337,24 @@ export default function BookingPage() {
           <>
             <Field label={t("checkin.name_label")} value={name} onChange={setName} placeholder={t("checkin.name_placeholder")} />
             <Field label={t("checkin.phone_label")} value={phone} onChange={setPhone} placeholder={t("checkin.phone_placeholder")} type="tel" />
+
+            {/* SMS consent — separate optional checkbox, unchecked by default (A2P 10DLC requirement) */}
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={smsConsent}
+                onChange={e => setSmsConsent(e.target.checked)}
+                className="mt-0.5 shrink-0 accent-[#c9a86a]"
+              />
+              <span className="text-[11px] text-ink-mute leading-relaxed">
+                I agree to receive SMS text messages from {branch?.name} about my booking and appointment updates.
+                Message frequency varies (typically 1–5 per visit). Msg &amp; data rates may apply.
+                Reply <strong>STOP</strong> to cancel, <strong>HELP</strong> for help.{" "}
+                <a href={`/b/${slug}/privacy`} target="_blank" rel="noopener noreferrer" className="underline hover:text-ink">Privacy Policy</a>
+                {" · "}
+                <a href={`/b/${slug}/terms`} target="_blank" rel="noopener noreferrer" className="underline hover:text-ink">Terms</a>
+              </span>
+            </label>
 
             {error && <FormError message={error} />}
 
