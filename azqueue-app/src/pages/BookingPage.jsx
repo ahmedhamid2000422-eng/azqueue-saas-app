@@ -369,6 +369,14 @@ export default function BookingPage() {
         )}
       </form>
 
+      {/* SMS disclosure — always visible for Twilio A2P compliance */}
+      <div className="mt-6 text-[10px] text-ink-mute leading-relaxed border-t border-line pt-4">
+        <strong className="text-ink-mute">Text Messaging:</strong> When you provide your phone number and opt in via the checkbox above, you consent to receive SMS text messages from {branch?.name} about your booking and queue status. This consent is optional — you can book without opting in. Message frequency varies (typically 1–5 per visit). Msg &amp; data rates may apply. Reply <strong>STOP</strong> to cancel, <strong>HELP</strong> for help.{" "}
+        <a href={`/b/${slug}/privacy`} target="_blank" rel="noopener noreferrer" className="underline">Privacy Policy</a>
+        {" · "}
+        <a href={`/b/${slug}/terms`} target="_blank" rel="noopener noreferrer" className="underline">Terms</a>
+      </div>
+
       {/* FAQ — owner-editable, replaces ad-hoc WhatsApp Q&A */}
       {faqItems.length > 0 && (
         <div className="mt-10">
