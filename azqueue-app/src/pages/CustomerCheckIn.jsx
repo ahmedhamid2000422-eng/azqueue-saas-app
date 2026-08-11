@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { sendCheckinConfirmation } from "../lib/notify";
+import { sendCheckinEmail } from "../lib/notifyEmail";
 import { findOrCreateCustomer, logQueueEvent, generatePersona } from "../lib/customers";
 import { getCustomerCard, punchDots, hasUnclaimedReward } from "../lib/loyalty";
 import { getEffectiveChecklist, buildChecklistMessage } from "../lib/checklists";
@@ -112,20 +113,33 @@ export default function CustomerCheckIn() {
       return setFormError(t("checkin.errors.could_not_checkin"));
     }
 
-    // SMS confirmation via browser-direct Twilio (non-blocking) — only if customer opted in
-    if (smsConsent && phone.trim()) {
+    // Confirmation notifications (non-blocking). Email is the primary channel —
+    // transactional, no carrier registration needed. SMS only if opted in.
+    if (email.trim() || (smsConsent && phone.trim())) {
+      const notify = (ahead) => {
+        if (email.trim()) {
+          sendCheckinEmail({
+            email:      email.trim(),
+            name:       name.trim(),
+            token:      tokenData,
+            position:   ahead,
+            branchName: branch.name,
+            ticketId:   ticket.id,
+          });
+        }
+        if (smsConsent && phone.trim()) {
+          sendCheckinConfirmation(phone.trim(), name.trim(), tokenData, ahead, branch.name);
+        }
+      };
+
       supabase
         .from("tickets")
         .select("id", { count: "exact", head: true })
         .eq("branch_id", branch.id)
         .eq("status", "waiting")
         .neq("id", ticket.id)
-        .then(({ count }) => {
-          sendCheckinConfirmation(phone.trim(), name.trim(), tokenData, count ?? 0, branch.name);
-        })
-        .catch(() => {
-          sendCheckinConfirmation(phone.trim(), name.trim(), tokenData, 0, branch.name);
-        });
+        .then(({ count }) => notify(count ?? 0))
+        .catch(() => notify(0));
     }
 
     // Create / update the customer profile so they appear in the Customers page.

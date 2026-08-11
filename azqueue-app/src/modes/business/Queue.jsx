@@ -7,6 +7,7 @@ import { useAutopilot } from "../../hooks/useAutopilot";
 import { logServiceTime } from "../../lib/autopilot";
 import { sendCallNotice, sendThanks } from "../../lib/notifications";
 import { sendCalledNotification, sendBroadcastAlert } from "../../lib/notify";
+import { sendCalledEmail } from "../../lib/notifyEmail";
 import { announceTicket } from "../../lib/tts";
 import { arrivalState, formatEta } from "../../lib/arrival";
 import { loadOpenEscalations, resolveEscalation } from "../../lib/sla";
@@ -111,8 +112,8 @@ export default function Queue() {
     // it automatically retries with the base columns so the queue still loads.
     try {
       let active = null;
-      const fullCols = "id, token, status, customer_name, customer_phone, service_id, staff_id, priority, source, created_at, called_at, started_at, completed_at, branch_id, notes, assigned_station_id, bounce_count, is_premium, requested_advisor_id, advisor_fee";
-      const baseCols = "id, token, status, customer_name, customer_phone, service_id, staff_id, priority, source, created_at, called_at, started_at, completed_at, branch_id, notes, is_premium, requested_advisor_id, advisor_fee";
+      const fullCols = "id, token, status, customer_name, customer_phone, customer_email, service_id, staff_id, priority, source, created_at, called_at, started_at, completed_at, branch_id, notes, assigned_station_id, bounce_count, is_premium, requested_advisor_id, advisor_fee";
+      const baseCols = "id, token, status, customer_name, customer_phone, customer_email, service_id, staff_id, priority, source, created_at, called_at, started_at, completed_at, branch_id, notes, is_premium, requested_advisor_id, advisor_fee";
 
       const { data: a1, error: e1 } = await supabase
         .from("tickets")
@@ -414,18 +415,32 @@ export default function Queue() {
       counter:      counterLabel,
       branchId:     branch?.id,
     });
-    // Twilio SMS (C7) — direct SMS when ticket is called, if customer has a phone
-    if (next.customer_phone) {
+    // "It's your turn" notifications — email first (transactional, always on),
+    // SMS as a secondary channel when a phone number is on the ticket.
+    if (next.customer_email || next.customer_phone) {
       const myStaff   = staffList.find((s) => s.id === user?.id);
       const staffName = myStaff?.display_name ?? (user?.email?.split("@")[0] ?? "Staff");
-      sendCalledNotification(
-        next.customer_phone,
-        next.customer_name ?? "Customer",
-        next.token,
-        counterLabel ?? "Counter 1",
-        staffName,
-        branch?.name,
-      );
+
+      if (next.customer_email) {
+        sendCalledEmail({
+          email:      next.customer_email,
+          name:       next.customer_name ?? "Customer",
+          token:      next.token,
+          counter:    counterLabel ?? "the front desk",
+          staffName,
+          branchName: branch?.name,
+        });
+      }
+      if (next.customer_phone) {
+        sendCalledNotification(
+          next.customer_phone,
+          next.customer_name ?? "Customer",
+          next.token,
+          counterLabel ?? "Counter 1",
+          staffName,
+          branch?.name,
+        );
+      }
     }
     await reload();
     setBusy(false);

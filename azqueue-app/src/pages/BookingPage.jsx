@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { sendBookingConfirmation } from "../lib/notifications";
+import { sendBookingEmail } from "../lib/notifyEmail";
 import LanguagePicker from "../components/LanguagePicker";
 import Button from "../components/Button";
 import LuxeFrame from "../components/LuxeFrame";
@@ -37,6 +38,7 @@ export default function BookingPage() {
   const [slot, setSlot] = useState(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [smsConsent, setSmsConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [confirmed, setConfirmed] = useState(null); // booking row after success
@@ -137,6 +139,7 @@ export default function BookingPage() {
         service_id: serviceId,
         customer_name: name.trim(),
         customer_phone: phone.trim(),
+        ...(email.trim() ? { customer_email: email.trim() } : {}),
         scheduled_at: slot,
         status: "confirmed",
       })
@@ -150,6 +153,19 @@ export default function BookingPage() {
     // just logs a dry-run row; either way the customer still sees their
     // confirmation screen (QA bug B8 — this call was previously missing
     // entirely, so no WhatsApp message ever went out for a booking).
+    if (email.trim()) {
+      sendBookingEmail({
+        email:       email.trim(),
+        name:        name.trim(),
+        when:        new Date(slot).toLocaleString("en-US", {
+                       weekday: "long", month: "long", day: "numeric",
+                       hour: "numeric", minute: "2-digit",
+                     }),
+        serviceName: services.find((s) => s.id === serviceId)?.name ?? "",
+        branchName:  branch?.name,
+        bookingId:   data.id,
+      });
+    }
     if (smsConsent) sendBookingConfirmation(data.id).catch(() => {});
 
     setReviewing(false);
@@ -337,6 +353,7 @@ export default function BookingPage() {
           <>
             <Field label={t("checkin.name_label")} value={name} onChange={setName} placeholder={t("checkin.name_placeholder")} />
             <Field label={t("checkin.phone_label")} value={phone} onChange={setPhone} placeholder={t("checkin.phone_placeholder")} type="tel" />
+            <Field label="Email — for your confirmation" value={email} onChange={setEmail} placeholder="you@example.com" type="email" />
 
             {/* SMS consent — separate optional checkbox, unchecked by default (A2P 10DLC requirement) */}
             <label className="flex items-start gap-3 cursor-pointer">
