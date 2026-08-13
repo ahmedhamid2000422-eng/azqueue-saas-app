@@ -89,7 +89,8 @@ export async function sendCheckinConfirmation(phone, name, token, position, bran
   const body  =
     `Hi ${name}, you joined the queue at ${branchName}.\n` +
     `You are #${token} · ${ahead} ${ahead === 1 ? "person" : "people"} ahead.\n` +
-    `Est. wait: ~${wait} min. We'll text you when it's your turn.`;
+    `Est. wait: ~${wait} min. We'll text you when it's your turn.\n` +
+    `Reply STOP to opt out, HELP for help.`;
   await sendSms(phone, body);
 }
 
@@ -108,7 +109,7 @@ export async function sendCalledNotification(phone, name, token, windowNumber, s
   const body =
     `${name}, it's your turn!\n` +
     `Please come to ${windowNumber} · ${staffName} is ready for you.\n` +
-    branchName;
+    `${branchName}. Reply STOP to opt out.`;
   await sendSms(phone, body);
 }
 
@@ -127,7 +128,7 @@ export async function sendWaitUpdate(phone, name, position, branchName = "AzQueu
   const body =
     `Hi ${name}, you're still #${pos} in line.\n` +
     `Est. ${wait} more minutes. Thank you for waiting.\n` +
-    branchName;
+    `${branchName}. Reply STOP to opt out.`;
   await sendSms(phone, body);
 }
 
@@ -155,7 +156,7 @@ export async function sendWaitUpdate(phone, name, position, branchName = "AzQueu
 export async function sendBroadcastAlert(phone, name, message, branchName = "AzQueue") {
   if (!phone || !message) return;
   const greeting = name ? `Hi ${name},\n` : "";
-  const body = `${greeting}${message}\n— ${branchName}`;
+  const body = `${greeting}${message}\n— ${branchName}. Reply STOP to opt out.`;
   await sendSms(phone, body);
 }
 
