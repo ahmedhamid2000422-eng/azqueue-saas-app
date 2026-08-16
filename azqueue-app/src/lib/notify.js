@@ -87,7 +87,7 @@ export async function sendCheckinConfirmation(phone, name, token, position, bran
   const ahead = position ?? 0;
   const wait  = Math.max(1, ahead) * 10;
   const body  =
-    `Hi ${name}, you joined the queue at ${branchName}.\n` +
+    `AzQueue: Hi ${name}, you joined the queue at ${branchName}.\n` +
     `You are #${token} · ${ahead} ${ahead === 1 ? "person" : "people"} ahead.\n` +
     `Est. wait: ~${wait} min. We'll text you when it's your turn.\n` +
     `Reply STOP to opt out, HELP for help.`;
@@ -107,7 +107,7 @@ export async function sendCheckinConfirmation(phone, name, token, position, bran
 export async function sendCalledNotification(phone, name, token, windowNumber, staffName, branchName = "AzQueue") {
   if (!phone) return;
   const body =
-    `${name}, it's your turn!\n` +
+    `AzQueue: ${name}, it's your turn!\n` +
     `Please come to ${windowNumber} · ${staffName} is ready for you.\n` +
     `${branchName}. Reply STOP to opt out.`;
   await sendSms(phone, body);
@@ -126,7 +126,7 @@ export async function sendWaitUpdate(phone, name, position, branchName = "AzQueu
   const pos  = Math.max(1, position ?? 1);
   const wait = pos * 10;
   const body =
-    `Hi ${name}, you're still #${pos} in line.\n` +
+    `AzQueue: Hi ${name}, you're still #${pos} in line.\n` +
     `Est. ${wait} more minutes. Thank you for waiting.\n` +
     `${branchName}. Reply STOP to opt out.`;
   await sendSms(phone, body);

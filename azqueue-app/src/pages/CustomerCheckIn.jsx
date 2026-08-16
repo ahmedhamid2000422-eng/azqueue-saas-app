@@ -302,12 +302,12 @@ export default function CustomerCheckIn() {
             className="mt-0.5 shrink-0 accent-[#c9a86a]"
           />
           <span className="text-[11px] text-ink-mute leading-relaxed">
-            I agree to receive SMS text messages from {branch?.name} about my queue status and appointment updates.
+            I agree to receive SMS text messages from AzQueue about my queue status and appointment updates.
             Message frequency varies (typically 1–5 per visit). Msg &amp; data rates may apply.
             Reply <strong>STOP</strong> to cancel, <strong>HELP</strong> for help.{" "}
-            <a href={`/b/${slug}/privacy`} target="_blank" rel="noopener noreferrer" className="underline hover:text-ink">Privacy Policy</a>
+            <a href="/sms/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-ink">Privacy Policy</a>
             {" · "}
-            <a href={`/b/${slug}/terms`} target="_blank" rel="noopener noreferrer" className="underline hover:text-ink">Terms</a>
+            <a href="/sms/terms" target="_blank" rel="noopener noreferrer" className="underline hover:text-ink">Terms</a>
           </span>
         </label>
 

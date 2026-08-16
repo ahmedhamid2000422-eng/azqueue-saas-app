@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AzQueue SMS Opt-In and Call to Action</title>
+<meta name="description" content="How customers opt in to receive appointment and queue status text messages from AzQueue, including the exact consent language, message frequency, and opt-out instructions.">
+<link rel="canonical" href="https://azqueue.io/sms/opt-in">
+<style>
+  :root{--bg:#0f0f0d;--elev:#161613;--line:#2a2a25;--ink:#e8e4dc;--soft:#b8b3a8;--mute:#8a857c;--gold:#c9a86a;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--soft);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.7;}
+  .wrap{max-width:760px;margin:0 auto;padding:64px 24px 80px;}
+  .eyebrow{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);margin-bottom:12px;}
+  h1{font-size:38px;font-weight:300;letter-spacing:-.02em;color:var(--ink);margin:0 0 10px;}
+  .sub{font-size:13px;color:var(--mute);margin-bottom:40px;}
+  h2{font-size:21px;font-weight:400;color:var(--ink);margin:36px 0 12px;}
+  p{margin:0 0 14px;}
+  ol,ul{margin:0 0 14px;padding-left:22px;}
+  li{margin-bottom:10px;}
+  strong{color:var(--ink);}
+  a{color:var(--gold);}
+  .card{border:1px solid var(--line);background:var(--elev);padding:20px;margin:0 0 18px;}
+  .consent{border-left:3px solid var(--gold);}
+  .consent .label{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--mute);margin-bottom:10px;}
+  .consent .quote{color:var(--ink);font-size:15px;}
+  .box{display:inline-block;width:13px;height:13px;border:1px solid var(--mute);vertical-align:-1px;margin-right:8px;}
+  .cta{display:inline-block;background:var(--gold);color:#141410;text-decoration:none;font-weight:600;padding:13px 24px;margin:6px 0 14px;}
+  table{width:100%;border-collapse:collapse;margin:0 0 18px;}
+  td{border:1px solid var(--line);padding:10px 14px;vertical-align:top;}
+  td:first-child{color:var(--mute);width:38%;}
+  td:last-child{color:var(--ink);}
+  .foot{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);font-size:12px;color:var(--mute);text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">AzQueue</div>
+  <h1>SMS Opt-In &amp; Call to Action</h1>
+  <div class="sub">How customers consent to receive text messages from AzQueue.</div>
+
+  <h2>About AzQueue</h2>
+  <p>AzQueue is a queue and appointment management service operated at <a href="https://azqueue.io">azqueue.io</a>. Service businesses use AzQueue to manage their walk-in queue and appointment bookings. Their customers book an appointment or join the walk-in queue through an AzQueue booking page.</p>
+  <p>Because in-person wait times vary, customers may optionally choose to receive text message notifications from AzQueue so they know when their appointment is confirmed and when it is their turn to be seen. AzQueue is the sender of these messages.</p>
+
+  <h2>Where opt-in happens</h2>
+  <p>Consent is collected on the AzQueue booking and check-in form. A live example of the form, in production use by a business in Aurora, Colorado, is here:</p>
+  <p><a class="cta" href="https://azqueue.io/b/az-tax-services">Open a live AzQueue booking form</a></p>
+  <p>The same consent checkbox appears on the QR-code walk-in check-in form displayed at the front desk of the business.</p>
+
+  <h2>Step-by-step opt-in workflow</h2>
+  <ol>
+    <li>The customer opens an AzQueue booking form, either directly by link or by scanning the QR code posted at the business front desk.</li>
+    <li>The customer selects the service they need.</li>
+    <li>The customer selects an available day and appointment time.</li>
+    <li>Name, phone number, and email fields appear. The customer enters their details.</li>
+    <li>Directly beneath the phone field is a <strong>separate SMS consent checkbox that is unchecked by default</strong>. The customer must actively check this box to opt in. The exact wording is quoted in full below.</li>
+    <li>The customer submits the form. <strong>Checking the SMS box is optional</strong> &mdash; the booking is created and confirmed whether or not the box is checked. SMS consent is never a condition of booking or of receiving service.</li>
+    <li>Text messages are sent only if the customer checked the box. Customers who do not opt in receive their confirmation by email instead.</li>
+  </ol>
+
+  <h2>Exact consent language shown next to the checkbox</h2>
+  <div class="card consent">
+    <div class="label">Displayed on the live booking and check-in forms</div>
+    <div class="quote"><span class="box"></span>I agree to receive SMS text messages from AzQueue about my booking and appointment updates. Message frequency varies (typically 1&ndash;5 per visit). Msg &amp; data rates may apply. Reply <strong>STOP</strong> to cancel, <strong>HELP</strong> for help. <a href="/sms/privacy">Privacy Policy</a> &middot; <a href="/sms/terms">Terms</a></div>
+  </div>
+
+  <h2>Program summary</h2>
+  <table>
+    <tr><td>Sender</td><td>AzQueue &mdash; azqueue.io</td></tr>
+    <tr><td>Message type</td><td>Transactional only &mdash; appointment confirmations and queue status updates</td></tr>
+    <tr><td>Message frequency</td><td>Varies, typically 1&ndash;5 messages per visit</td></tr>
+    <tr><td>Cost</td><td>Message and data rates may apply</td></tr>
+    <tr><td>Opt-in method</td><td>Web form checkbox, unchecked by default, optional</td></tr>
+    <tr><td>Opt-in keyword</td><td>START</td></tr>
+    <tr><td>Opt-out keywords</td><td>STOP UNSUBSCRIBE CANCEL END QUIT</td></tr>
+    <tr><td>Help keywords</td><td>HELP INFO</td></tr>
+  </table>
+
+  <h2>Sample messages</h2>
+  <ul>
+    <li>"AzQueue: Hi Maria, you joined the queue at Az Tax Services. You are #A014 - 3 people ahead. Est. wait: ~30 min. Reply STOP to opt out, HELP for help."</li>
+    <li>"AzQueue: Maria, it's your turn! Please come to Counter 1 - Ahmed is ready for you. Reply STOP to opt out."</li>
+  </ul>
+
+  <h2>Opt-out</h2>
+  <p>Customers may reply <strong>STOP</strong> to any message at any time. They receive one final confirmation and no further messages. Replying <strong>HELP</strong> returns contact information and assistance. Replying <strong>START</strong> re-subscribes.</p>
+
+  <h2>Data handling</h2>
+  <p><strong>No mobile information or text-messaging originator opt-in data and consent will be shared with third parties or affiliates for marketing or promotional purposes.</strong></p>
+  <p>This SMS program is used only for transactional appointment and queue notifications. It is not used for advertising, affiliate marketing, lead generation, or third-party promotional messages.</p>
+
+  <h2>Policies</h2>
+  <ul>
+    <li><a href="/sms/privacy">AzQueue Privacy Policy</a></li>
+    <li><a href="/sms/terms">AzQueue SMS Terms &amp; Conditions</a></li>
+  </ul>
+
+  <h2>Contact</h2>
+  <div class="card">
+    <div style="color:var(--ink);font-weight:600;margin-bottom:8px;">AzQueue</div>
+    <div>Website: <a href="https://azqueue.io">azqueue.io</a></div>
+    <div>Email: <a href="mailto:support@azqueue.io">support@azqueue.io</a></div>
+    <div>Phone: <a href="tel:3033684322">(303) 368-4322</a></div>
+  </div>
+
+  <div class="foot">This page describes the SMS program operated by AzQueue.</div>
+
+</div>
+</body>
+</html>
