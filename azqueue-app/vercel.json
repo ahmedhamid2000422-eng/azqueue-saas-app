@@ -1,6 +1,10 @@
 {
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/sms/opt-in",  "destination": "/sms/opt-in.html"  },
+    { "source": "/sms/privacy", "destination": "/sms/privacy.html" },
+    { "source": "/sms/terms",   "destination": "/sms/terms.html"   },
+    { "source": "/survey",      "destination": "/survey.html"      },
+    { "source": "/(.*)",        "destination": "/index.html"       }
   ],
   "github": {
     "silent": true
