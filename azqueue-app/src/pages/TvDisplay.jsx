@@ -3,7 +3,7 @@ import { useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { fetchPrayerTimes, getPauseStatus, getNextPrayer } from "../lib/prayerTimes";
-import { announceTicket, unlockAudio, isAudioReady } from "../lib/tts";
+import { announceTicket, unlockAudio, isAudioReady, getAudioDiagnostics, testSpeak, playChime } from "../lib/tts";
 
 /**
  * Public TV display — full-screen wall surface in the waiting area.
@@ -264,6 +264,22 @@ export default function TvDisplay() {
     setAudioArmed(isAudioReady());
   }
 
+  // ── Audio diagnostics (?debug=audio) ─────────────────────────
+  const debugAudio = params.get("debug") === "audio";
+  const [diag, setDiag] = useState(null);
+  useEffect(() => {
+    if (!debugAudio) return;
+    const refresh = () => setDiag(getAudioDiagnostics());
+    refresh();
+    // Android/Chrome populate the voice list asynchronously
+    window.speechSynthesis?.addEventListener?.("voiceschanged", refresh);
+    const t = setInterval(refresh, 2000);
+    return () => {
+      clearInterval(t);
+      window.speechSynthesis?.removeEventListener?.("voiceschanged", refresh);
+    };
+  }, [debugAudio]);
+
   // ── Render ───────────────────────────────────────────────────
   if (loading) return (
     <TvShell>
@@ -386,6 +402,35 @@ export default function TvDisplay() {
         </div>
       )}
 
+      {/* Audio diagnostics — open the display with ?debug=audio */}
+      {debugAudio && diag && (
+        <div style={{
+          position: "fixed", top: "2vh", right: "2vw", zIndex: 95,
+          background: "rgba(10,10,9,0.94)", border: "1px solid #2a2a25",
+          padding: "1.5vh 1.5vw", maxWidth: "30vw",
+          fontFamily: "monospace", fontSize: "0.85vw", color: "#b8b3a8", lineHeight: 1.8,
+        }}>
+          <div style={{ color: "#c9a86a", marginBottom: "0.8vh", letterSpacing: "0.15em" }}>AUDIO DIAGNOSTICS</div>
+          <div>WebAudio: <b style={{ color: diag.webAudio ? "#9bbd9b" : "#d49185" }}>{diag.webAudio ? "yes" : "no"}</b></div>
+          <div>Audio state: <b style={{ color: diag.audioState === "running" ? "#9bbd9b" : "#d49185" }}>{diag.audioState}</b></div>
+          <div>Speech API: <b style={{ color: diag.speechSupported ? "#9bbd9b" : "#d49185" }}>{diag.speechSupported ? "present" : "MISSING"}</b></div>
+          <div>Voices: <b style={{ color: diag.voiceCount > 0 ? "#9bbd9b" : "#d49185" }}>{diag.voiceCount}</b></div>
+          {diag.voiceNames.length > 0 && (
+            <div style={{ color: "#6b6a64", fontSize: "0.7vw" }}>{diag.voiceNames.join(", ")}</div>
+          )}
+          {diag.speechSupported && diag.voiceCount === 0 && (
+            <div style={{ color: "#d49185", marginTop: "0.8vh", fontSize: "0.75vw", lineHeight: 1.5 }}>
+              Speech API exists but no voices installed. On Android TV: Settings →
+              Accessibility → Text-to-speech → install/enable Google Speech Services.
+            </div>
+          )}
+          <div style={{ display: "flex", gap: "0.6vw", marginTop: "1vh" }}>
+            <button onClick={() => playChime()} style={diagBtn}>Test chime</button>
+            <button onClick={() => testSpeak()} style={diagBtn}>Test voice</button>
+          </div>
+        </div>
+      )}
+
       <style>{`
         @keyframes breathe {
           0%, 100% { opacity: 1; }
@@ -413,6 +458,16 @@ export default function TvDisplay() {
 }
 
 /* ── Full dark shell ────────────────────────────────────────── */
+const diagBtn = {
+  background: "transparent",
+  border: "1px solid #c9a86a",
+  color: "#c9a86a",
+  padding: "0.4vh 0.8vw",
+  fontSize: "0.75vw",
+  fontFamily: "monospace",
+  cursor: "pointer",
+};
+
 function TvShell({ children }) {
   return (
     <div style={{

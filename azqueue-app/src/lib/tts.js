@@ -102,6 +102,38 @@ function speak(text) {
   }
 }
 
+/**
+ * Diagnostics for the TV display's ?debug=audio panel.
+ * Tells you whether this device can actually speak, and with which voices.
+ */
+export function getAudioDiagnostics() {
+  if (typeof window === "undefined") return null;
+  const synth = window.speechSynthesis;
+  let voices = [];
+  try { voices = synth ? synth.getVoices() : []; } catch { /* ignore */ }
+  const ctx = getCtx();
+  return {
+    webAudio:       !!ctx,
+    audioState:     ctx?.state ?? "none",
+    speechSupported: !!synth,
+    voiceCount:     voices.length,
+    voiceNames:     voices.slice(0, 6).map((v) => `${v.name} (${v.lang})`),
+    speaking:       !!synth?.speaking,
+  };
+}
+
+/** Speak an arbitrary phrase now — used by the diagnostic panel's test button. */
+export function testSpeak(text = "Ticket A 1 4, please proceed to counter one.") {
+  if (typeof window === "undefined" || !window.speechSynthesis) return false;
+  try {
+    window.speechSynthesis.cancel();
+    speak(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /* ── Chime (WebAudio) ──────────────────────────────────────────────────
    A two-tone "ding-dong" synthesised at runtime. No audio file to host, no
    speech engine required, so it works on TV browsers where SpeechSynthesis
