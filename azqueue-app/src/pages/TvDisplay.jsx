@@ -3,7 +3,7 @@ import { useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { fetchPrayerTimes, getPauseStatus, getNextPrayer } from "../lib/prayerTimes";
-import { announceTicket } from "../lib/tts";
+import { announceTicket, unlockAudio, isAudioReady } from "../lib/tts";
 
 /**
  * Public TV display — full-screen wall surface in the waiting area.
@@ -205,22 +205,61 @@ export default function TvDisplay() {
   // ── Announce newly-called tickets on the TV display ──────────
   // Track called_at per ticket; when it changes the ticket was just called.
   const prevCalledAt = useRef({});
+  const [flashing, setFlashing] = useState({}); // ticketId → true while flashing
+  const flashTimers = useRef({});
+
   useEffect(() => {
     serving.forEach((tk) => {
       const prev = prevCalledAt.current[tk.id];
+      const isFirstSight = prev === undefined;
       if (tk.called_at && tk.called_at !== prev) {
-        const staffName = staff.find((s) => s.id === tk.staff_id)?.display_name;
-        const counter   = staffName ? `${staffName}'s counter` : "the counter";
-        announceTicket({
-          token:        tk.token,
-          customerName: tk.customer_name,
-          counter,
-          branchId:     branch?.id,
-        });
+        // Don't announce/flash the tickets already on screen when the display
+        // first loads — only genuinely new calls.
+        if (!isFirstSight) {
+          const staffName = staff.find((s) => s.id === tk.staff_id)?.display_name;
+          const counter   = staffName ? `${staffName}'s counter` : "the counter";
+          announceTicket({
+            token:        tk.token,
+            customerName: tk.customer_name,
+            counter,
+            branchId:     branch?.id,
+          });
+
+          setFlashing((f) => ({ ...f, [tk.id]: true }));
+          clearTimeout(flashTimers.current[tk.id]);
+          flashTimers.current[tk.id] = setTimeout(() => {
+            setFlashing((f) => {
+              const next = { ...f };
+              delete next[tk.id];
+              return next;
+            });
+          }, 12000); // flash for 12s — long enough to cross a waiting room
+        }
       }
       prevCalledAt.current[tk.id] = tk.called_at;
     });
   }, [serving, staff, branch?.id]);
+
+  // Clear any pending flash timers on unmount
+  useEffect(() => () => {
+    Object.values(flashTimers.current).forEach(clearTimeout);
+  }, []);
+
+  // ── Audio unlock ─────────────────────────────────────────────
+  // Browsers (and TV Bro especially) refuse to play audio until the page has
+  // received a real user gesture. Show a one-time overlay so staff can arm it
+  // when setting the TV up; after that the chime and voice work unattended.
+  const [audioArmed, setAudioArmed] = useState(true); // assume fine until checked
+  useEffect(() => {
+    setAudioArmed(isAudioReady());
+    const t = setInterval(() => setAudioArmed(isAudioReady()), 4000);
+    return () => clearInterval(t);
+  }, []);
+
+  async function armAudio() {
+    await unlockAudio();
+    setAudioArmed(isAudioReady());
+  }
 
   // ── Render ───────────────────────────────────────────────────
   if (loading) return (
@@ -308,15 +347,41 @@ export default function TvDisplay() {
           {isPaused ? (
             <TvPausedHero pauseStatus={pauseStatus} />
           ) : layout === "multi" && counters.length >= 1 ? (
-            <TvMultiCounters counters={counters} />
+            <TvMultiCounters counters={counters} flashing={flashing} />
           ) : (
-            <TvSingleServing counter={counters[0]} />
+            <TvSingleServing counter={counters[0]} flashing={flashing} />
           )}
 
           {/* Right: Up Next */}
           <TvUpNext waiting={waiting} services={services} branded={branded} branchSlug={branch.slug} />
         </main>
       </div>
+
+      {/* One-time audio arming. Browsers and TV Bro block sound until the page
+          has had a real tap; without this the chime and voice stay silent. */}
+      {!audioArmed && (
+        <div
+          onClick={armAudio}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") armAudio(); }}
+          style={{
+            position: "fixed", inset: 0, zIndex: 90,
+            display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "center",
+            background: "rgba(10,10,9,0.92)", cursor: "pointer",
+          }}
+        >
+          <div style={{ fontSize: "6vw", marginBottom: "3vh" }}>🔊</div>
+          <div style={{ color: "#c9a86a", fontSize: "2.2vw", letterSpacing: "0.1em", marginBottom: "1.5vh" }}>
+            Tap to enable sound
+          </div>
+          <div style={{ color: "#6b6a64", fontSize: "1.2vw", textAlign: "center", maxWidth: "60vw", lineHeight: 1.6 }}>
+            Press OK on the remote, or tap the screen. Only needed once each time
+            the display is opened — announcements then play automatically.
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes breathe {
@@ -326,6 +391,18 @@ export default function TvDisplay() {
         @keyframes tvSlideIn {
           from { opacity: 0; transform: translateY(8px); }
           to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes tvFlashName {
+          0%, 100% { color: #f0ede6; text-shadow: none; }
+          50%      { color: #ffffff; text-shadow: 0 0 40px rgba(201,168,106,0.9); }
+        }
+        @keyframes tvFlashToken {
+          0%, 100% { color: #c9a86a; text-shadow: 0 0 80px rgba(201,168,106,0.25); }
+          50%      { color: #ffe9b0; text-shadow: 0 0 120px rgba(201,168,106,0.85); }
+        }
+        @keyframes tvFlashCard {
+          0%, 100% { background: rgba(201,168,106,0.03); box-shadow: none; }
+          50%      { background: rgba(201,168,106,0.16); box-shadow: 0 0 60px rgba(201,168,106,0.35); }
         }
       `}</style>
     </TvShell>
@@ -349,7 +426,8 @@ function TvShell({ children }) {
 }
 
 /* ── Single large "Now Serving" ─────────────────────────────── */
-function TvSingleServing({ counter }) {
+function TvSingleServing({ counter, flashing = {} }) {
+  const isFlashing = !!(counter?.ticket && flashing[counter.ticket.id]);
   if (!counter) {
     return (
       <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", height: "100%" }}>
@@ -383,6 +461,7 @@ function TvSingleServing({ counter }) {
           letterSpacing: "-0.02em",
           color: "#c9a86a",
           textShadow: "0 0 80px rgba(201,168,106,0.25)",
+          animation: isFlashing ? "tvFlashToken 1s ease-in-out infinite" : undefined,
         }}
       >
         {counter.ticket.token}
@@ -392,7 +471,16 @@ function TvSingleServing({ counter }) {
       <div style={{ width: "8vw", height: 2, background: "linear-gradient(90deg, #c9a86a, transparent)", margin: "3vh 0" }} />
 
       {/* Customer name */}
-      <div style={{ fontSize: "3.5vw", color: "#f0ede6", fontWeight: 300, marginBottom: "1.5vh" }}>
+      <div
+        style={{
+          fontSize: isFlashing ? "4.6vw" : "3.5vw",
+          color: "#f0ede6",
+          fontWeight: 300,
+          marginBottom: "1.5vh",
+          transition: "font-size 0.3s ease-out",
+          animation: isFlashing ? "tvFlashName 1s ease-in-out infinite" : undefined,
+        }}
+      >
         {counter.ticket.customer_name}
       </div>
 
@@ -407,7 +495,7 @@ function TvSingleServing({ counter }) {
 }
 
 /* ── Multi-counter grid ──────────────────────────────────────── */
-function TvMultiCounters({ counters }) {
+function TvMultiCounters({ counters, flashing = {} }) {
   const cols = counters.length <= 2 ? 1 : 2;
   const tokenSize = counters.length <= 2 ? "14vw" : counters.length <= 4 ? "9vw" : "7vw";
   const nameSize  = counters.length <= 2 ? "2.5vw" : "1.8vw";
@@ -416,13 +504,17 @@ function TvMultiCounters({ counters }) {
     <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: "1.5vw", height: "100%", alignContent: "start" }}>
       {counters.map((c, i) => (
         <div key={c.ticket.id} style={{
-          border: "1px solid rgba(201,168,106,0.15)",
+          border: flashing[c.ticket.id]
+            ? "2px solid rgba(201,168,106,0.9)"
+            : "1px solid rgba(201,168,106,0.15)",
           background: "rgba(201,168,106,0.03)",
           padding: "2.5vh 2vw",
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          animation: "tvSlideIn 0.4s ease-out",
+          animation: flashing[c.ticket.id]
+            ? "tvFlashCard 1s ease-in-out infinite"
+            : "tvSlideIn 0.4s ease-out",
         }}>
           {/* Counter label */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1vh" }}>
@@ -448,7 +540,13 @@ function TvMultiCounters({ counters }) {
           <div style={{ width: "4vw", height: 1, background: "rgba(201,168,106,0.3)", margin: "1.5vh 0" }} />
 
           {/* Name + service */}
-          <div style={{ fontSize: nameSize, color: "#f0ede6", fontWeight: 300, marginBottom: "0.5vh" }}>
+          <div style={{
+            fontSize: nameSize,
+            color: "#f0ede6",
+            fontWeight: 300,
+            marginBottom: "0.5vh",
+            animation: flashing[c.ticket.id] ? "tvFlashName 1s ease-in-out infinite" : undefined,
+          }}>
             {c.ticket.customer_name}
           </div>
           <div style={{ fontSize: "0.9vw", color: "#6b6a64" }}>{c.service ?? ""}</div>
