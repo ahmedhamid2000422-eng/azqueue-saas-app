@@ -1877,6 +1877,58 @@ function ReassignMenu({ ticket, staffList, onReassign, disabled }) {
   );
 }
 
+/* ── PersonaMini ─────────────────────────────────────────────────────────
+   Compact customer context shown under a waiting ticket:
+   new-vs-returning, visit count, average satisfaction, AI persona blurb.
+   `data` comes from personaCache[ticketId]:
+     { isNew, visitCount, persona, avgScore, customerId }                  */
+function PersonaMini({ data }) {
+  if (!data) return null;
+  const { isNew, visitCount, persona, avgScore } = data;
+
+  const chips = [];
+  if (isNew) {
+    chips.push(
+      <span key="new" className="border border-[#74b9e8]/40 text-[#74b9e8] px-1.5 py-px">
+        New
+      </span>
+    );
+  } else if (visitCount > 1) {
+    chips.push(
+      <span key="visits" className="border border-line text-ink-mute px-1.5 py-px">
+        {visitCount} visits
+      </span>
+    );
+  }
+  if (avgScore != null) {
+    const good = avgScore >= 4;
+    chips.push(
+      <span
+        key="score"
+        className={`border px-1.5 py-px ${good ? "border-[#506b50] text-[#9bbd9b]" : "border-[#b56b5f]/40 text-[#d49185]"}`}
+        title="Average satisfaction score"
+      >
+        ★ {avgScore}
+      </span>
+    );
+  }
+
+  if (chips.length === 0 && !persona) return null;
+
+  return (
+    <div className="mt-1 space-y-0.5">
+      {chips.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1 text-[9px] tracking-wide">{chips}</div>
+      )}
+      {persona && (
+        <div className="text-[10px] text-ink-mute italic leading-snug line-clamp-2">
+          {persona}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── LoyaltyChip ─────────────────────────────────────────────────────── */
 function LoyaltyChip({ card, onBonus }) {
   const dots = punchDots(card, card.program);
