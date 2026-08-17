@@ -418,8 +418,7 @@ export default function Queue() {
     // "It's your turn" notifications — email first (transactional, always on),
     // SMS as a secondary channel when a phone number is on the ticket.
     if (next.customer_email || next.customer_phone) {
-      const myStaff   = staffList.find((s) => s.id === user?.id);
-      const staffName = myStaff?.display_name ?? (user?.email?.split("@")[0] ?? "Staff");
+      const staffName = resolveStaffName(next);
 
       if (next.customer_email) {
         sendCalledEmail({
@@ -437,7 +436,7 @@ export default function Queue() {
           next.customer_name ?? "Customer",
           next.token,
           counterLabel ?? "Counter 1",
-          staffName,
+          staffName || "Our team",
           branch?.name,
         );
       }
@@ -615,15 +614,37 @@ export default function Queue() {
     setBusy(false);
   }
 
+  /**
+   * Human name of the staff member serving a ticket, for customer-facing
+   * notifications. Order of preference:
+   *   1. the staff member actually assigned to the ticket
+   *   2. the signed-in user's own staff record
+   * Returns "" when neither resolves — callers then omit the name rather
+   * than leaking an account username like "aztaxservices1".
+   *
+   * NOTE: staff rows key the auth user on `user_id`, not `id`. Matching on
+   * `s.id === user.id` never hit, which is why the email said
+   * "aztaxservices1 is ready for you".
+   */
+  function resolveStaffName(ticket) {
+    const assigned = ticket?.staff_id
+      ? staffList.find((s) => s.id === ticket.staff_id)
+      : null;
+    if (assigned?.display_name) return assigned.display_name;
+
+    const me = staffList.find((s) => s.user_id === user?.id);
+    if (me?.display_name) return me.display_name;
+
+    return "";
+  }
+
   // ── "Your turn" SMS ────────────────────────────────────────────────
   // Sends a direct Twilio SMS to a waiting customer telling them to come
   // to the counter. Useful when the WhatsApp call notice didn't reach them.
   async function sendYourTurn(ticket) {
     if (!ticket.customer_phone) return;
     setSmsSent((prev) => ({ ...prev, [ticket.id]: "sending" }));
-    // Derive a staff display name: prefer matched staff record, fall back to email prefix
-    const myStaff = staffList.find((s) => s.id === user?.id);
-    const staffName = myStaff?.display_name ?? (user?.email?.split("@")[0] ?? "Staff");
+    const staffName = resolveStaffName(ticket) || "Our team";
     // Window label: use assigned station name if available, else "Counter 1"
     const windowLabel = (ticket.assigned_station_id && stationMap[ticket.assigned_station_id])
       ? stationMap[ticket.assigned_station_id]
