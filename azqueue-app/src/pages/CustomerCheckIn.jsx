@@ -83,6 +83,7 @@ export default function CustomerCheckIn() {
     if (!serviceId)        return setFormError(t("checkin.errors.pick_service"));
     if (!name.trim())      return setFormError(t("checkin.errors.enter_name"));
     if ((phone.replace(/\D/g, "").length) < 7) return setFormError(t("checkin.errors.valid_phone"));
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setFormError("Please enter a valid email address — we'll send your ticket there.");
 
     setSubmitting(true);
 
@@ -290,7 +291,6 @@ export default function CustomerCheckIn() {
           placeholder={t("checkin.email_placeholder")}
           type="email"
           isKiosk={isKiosk}
-          optional
         />
 
         {/* SMS consent — separate optional checkbox, unchecked by default (A2P 10DLC requirement) */}

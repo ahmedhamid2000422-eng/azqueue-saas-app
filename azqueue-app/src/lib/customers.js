@@ -34,6 +34,31 @@ import { getFreshdeskContext } from "./freshdesk";
 export async function findOrCreateCustomer(branchId, identity = {}) {
   const { name, email, phone, facebookId, instagramId, whatsappId, freshdeskId, zidId, shopifyId } = identity;
 
+  // ── Anonymous (public QR check-in / booking) ───────────────────────────
+  // RLS on `customers` only permits authenticated users, so the SELECT and
+  // INSERT below would always fail for anon — producing 400/401 noise in the
+  // console before falling through. Go straight to the security-definer RPC,
+  // which anon is explicitly granted execute on (migration 0026).
+  let session = null;
+  try {
+    const { data } = await supabase.auth.getSession();
+    session = data?.session ?? null;
+  } catch { /* treat as anon */ }
+
+  if (!session) {
+    const { data: rpcId, error: rpcErr } = await supabase.rpc(
+      "upsert_walk_in_customer",
+      {
+        p_branch_id: branchId,
+        p_name:      name  ?? "",
+        p_phone:     phone ?? "",
+        p_email:     email ?? null,
+      }
+    );
+    if (rpcErr) throw rpcErr;
+    return { id: rpcId, branch_id: branchId, display_name: name, phone, email };
+  }
+
   // Try to find existing customer — check each identifier in priority order
   let existing = null;
 

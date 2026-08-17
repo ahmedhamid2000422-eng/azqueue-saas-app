@@ -50,9 +50,16 @@ Disallow: /business/
 Disallow: /personal/
 Disallow: /staff/
 Disallow: /admin
-Disallow: /q/
-Disallow: /t/
-Disallow: /b/
 Disallow: /display/
+
+# Individual customer tickets are personal — keep them out of search
+Disallow: /t/
+
+# Public booking, check-in and SMS compliance pages MUST stay crawlable.
+# Twilio/carrier A2P reviewers fetch these to verify the opt-in flow; a
+# Disallow here reads as "cannot verify Call-to-Action" and fails the campaign.
+Allow: /b/
+Allow: /q/
+Allow: /sms/
 
 Sitemap: https://azqueue.io/sitemap.xml

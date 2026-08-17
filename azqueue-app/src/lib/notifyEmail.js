@@ -28,8 +28,20 @@ async function send(payload) {
       body: payload,
     });
     if (error) {
-      console.warn("[notifyEmail] invoke failed", error);
+      console.error(
+        "[notifyEmail] Edge Function call failed. Is `queue-email` deployed?",
+        error,
+      );
       return { ok: false, error };
+    }
+    if (data?.dryRun) {
+      console.error(
+        "[notifyEmail] DRY RUN — no email sent. RESEND_API_KEY is not set on the `queue-email` function.",
+      );
+    } else if (data?.ok) {
+      console.info("[notifyEmail] sent", payload.type, "→", to, data?.messageId ?? "");
+    } else {
+      console.error("[notifyEmail] send failed", data);
     }
     return data ?? { ok: true };
   } catch (e) {

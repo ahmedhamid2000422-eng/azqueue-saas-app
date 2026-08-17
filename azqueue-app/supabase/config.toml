@@ -1,0 +1,7 @@
+# Supabase local/deploy config.
+#
+# queue-email is invoked from PUBLIC, unauthenticated pages (customer check-in
+# at /q/:slug and booking at /b/:slug), so it must not require a JWT.
+# Without this, the browser gets a 401 and no notification email is sent.
+[functions.queue-email]
+verify_jwt = false

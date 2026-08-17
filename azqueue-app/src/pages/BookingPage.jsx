@@ -125,6 +125,7 @@ export default function BookingPage() {
     if (!slot)      return setError(t("booking.pick_time"));
     if (!name.trim()) return setError(t("checkin.errors.enter_name"));
     if (!/^\+?\d[\d\s-]{6,}$/.test(phone)) return setError(t("checkin.errors.valid_phone"));
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setError("Please enter a valid email address — we'll send your confirmation there.");
     setReviewing(true);
   }
 
@@ -353,7 +354,7 @@ export default function BookingPage() {
           <>
             <Field label={t("checkin.name_label")} value={name} onChange={setName} placeholder={t("checkin.name_placeholder")} />
             <Field label={t("checkin.phone_label")} value={phone} onChange={setPhone} placeholder={t("checkin.phone_placeholder")} type="tel" />
-            <Field label="Email — for your confirmation" value={email} onChange={setEmail} placeholder="you@example.com" type="email" />
+            <Field label="Email" value={email} onChange={setEmail} placeholder="you@example.com" type="email" />
 
             {/* SMS consent — separate optional checkbox, unchecked by default (A2P 10DLC requirement) */}
             <label className="flex items-start gap-3 cursor-pointer">
