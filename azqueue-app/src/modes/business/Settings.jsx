@@ -747,43 +747,157 @@ function CopyCheckinLink({ url }) {
 /* ── BRANCHES (CRUD) ───────────────────────────────────────────────── */
 function SetLocationButton({ branch, reload }) {
   const [status, setStatus] = useState("idle"); // idle | loading | done | error
+  const [message, setMessage] = useState(null); // human-readable failure reason
+  const [manual, setManual] = useState(false);
+  const [lat, setLat] = useState(branch.lat != null ? String(branch.lat) : "");
+  const [lng, setLng] = useState(branch.lng != null ? String(branch.lng) : "");
 
-  async function setLoc() {
-    if (!("geolocation" in navigator)) { setStatus("error"); return; }
+  async function save(newLat, newLng) {
+    const { error } = await supabase
+      .from("branches")
+      .update({ lat: newLat, lng: newLng })
+      .eq("id", branch.id);
+    if (error) {
+      setStatus("error");
+      setMessage(error.message);
+      return false;
+    }
+    setStatus("done");
+    setMessage(null);
+    await reload();
+    setTimeout(() => setStatus("idle"), 2500);
+    return true;
+  }
+
+  function useMyLocation() {
+    if (!("geolocation" in navigator)) {
+      setStatus("error");
+      setMessage("This browser doesn't support location. Enter coordinates manually.");
+      setManual(true);
+      return;
+    }
     setStatus("loading");
+    setMessage(null);
     navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude: lat, longitude: lng } = pos.coords;
-        const { error } = await supabase.from("branches").update({ lat, lng }).eq("id", branch.id);
-        if (error) { setStatus("error"); return; }
-        setStatus("done");
-        await reload();
-        setTimeout(() => setStatus("idle"), 2500);
+      (pos) => save(pos.coords.latitude, pos.coords.longitude),
+      (err) => {
+        setStatus("error");
+        // Distinguish the failure modes — "denied" is by far the most common
+        // and is silent: once refused, Chrome never prompts again for the site.
+        if (err.code === err.PERMISSION_DENIED) {
+          setMessage(
+            "Location permission is blocked, so the browser won't ask again. " +
+            "Click the icon at the left of the address bar → Location → Allow, " +
+            "then retry — or enter coordinates manually below."
+          );
+        } else if (err.code === err.POSITION_UNAVAILABLE) {
+          setMessage("Your device couldn't determine a position. Enter coordinates manually below.");
+        } else if (err.code === err.TIMEOUT) {
+          setMessage("Locating timed out. Try again, or enter coordinates manually below.");
+        } else {
+          setMessage("Couldn't get your location. Enter coordinates manually below.");
+        }
+        setManual(true);
       },
-      () => setStatus("error"),
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   }
 
+  async function saveManual() {
+    const a = parseFloat(lat), b = parseFloat(lng);
+    if (!Number.isFinite(a) || a < -90 || a > 90) {
+      setStatus("error"); setMessage("Latitude must be between -90 and 90."); return;
+    }
+    if (!Number.isFinite(b) || b < -180 || b > 180) {
+      setStatus("error"); setMessage("Longitude must be between -180 and 180."); return;
+    }
+    if (await save(a, b)) setManual(false);
+  }
+
   const hasLoc = branch.lat != null;
+
   return (
-    <button
-      onClick={setLoc}
-      disabled={status === "loading"}
-      title={hasLoc ? `${branch.lat?.toFixed(4)}, ${branch.lng?.toFixed(4)} — click to update` : "Set location for accurate prayer times"}
-      className={`text-[9px] ovline border px-2 py-1 transition disabled:opacity-40 whitespace-nowrap ${
-        status === "done"    ? "border-[#506b50] text-[#9bbd9b]" :
-        status === "error"   ? "border-[#b56b5f] text-[#d49185]" :
-        hasLoc               ? "border-[#506b50]/50 text-[#9bbd9b]/70 hover:border-[#506b50] hover:text-[#9bbd9b]" :
-                               "border-line text-ink-mute hover:border-gold-deep hover:text-gold-soft"
-      }`}
-    >
-      {status === "loading" ? "Locating…" :
-       status === "done"    ? "Location saved ✓" :
-       status === "error"   ? "Location failed" :
-       hasLoc               ? "📍 Update location" :
-                              "📍 Set location"}
-    </button>
+    <div className="inline-block align-top">
+      <div className="flex items-center gap-1.5">
+        <button
+          onClick={useMyLocation}
+          disabled={status === "loading"}
+          title={hasLoc ? `${branch.lat?.toFixed(4)}, ${branch.lng?.toFixed(4)} — click to update` : "Set location for accurate prayer times"}
+          className={`text-[9px] ovline border px-2 py-1 transition disabled:opacity-40 whitespace-nowrap ${
+            status === "done"    ? "border-[#506b50] text-[#9bbd9b]" :
+            status === "error"   ? "border-[#b56b5f] text-[#d49185]" :
+            hasLoc               ? "border-[#506b50]/50 text-[#9bbd9b]/70 hover:border-[#506b50] hover:text-[#9bbd9b]" :
+                                   "border-line text-ink-mute hover:border-gold-deep hover:text-gold-soft"
+          }`}
+        >
+          {status === "loading" ? "Locating…" :
+           status === "done"    ? "Location saved ✓" :
+           hasLoc               ? "📍 Use my location" :
+                                  "📍 Use my location"}
+        </button>
+        <button
+          onClick={() => { setManual((v) => !v); setMessage(null); setStatus("idle"); }}
+          className="text-[9px] ovline border border-line px-2 py-1 text-ink-mute hover:border-gold-deep hover:text-gold-soft transition whitespace-nowrap"
+          title="Type coordinates by hand"
+        >
+          {manual ? "Hide" : "Enter manually"}
+        </button>
+      </div>
+
+      {hasLoc && !manual && (
+        <div className="mt-1 text-[9px] text-[#9bbd9b]/70 font-mono">
+          📍 {branch.lat?.toFixed(4)}, {branch.lng?.toFixed(4)}
+        </div>
+      )}
+
+      {message && (
+        <div className="mt-1 max-w-[280px] text-[10px] leading-snug text-[#d49185]">
+          {message}
+        </div>
+      )}
+
+      {manual && (
+        <div className="mt-2 max-w-[280px] space-y-1.5">
+          <div className="flex gap-1.5">
+            <input
+              value={lat}
+              onChange={(e) => setLat(e.target.value)}
+              placeholder="Latitude e.g. 39.6805"
+              inputMode="decimal"
+              className="w-1/2 bg-bg-elev border border-line px-2 py-1 text-[11px] font-mono text-ink focus:border-gold-deep outline-none"
+            />
+            <input
+              value={lng}
+              onChange={(e) => setLng(e.target.value)}
+              placeholder="Longitude e.g. -104.8877"
+              inputMode="decimal"
+              className="w-1/2 bg-bg-elev border border-line px-2 py-1 text-[11px] font-mono text-ink focus:border-gold-deep outline-none"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={saveManual}
+              className="text-[9px] ovline border border-gold-deep px-2 py-1 text-gold-soft hover:bg-[rgba(201,168,106,0.08)] transition"
+            >
+              Save coordinates
+            </button>
+            <a
+              href="https://www.google.com/maps"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[9px] text-ink-mute underline hover:text-ink"
+              title="Right-click your business on Google Maps to copy its coordinates"
+            >
+              Find on Google Maps
+            </a>
+          </div>
+          <div className="text-[9px] text-ink-mute leading-snug">
+            On Google Maps, right-click your business — the first item in the menu is
+            its latitude and longitude.
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

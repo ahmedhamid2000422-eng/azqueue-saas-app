@@ -652,7 +652,9 @@ export default function Onboarding() {
                 <div className="border border-line p-4">
                   <div className="ovline text-ink-mute mb-1">Location skipped</div>
                   <div className="text-[11px] text-ink-soft mb-3">
-                    No problem — we'll use Kuala Lumpur as a default. You can set a real location later in Settings.
+                    That's fine — everything else works without it. Prayer times stay hidden
+                    until a location is set, since times from the wrong city would be
+                    misleading. You can add it any time in Settings → Branches.
                   </div>
                   <button
                     type="button"

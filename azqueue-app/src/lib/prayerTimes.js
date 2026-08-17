@@ -51,8 +51,15 @@ function ddmmyyyy(d = new Date()) {
  * @param {Date}   [opts.date] - date to fetch for (defaults to today)
  */
 export async function fetchPrayerTimes({ lat, lng, date: dateArg } = {}) {
-  // No coordinates → use sensible default
-  if (lat == null || lng == null) return FALLBACK_KL;
+  // No coordinates → return null so callers render nothing.
+  // Showing another city's prayer times would be worse than showing none:
+  // the branch owner would have no signal that location is unset, and staff
+  // would be given times that are wrong by hours. Set the branch location in
+  // Settings to enable this feature.
+  if (lat == null || lng == null) {
+    console.warn("[prayerTimes] branch has no lat/lng — set location in Settings");
+    return null;
+  }
 
   const d = dateArg instanceof Date ? dateArg : new Date();
   const date = d.toISOString().slice(0, 10); // YYYY-MM-DD
@@ -87,9 +94,10 @@ export async function fetchPrayerTimes({ lat, lng, date: dateArg } = {}) {
     try { localStorage.setItem(key, JSON.stringify(times)); } catch {}
     return times;
   } catch (e) {
-    // 3. Network failure → fall back to KL defaults
-    console.warn("prayer times fetch failed, using fallback", e);
-    return FALLBACK_KL;
+    // 3. Network failure → return null rather than guessing. Callers hide the
+    //    prayer UI entirely; a wrong time is worse than no time.
+    console.warn("[prayerTimes] fetch failed", e);
+    return null;
   }
 }
 
