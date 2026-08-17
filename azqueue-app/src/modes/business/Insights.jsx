@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { useBranch } from "../../lib/BranchContext";
 import { downloadCSV, exportFilename } from "../../lib/export";
+import { downloadXLSX } from "../../lib/exportXlsx";
+import ExportMenu from "../../components/ExportMenu";
 import { fetchPlatformOverview, CHANNEL_LABELS } from "../../lib/platformOverview";
 import { getGAConfig, fetchGAMetrics } from "../../lib/googleAnalytics";
 import Card, { CardHeader } from "../../components/Card";
@@ -195,9 +197,11 @@ export default function Insights() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="ghost" size="sm" onClick={() => exportInsights(data, branch)} disabled={!data}>
-            Export CSV
-          </Button>
+          <ExportMenu
+            disabled={!data}
+            onCsv={()  => exportInsights(data, branch, "csv")}
+            onXlsx={() => exportInsights(data, branch, "xlsx")}
+          />
           <Button variant="ghost" size="sm" onClick={() => fetch(true)} disabled={loading}>
             ↻ Refresh
           </Button>
@@ -486,7 +490,7 @@ function buildAlerts(data) {
 }
 
 /* ── CSV export ─────────────────────────────────────────────────────── */
-function exportInsights(data, branch) {
+function exportInsights(data, branch, format = "csv") {
   if (!data) return;
   const rows = [
     { metric: "Served today",       value: data.served_today ?? 0 },
@@ -498,9 +502,13 @@ function exportInsights(data, branch) {
     { metric: "Waiting now",        value: data.waiting_now ?? 0 },
     { metric: "Serving now",        value: data.serving_now ?? 0 },
   ];
-  downloadCSV(
-    exportFilename(branch?.slug, "insights"),
-    rows,
-    [{ key: "metric", label: "Metric" }, { key: "value", label: "Value" }]
-  );
+  const columns = [{ key: "metric", label: "Metric" }, { key: "value", label: "Value" }];
+
+  if (format === "xlsx") {
+    return downloadXLSX(exportFilename(branch?.slug, "insights", "xlsx"), rows, columns, {
+      sheetName: "Insights",
+      title: `Insights — ${branch?.name ?? "AzQueue"}`,
+    });
+  }
+  downloadCSV(exportFilename(branch?.slug, "insights"), rows, columns);
 }

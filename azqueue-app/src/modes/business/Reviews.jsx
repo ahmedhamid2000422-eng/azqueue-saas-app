@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { useBranch } from "../../lib/BranchContext";
 import { downloadCSV, exportFilename } from "../../lib/export";
+import { downloadXLSX } from "../../lib/exportXlsx";
+import ExportMenu from "../../components/ExportMenu";
 import Card, { CardHeader } from "../../components/Card";
 import Stat from "../../components/Stat";
 import Button from "../../components/Button";
@@ -114,9 +116,11 @@ export default function Reviews() {
             <option value={90}>Last 90 days</option>
             <option value={365}>Last 12 months</option>
           </select>
-          <Button variant="ghost" size="sm" onClick={() => exportReviews(surveys, branch)} disabled={total === 0}>
-            Export CSV
-          </Button>
+          <ExportMenu
+            disabled={total === 0}
+            onCsv={()  => exportReviews(surveys, branch, "csv")}
+            onXlsx={() => exportReviews(surveys, branch, "xlsx")}
+          />
           <Button variant="ghost" size="sm" onClick={load}>↻ Refresh</Button>
         </div>
       </header>
@@ -233,19 +237,27 @@ function ReviewRow({ survey }) {
   );
 }
 
-function exportReviews(surveys, branch) {
+function exportReviews(surveys, branch, format = "csv") {
   const rows = surveys.map((s) => ({
     date: new Date(s.created_at).toLocaleString(),
     rating: s.rating,
     feedback: s.feedback ?? "",
     phone: s.is_anonymous ? "(anonymous)" : (s.customer_phone ?? ""),
   }));
-  downloadCSV(exportFilename(branch?.slug, "reviews"), rows, [
-    { key: "date",    label: "Date" },
-    { key: "rating",  label: "Rating" },
+  const columns = [
+    { key: "date",     label: "Date" },
+    { key: "rating",   label: "Rating" },
     { key: "feedback", label: "Feedback" },
     { key: "phone",    label: "Phone" },
-  ]);
+  ];
+
+  if (format === "xlsx") {
+    return downloadXLSX(exportFilename(branch?.slug, "reviews", "xlsx"), rows, columns, {
+      sheetName: "Reviews",
+      title: `Reviews — ${branch?.name ?? "AzQueue"}`,
+    });
+  }
+  downloadCSV(exportFilename(branch?.slug, "reviews"), rows, columns);
 }
 
 function fmtAgo(iso) {

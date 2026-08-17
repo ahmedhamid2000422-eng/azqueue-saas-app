@@ -49,8 +49,8 @@ export function downloadCSV(filename, rows, columns) {
   }, 1500);
 }
 
-/** Suggest a filename of the form "azqueue-{branch}-{kind}-YYYY-MM-DD.csv" */
-export function exportFilename(branchSlug, kind) {
+/** Suggest a filename of the form "azqueue-{branch}-{kind}-YYYY-MM-DD.{ext}" */
+export function exportFilename(branchSlug, kind, ext = "csv") {
   const d = new Date().toISOString().slice(0, 10);
-  return `azqueue-${branchSlug || "all"}-${kind}-${d}.csv`;
+  return `azqueue-${branchSlug || "all"}-${kind}-${d}.${ext}`;
 }

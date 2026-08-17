@@ -7,6 +7,8 @@ import { sendSlackNotification } from "../../lib/slack";
 import { sendBookingConfirmation } from "../../lib/notifications";
 import { useBranch } from "../../lib/BranchContext";
 import { downloadCSV, exportFilename } from "../../lib/export";
+import { downloadXLSX } from "../../lib/exportXlsx";
+import ExportMenu from "../../components/ExportMenu";
 import Button from "../../components/Button";
 import Card, { CardHeader } from "../../components/Card";
 import Badge from "../../components/Badge";
@@ -282,19 +284,12 @@ export default function Bookings() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              try {
-                exportBookings(bookings, services, branch);
-              } catch (err) {
-                setError(err?.message ?? "Could not export CSV.");
-              }
-            }}
-          >
-            Export CSV
-          </Button>
+          <ExportMenu
+            disabled={bookings.length === 0}
+            onCsv={()  => exportBookings(bookings, services, branch, "csv")}
+            onXlsx={() => exportBookings(bookings, services, branch, "xlsx")}
+            onError={(err) => setError(err?.message ?? "Could not export.")}
+          />
           <Button onClick={() => setShowForm((x) => !x)}>
             {showForm ? "Cancel" : "+ New booking"}
           </Button>
@@ -386,7 +381,7 @@ export default function Bookings() {
   );
 }
 
-function exportBookings(bookings, services, branch) {
+function exportBookings(bookings, services, branch, format = "csv") {
   const svcMap = Object.fromEntries(services.map((s) => [s.id, s.name]));
   const rows = bookings.map((b) => ({
     time:    new Date(b.scheduled_at).toLocaleString(),
@@ -395,13 +390,21 @@ function exportBookings(bookings, services, branch) {
     service: svcMap[b.service_id] ?? "",
     status:  b.status,
   }));
-  downloadCSV(exportFilename(branch?.slug, "bookings"), rows, [
+  const columns = [
     { key: "time",    label: "Time"    },
     { key: "name",    label: "Name"    },
     { key: "phone",   label: "Phone"   },
     { key: "service", label: "Service" },
     { key: "status",  label: "Status"  },
-  ]);
+  ];
+
+  if (format === "xlsx") {
+    return downloadXLSX(exportFilename(branch?.slug, "bookings", "xlsx"), rows, columns, {
+      sheetName: "Bookings",
+      title: `Bookings — ${branch?.name ?? "AzQueue"}`,
+    });
+  }
+  downloadCSV(exportFilename(branch?.slug, "bookings"), rows, columns);
 }
 
 

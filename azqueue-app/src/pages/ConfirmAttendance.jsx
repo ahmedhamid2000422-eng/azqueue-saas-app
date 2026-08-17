@@ -105,7 +105,7 @@ export default function ConfirmAttendance() {
           <>
             <div className="ovline text-gold-soft mb-3">Confirm your spot</div>
             <h1 className="font-display text-2xl font-light tracking-tightest mb-2">
-              {service?.name ?? "Your class"}
+              {service?.name ?? "Your appointment"}
             </h1>
           </>
         )}
@@ -123,18 +123,18 @@ export default function ConfirmAttendance() {
         {cancelled ? (
           <p className="text-[12px] text-ink-mute leading-relaxed">
             This booking is marked as {booking.status === "cancelled" ? "cancelled" : "missed"}. If that's not right,
-            reach out to the gym directly.
+            reach out to {branch?.name ?? "the office"} directly.
           </p>
         ) : done ? (
           <p className="text-[12px] text-ink-soft leading-relaxed">
-            Thanks for confirming — your spot is locked in. If your plans change, let the gym know so someone
-            on the waitlist can take your place.
+            Thanks for confirming — your spot is locked in. If your plans change, let {branch?.name ?? "the office"} know
+            so someone else can take your place.
           </p>
         ) : (
           <>
             <p className="text-[12px] text-ink-soft leading-relaxed mb-5">
-              Tap below to let us know you're coming. Takes two seconds, and helps us plan class size and
-              keep the schedule running smoothly for everyone.
+              Tap below to let us know you're coming. Takes two seconds, and helps us keep the schedule
+              running smoothly for everyone.
             </p>
             <Button onClick={confirm} disabled={busy} className="w-full">
               {busy ? "Confirming…" : "Yes, I'll be there →"}

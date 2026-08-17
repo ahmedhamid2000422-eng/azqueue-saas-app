@@ -5,6 +5,9 @@ import { supabase } from "../../lib/supabase";
 import { getLimits } from "../../lib/tier";
 import TierGate from "../../components/TierGate";
 import Button from "../../components/Button";
+import ExportMenu from "../../components/ExportMenu";
+import { downloadCSV, exportFilename } from "../../lib/export";
+import { downloadXLSX } from "../../lib/exportXlsx";
 import {
   loadCustomers,
   loadCustomerProfile,
@@ -198,30 +201,38 @@ function customerInsights(events = []) {
   };
 }
 
-// ── CSV export ────────────────────────────────────────────────────────
+// ── Export ────────────────────────────────────────────────────────────
 
-function downloadCustomersCSV(customers, branch) {
+function exportCustomers(customers, branch, format = "csv") {
   if (!customers?.length) return;
-  const headers = ["Name", "Phone", "Email", "Tags", "VIP", "Last Visit", "Member Since"];
-  const rows = customers.map((c) => [
-    c.display_name ?? "",
-    c.phone ?? "",
-    c.email ?? "",
-    (c.tags ?? []).join("; "),
-    c.vip ? "Yes" : "No",
-    c.last_seen_at ? new Date(c.last_seen_at).toLocaleDateString() : "",
-    c.created_at   ? new Date(c.created_at).toLocaleDateString()   : "",
-  ]);
-  const csv = [headers, ...rows]
-    .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
-    .join("\n");
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement("a");
-  a.href     = url;
-  a.download = `${branch?.name ?? "customers"}-${new Date().toISOString().slice(0,10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+
+  const rows = customers.map((c) => ({
+    name:      c.display_name ?? "",
+    phone:     c.phone ?? "",
+    email:     c.email ?? "",
+    tags:      (c.tags ?? []).join("; "),
+    vip:       c.vip ? "Yes" : "No",
+    lastVisit: c.last_seen_at ? new Date(c.last_seen_at).toLocaleDateString() : "",
+    since:     c.created_at   ? new Date(c.created_at).toLocaleDateString()   : "",
+  }));
+
+  const columns = [
+    { key: "name",      label: "Name"         },
+    { key: "phone",     label: "Phone"        },
+    { key: "email",     label: "Email"        },
+    { key: "tags",      label: "Tags"         },
+    { key: "vip",       label: "VIP"          },
+    { key: "lastVisit", label: "Last Visit"   },
+    { key: "since",     label: "Member Since" },
+  ];
+
+  if (format === "xlsx") {
+    return downloadXLSX(exportFilename(branch?.slug, "customers", "xlsx"), rows, columns, {
+      sheetName: "Customers",
+      title: `Customers — ${branch?.name ?? "AzQueue"}`,
+    });
+  }
+  downloadCSV(exportFilename(branch?.slug, "customers"), rows, columns);
 }
 
 // ── Inner component ───────────────────────────────────────────────────
@@ -569,13 +580,11 @@ function CustomersInner() {
           <div className="flex items-center justify-between mb-2">
             <div className="ovline text-[9px] text-gold-soft">Customers · {branch.name}</div>
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => downloadCustomersCSV(customers, branch)}
-                className="text-[9px] tracking-[0.12em] uppercase border border-line px-2 py-0.5 text-ink-mute hover:border-gold-deep hover:text-gold-soft transition"
-                title="Download all customers as CSV"
-              >
-                ↓ CSV
-              </button>
+              <ExportMenu
+                disabled={!customers?.length}
+                onCsv={()  => exportCustomers(customers, branch, "csv")}
+                onXlsx={() => exportCustomers(customers, branch, "xlsx")}
+              />
               <button
                 onClick={() => { setShowAddForm((x) => !x); setAddError(null); }}
                 className="text-[9px] tracking-[0.12em] uppercase border border-line px-2 py-0.5 text-ink-mute hover:border-gold-deep hover:text-gold-soft transition"
