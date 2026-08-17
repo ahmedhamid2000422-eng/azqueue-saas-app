@@ -148,8 +148,11 @@ export default function TvDisplay() {
     }
 
     connect();
-    // Also poll every 60 s as a safety net — TV displays must never go stale
-    const pollId = setInterval(fetchTickets, 60_000);
+    // Safety-net poll. Realtime should deliver changes within ~1s; this only
+    // covers the case where the socket is down (flaky TV wifi, Supabase
+    // restart). 10s keeps the worst case tolerable on a wall display while
+    // staying cheap — one small indexed query per branch.
+    const pollId = setInterval(fetchTickets, 10_000);
 
     // Reconnect when the tab/app comes back to the foreground (iPad Home Screen / AirPlay resume)
     function onVisibilityChange() {
