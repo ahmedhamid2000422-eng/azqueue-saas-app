@@ -80,6 +80,76 @@ export function announceTicket({ token, customerName, counter, branchId }) {
   setTimeout(() => speak(text), CHIME_MS);
 }
 
+/**
+ * Announce with a guaranteed voice.
+ *
+ * Uses the browser's own speech engine when present; on TV browsers that
+ * lack the Speech API entirely (TV Bro and friends) it falls back to the
+ * `tts-speak` Edge Function, which returns an MP3 played through the same
+ * AudioContext the chime uses. Always chimes first either way.
+ */
+export async function announceTicketWithVoice({ token, customerName, counter, branchId }) {
+  if (typeof window === "undefined") return;
+  if (branchId && !isTtsEnabled(branchId)) return;
+
+  playChime();
+
+  const name    = customerName?.trim() || null;
+  const station = counter?.trim()      || null;
+  let text = `Ticket ${token}`;
+  if (name) text += `, ${name}`;
+  text += ", please proceed to ";
+  text += station ? station : "the counter";
+  text += ".";
+
+  // Native speech available → use it, it's instant and free.
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+    setTimeout(() => speak(text), CHIME_MS);
+    return;
+  }
+
+  // No Speech API → server-generated audio.
+  try {
+    await new Promise((r) => setTimeout(r, CHIME_MS));
+    await playServerSpeech(text);
+  } catch (e) {
+    console.warn("[tts] server speech failed; chime already played", e);
+  }
+}
+
+/** Fetch an MP3 from the tts-speak Edge Function and play it. */
+export async function playServerSpeech(text) {
+  const ctx = getCtx();
+  if (!ctx) return false;
+
+  const { supabase } = await import("./supabase");
+  const { data, error } = await supabase.functions.invoke("tts-speak", {
+    body: { text },
+  });
+  if (error) throw error;
+  if (data?.dryRun) {
+    console.warn("[tts] tts-speak has no OPENAI_API_KEY set — no speech generated");
+    return false;
+  }
+  const url = data?.url;
+  if (!url) throw new Error("tts-speak returned no url");
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`audio fetch ${res.status}`);
+  const buf = await res.arrayBuffer();
+
+  // Decode + play through the unlocked context. Using WebAudio rather than an
+  // <audio> element matters here: restrictive TV WebViews often block media
+  // elements while still allowing an already-resumed AudioContext.
+  const decoded = await ctx.decodeAudioData(buf);
+  const src = ctx.createBufferSource();
+  src.buffer = decoded;
+  src.connect(ctx.destination);
+  src.start();
+  return true;
+}
+
 function speak(text) {
   try {
     const utterance = new SpeechSynthesisUtterance(text);

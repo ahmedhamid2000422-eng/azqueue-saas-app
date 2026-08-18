@@ -3,7 +3,7 @@ import { useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { fetchPrayerTimes, getPauseStatus, getNextPrayer } from "../lib/prayerTimes";
-import { announceTicket, unlockAudio, isAudioReady, getAudioDiagnostics, testSpeak, playChime } from "../lib/tts";
+import { announceTicketWithVoice, unlockAudio, isAudioReady, getAudioDiagnostics, testSpeak, playChime, playServerSpeech } from "../lib/tts";
 
 /**
  * Public TV display — full-screen wall surface in the waiting area.
@@ -221,7 +221,7 @@ export default function TvDisplay() {
         if (!isFirstSight) {
           const staffName = staff.find((s) => s.id === tk.staff_id)?.display_name;
           const counter   = staffName ? `${staffName}'s counter` : "the counter";
-          announceTicket({
+          announceTicketWithVoice({
             token:        tk.token,
             customerName: tk.customer_name,
             counter,
@@ -427,7 +427,22 @@ export default function TvDisplay() {
           <div style={{ display: "flex", gap: "0.6vw", marginTop: "1vh" }}>
             <button onClick={() => playChime()} style={diagBtn}>Test chime</button>
             <button onClick={() => testSpeak()} style={diagBtn}>Test voice</button>
+            <button
+              onClick={() =>
+                playServerSpeech("Ticket A 1 4, Ahmed, please proceed to Counter 1.")
+                  .then((ok) => setDiag((d) => ({ ...d, serverSpeech: ok ? "played" : "no key" })))
+                  .catch((e) => setDiag((d) => ({ ...d, serverSpeech: `failed: ${e.message}` })))
+              }
+              style={diagBtn}
+            >
+              Test server voice
+            </button>
           </div>
+          {diag.serverSpeech && (
+            <div style={{ marginTop: "0.6vh", fontSize: "0.75vw", color: diag.serverSpeech === "played" ? "#9bbd9b" : "#d49185" }}>
+              Server speech: {diag.serverSpeech}
+            </div>
+          )}
         </div>
       )}
 
