@@ -211,33 +211,42 @@ export default function TvDisplay() {
   const [flashing, setFlashing] = useState({}); // ticketId → true while flashing
   const flashTimers = useRef({});
 
+  const hydrated = useRef(false);
   useEffect(() => {
+    // First pass after load: remember what's already on screen without
+    // announcing it. Every pass after that announces anything newly called.
+    //
+    // NOTE: this must key off "have we loaded yet", NOT "have we seen this
+    // ticket before" — a ticket enters `serving` for the first time at the
+    // very moment it is called, so a per-ticket guard silently suppresses
+    // every real announcement.
+    if (!hydrated.current) {
+      serving.forEach((tk) => { prevCalledAt.current[tk.id] = tk.called_at; });
+      hydrated.current = true;
+      return;
+    }
+
     serving.forEach((tk) => {
       const prev = prevCalledAt.current[tk.id];
-      const isFirstSight = prev === undefined;
       if (tk.called_at && tk.called_at !== prev) {
-        // Don't announce/flash the tickets already on screen when the display
-        // first loads — only genuinely new calls.
-        if (!isFirstSight) {
-          const staffName = staff.find((s) => s.id === tk.staff_id)?.display_name;
-          const counter   = staffName ? `${staffName}'s counter` : "the counter";
-          announceTicketWithVoice({
-            token:        tk.token,
-            customerName: tk.customer_name,
-            counter,
-            branchId:     branch?.id,
-          });
+        const staffName = staff.find((s) => s.id === tk.staff_id)?.display_name;
+        const counter   = staffName ? `${staffName}'s counter` : "the counter";
+        announceTicketWithVoice({
+          token:        tk.token,
+          customerName: tk.customer_name,
+          counter,
+          branchId:     branch?.id,
+        });
 
-          setFlashing((f) => ({ ...f, [tk.id]: true }));
-          clearTimeout(flashTimers.current[tk.id]);
-          flashTimers.current[tk.id] = setTimeout(() => {
-            setFlashing((f) => {
-              const next = { ...f };
-              delete next[tk.id];
-              return next;
-            });
-          }, 12000); // flash for 12s — long enough to cross a waiting room
-        }
+        setFlashing((f) => ({ ...f, [tk.id]: true }));
+        clearTimeout(flashTimers.current[tk.id]);
+        flashTimers.current[tk.id] = setTimeout(() => {
+          setFlashing((f) => {
+            const next = { ...f };
+            delete next[tk.id];
+            return next;
+          });
+        }, 12000); // flash for 12s — long enough to cross a waiting room
       }
       prevCalledAt.current[tk.id] = tk.called_at;
     });
