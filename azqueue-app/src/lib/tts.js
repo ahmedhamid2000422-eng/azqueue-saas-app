@@ -118,48 +118,74 @@ export async function announceTicketWithVoice({ token, customerName, counter, br
   }
 }
 
-/** Fetch an MP3 from the tts-speak Edge Function and play it. */
+/**
+ * Fetch an MP3 from the tts-speak Edge Function and play it.
+ *
+ * Deliberately uses plain fetch rather than supabase.functions.invoke:
+ * invoke picks a parser from the response Content-Type and falls back to
+ * `.text()` for anything it doesn't recognise. An `audio/mpeg` body therefore
+ * came back as a mangled string and the audio was unrecoverable.
+ */
 export async function playServerSpeech(text) {
   const ctx = getCtx();
   if (!ctx) return false;
+  if (ctx.state === "suspended") { try { await ctx.resume(); } catch { /* ignore */ } }
 
-  const { supabase } = await import("./supabase");
-  const { data, error } = await supabase.functions.invoke("tts-speak", {
-    body: { text },
+  const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  if (!baseUrl || !anonKey) throw new Error("Supabase env missing");
+
+  const res = await fetch(`${baseUrl}/functions/v1/tts-speak`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: anonKey,
+      Authorization: `Bearer ${anonKey}`,
+    },
+    body: JSON.stringify({ text }),
   });
-  if (error) throw error;
+  if (!res.ok) throw new Error(`tts-speak ${res.status}`);
 
-  // The function replies in one of two shapes:
-  //   · { url }  — cached in Storage (normal path, cheapest)
-  //   · raw MP3  — when the cache bucket is missing/unwritable
-  // Handle both so a Storage misconfiguration degrades to "works but
-  // uncached" rather than "silent".
+  const ct = res.headers.get("content-type") ?? "";
   let buf;
-  if (data instanceof Blob) {
-    buf = await data.arrayBuffer();
-  } else if (data instanceof ArrayBuffer) {
-    buf = data;
-  } else {
+
+  if (ct.includes("json")) {
+    // Cached path: the function stored the clip and handed back a URL.
+    const data = await res.json();
     if (data?.dryRun) {
-      console.warn("[tts] tts-speak has no OPENAI_API_KEY set — no speech generated");
+      console.warn("[tts] tts-speak has no OPENAI_API_KEY set");
       return false;
     }
-    const url = data?.url;
-    if (!url) throw new Error("tts-speak returned neither audio nor a url");
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`audio fetch ${res.status}`);
+    if (!data?.url) throw new Error(data?.error ?? "tts-speak returned no url");
+    const audioRes = await fetch(data.url);
+    if (!audioRes.ok) throw new Error(`audio fetch ${audioRes.status}`);
+    buf = await audioRes.arrayBuffer();
+  } else {
+    // Uncached path: the MP3 comes back inline.
     buf = await res.arrayBuffer();
   }
 
-  // Decode + play through the unlocked context. Using WebAudio rather than an
-  // <audio> element matters here: restrictive TV WebViews often block media
-  // elements while still allowing an already-resumed AudioContext.
-  const decoded = await ctx.decodeAudioData(buf);
-  const src = ctx.createBufferSource();
-  src.buffer = decoded;
-  src.connect(ctx.destination);
-  src.start();
-  return true;
+  if (!buf || buf.byteLength < 1000) throw new Error("audio payload too small");
+
+  // Prefer WebAudio — it's already unlocked, and restrictive TV WebViews
+  // often block <audio> elements while allowing a resumed AudioContext.
+  try {
+    const decoded = await ctx.decodeAudioData(buf.slice(0));
+    const src = ctx.createBufferSource();
+    src.buffer = decoded;
+    src.connect(ctx.destination);
+    src.start();
+    return true;
+  } catch (decodeErr) {
+    // Some WebViews can't decode MP3 via WebAudio but can play it in an
+    // <audio> element. Try that before giving up.
+    console.warn("[tts] decodeAudioData failed, trying <audio>", decodeErr);
+    const blobUrl = URL.createObjectURL(new Blob([buf], { type: "audio/mpeg" }));
+    const el = new Audio(blobUrl);
+    el.addEventListener("ended", () => URL.revokeObjectURL(blobUrl));
+    await el.play();
+    return true;
+  }
 }
 
 function speak(text) {
