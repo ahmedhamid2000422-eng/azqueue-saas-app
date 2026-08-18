@@ -6,8 +6,11 @@ import { useBranch } from "../../lib/BranchContext";
 import { useAutopilot } from "../../hooks/useAutopilot";
 import { logServiceTime } from "../../lib/autopilot";
 import { sendCallNotice, sendThanks } from "../../lib/notifications";
-import { sendCalledNotification, sendBroadcastAlert } from "../../lib/notify";
+import { sendCalledNotification, sendWaitUpdate } from "../../lib/notify";
 import { sendCalledEmail } from "../../lib/notifyEmail";
+import { postBranchAlert, broadcastToQueue } from "../../lib/alerts";
+import { SMS_ENABLED, TURN_TIMEOUT_MINUTES, NEAR_FRONT_POSITION } from "../../lib/features";
+import { sendWaitEmail } from "../../lib/notifyEmail";
 import { announceTicket } from "../../lib/tts";
 import { arrivalState, formatEta } from "../../lib/arrival";
 import { loadOpenEscalations, resolveEscalation } from "../../lib/sla";
@@ -112,8 +115,8 @@ export default function Queue() {
     // it automatically retries with the base columns so the queue still loads.
     try {
       let active = null;
-      const fullCols = "id, token, status, customer_name, customer_phone, customer_email, service_id, staff_id, priority, source, created_at, called_at, started_at, completed_at, branch_id, notes, assigned_station_id, bounce_count, is_premium, requested_advisor_id, advisor_fee";
-      const baseCols = "id, token, status, customer_name, customer_phone, customer_email, service_id, staff_id, priority, source, created_at, called_at, started_at, completed_at, branch_id, notes, is_premium, requested_advisor_id, advisor_fee";
+      const fullCols = "id, token, status, customer_name, customer_phone, customer_email, service_id, staff_id, priority, source, created_at, called_at, started_at, completed_at, branch_id, notes, assigned_station_id, bounce_count, is_premium, requested_advisor_id, advisor_fee, near_front_notified_at, turn_expires_at";
+      const baseCols = "id, token, status, customer_name, customer_phone, customer_email, service_id, staff_id, priority, source, created_at, called_at, started_at, completed_at, branch_id, notes, is_premium, requested_advisor_id, advisor_fee, near_front_notified_at, turn_expires_at";
 
       const { data: a1, error: e1 } = await supabase
         .from("tickets")
@@ -399,9 +402,13 @@ export default function Queue() {
     setError(null);
     const next = waiting[0];
     const now  = new Date().toISOString();
+    // Start the no-show clock: if the customer hasn't been served within
+    // TURN_TIMEOUT_MINUTES, expire_called_tickets() (pg_cron, every minute)
+    // cancels the ticket so the counter isn't held indefinitely.
+    const turnExpiresAt = new Date(Date.now() + TURN_TIMEOUT_MINUTES * 60_000).toISOString();
     const { error: e } = await supabase
       .from("tickets")
-      .update({ status: "serving", called_at: now, started_at: now })
+      .update({ status: "serving", called_at: now, started_at: now, turn_expires_at: turnExpiresAt })
       .eq("id", next.id);
     if (e) { setBusy(false); return setError(e.message); }
     sendCallNotice(next.id);
@@ -614,6 +621,60 @@ export default function Queue() {
     setBusy(false);
   }
 
+  /* ── "You're almost up" reminder ────────────────────────────────────
+     When a waiting ticket reaches NEAR_FRONT_POSITION (3rd in line) we send
+     one heads-up on every active channel. `near_front_notified_at` is stamped
+     on the ticket so it fires exactly once even across reloads, other staff
+     devices, or the customer moving back and forth in the queue.          */
+  useEffect(() => {
+    if (!branch?.id || waiting.length === 0) return;
+
+    const candidates = waiting
+      .map((t, i) => ({ ticket: t, position: i + 1 }))
+      .filter(({ ticket, position }) =>
+        position <= NEAR_FRONT_POSITION &&
+        !ticket.near_front_notified_at &&
+        (ticket.customer_email || (SMS_ENABLED && ticket.customer_phone)));
+
+    if (candidates.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      for (const { ticket, position } of candidates) {
+        if (cancelled) return;
+
+        // Claim the send first so two open dashboards can't both fire it.
+        const { data: claimed, error: claimErr } = await supabase
+          .from("tickets")
+          .update({ near_front_notified_at: new Date().toISOString() })
+          .eq("id", ticket.id)
+          .is("near_front_notified_at", null)
+          .select("id");
+        if (claimErr || !claimed?.length) continue;  // someone else got it
+
+        if (ticket.customer_email) {
+          sendWaitEmail({
+            email:      ticket.customer_email,
+            name:       ticket.customer_name ?? "there",
+            position,
+            branchName: branch?.name ?? "AzQueue",
+            ticketId:   ticket.id,
+          }).catch(() => {});
+        }
+        if (SMS_ENABLED && ticket.customer_phone) {
+          sendWaitUpdate(
+            ticket.customer_phone,
+            ticket.customer_name ?? "there",
+            position,
+            branch?.name ?? "AzQueue",
+          ).catch(() => {});
+        }
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [waiting, branch?.id, branch?.name]);
+
   /**
    * Human name of the staff member serving a ticket, for customer-facing
    * notifications. Order of preference:
@@ -638,11 +699,11 @@ export default function Queue() {
     return "";
   }
 
-  // ── "Your turn" SMS ────────────────────────────────────────────────
-  // Sends a direct Twilio SMS to a waiting customer telling them to come
-  // to the counter. Useful when the WhatsApp call notice didn't reach them.
+  // ── "Your turn" nudge ──────────────────────────────────────────────
+  // Re-sends the "come to the counter" notice on every channel we have for
+  // this customer: email always, SMS as well once it's re-enabled.
   async function sendYourTurn(ticket) {
-    if (!ticket.customer_phone) return;
+    if (!ticket.customer_email && !ticket.customer_phone) return;
     setSmsSent((prev) => ({ ...prev, [ticket.id]: "sending" }));
     const staffName = resolveStaffName(ticket) || "Our team";
     // Window label: use assigned station name if available, else "Counter 1"
@@ -650,14 +711,31 @@ export default function Queue() {
       ? stationMap[ticket.assigned_station_id]
       : "Counter 1";
     try {
-      await sendCalledNotification(
-        ticket.customer_phone,
-        ticket.customer_name ?? "Customer",
-        ticket.token,
-        windowLabel,
-        staffName,
-        branch?.name ?? "AzQueue",
-      );
+      const jobs = [];
+
+      if (ticket.customer_email) {
+        jobs.push(sendCalledEmail({
+          email:      ticket.customer_email,
+          name:       ticket.customer_name ?? "Customer",
+          token:      ticket.token,
+          counter:    windowLabel,
+          staffName,
+          branchName: branch?.name ?? "AzQueue",
+        }));
+      }
+
+      if (SMS_ENABLED && ticket.customer_phone) {
+        jobs.push(sendCalledNotification(
+          ticket.customer_phone,
+          ticket.customer_name ?? "Customer",
+          ticket.token,
+          windowLabel,
+          staffName,
+          branch?.name ?? "AzQueue",
+        ));
+      }
+
+      await Promise.all(jobs);
       setSmsSent((prev) => ({ ...prev, [ticket.id]: "sent" }));
       // Auto-clear the "Sent ✓" indicator after 4 s
       setTimeout(() => setSmsSent((prev) => {
@@ -675,45 +753,46 @@ export default function Queue() {
     }
   }
 
-  // ── Broadcast SMS alert ──────────────────────────────────────────────
-  // Sends a staff-typed message to every customer currently in the queue
-  // (waiting or serving) who has a phone number.
+  // ── Broadcast alert ──────────────────────────────────────────────────
+  // Three things happen: a banner goes up on every TV display for this
+  // branch, everyone in the queue with an email gets the message, and — once
+  // SMS is re-enabled — anyone with a phone number gets a text too.
   async function sendBroadcast() {
     if (!alertMessage.trim() || alertSending) return;
     setAlertSending(true);
     setAlertResult(null);
 
+    const message = alertMessage.trim();
     const targets = tickets.filter(
-      (t) => ["waiting", "serving"].includes(t.status) && t.customer_phone
+      (t) => ["waiting", "serving"].includes(t.status) && (t.customer_email || t.customer_phone)
     );
 
-    let sent = 0, failed = 0;
-    await Promise.all(
-      targets.map(async (t) => {
-        try {
-          await sendBroadcastAlert(
-            t.customer_phone,
-            t.customer_name ?? "",
-            alertMessage.trim(),
-            branch?.name ?? "AzQueue",
-          );
-          sent++;
-        } catch {
-          failed++;
-        }
-      })
+    // 1. Banner on the TV displays (independent of who has contact details)
+    const banner = await postBranchAlert(branch.id, message, {
+      minutes: 15,
+      userId: user?.id ?? null,
+    });
+
+    // 2. Direct notifications
+    const { emailed, texted } = await broadcastToQueue(
+      targets,
+      message,
+      branch?.name ?? "AzQueue",
     );
 
     setAlertSending(false);
-    setAlertResult({ sent, failed, total: targets.length });
-    if (targets.length === 0 || sent + failed === targets.length) {
-      // Auto-close after showing result
-      setTimeout(() => {
-        setAlertOpen(false);
-        setAlertMessage("");
-        setAlertResult(null);
-      }, 3000);
-    }
+    setAlertResult({
+      total:    targets.length,
+      emailed,
+      texted,
+      onScreen: banner.ok,
+    });
+
+    setTimeout(() => {
+      setAlertOpen(false);
+      setAlertMessage("");
+      setAlertResult(null);
+    }, 4000);
   }
 
   // ── Manager escalation overrides ───────────────────────────────────
@@ -923,17 +1002,14 @@ export default function Queue() {
 
             {alertResult ? (
               <div className="text-center py-4">
-                {alertResult.total === 0 ? (
-                  <p className="text-ink-soft text-sm">No customers in queue with a phone number.</p>
-                ) : (
-                  <>
-                    <div className="text-2xl mb-2">{alertResult.failed === 0 ? "✓" : "⚠"}</div>
-                    <p className="text-sm text-ink">
-                      Sent to <strong>{alertResult.sent}</strong> of {alertResult.total} customers
-                      {alertResult.failed > 0 && ` · ${alertResult.failed} failed`}
-                    </p>
-                  </>
-                )}
+                <div className="text-2xl mb-2">✓</div>
+                <p className="text-sm text-ink">
+                  {alertResult.onScreen && <>Showing on the TV display<br /></>}
+                  {alertResult.emailed > 0
+                    ? <>Emailed <strong>{alertResult.emailed}</strong> of {alertResult.total} in queue</>
+                    : <span className="text-ink-mute">No one in the queue has an email address</span>}
+                  {alertResult.texted > 0 && <> · texted {alertResult.texted}</>}
+                </p>
               </div>
             ) : (
               <>
@@ -1168,11 +1244,11 @@ export default function Queue() {
                 disabled={busy}
               />
             )}
-            {serving?.customer_phone && (
+            {(serving?.customer_email || serving?.customer_phone) && (
               <button
                 onClick={() => sendYourTurn(serving)}
                 disabled={smsSent[serving.id] === "sending"}
-                title="Re-send 'Your turn' SMS to customer"
+                title="Re-send the 'Your turn' notice on every channel we have"
                 className={`text-[11px] px-3 py-1.5 border leading-none transition-colors ${
                   smsSent[serving.id] === "sent"
                     ? "border-[#506b50] text-[#9bbd9b]"
@@ -1184,12 +1260,12 @@ export default function Queue() {
                 }`}
               >
                 {smsSent[serving.id] === "sent"
-                  ? "SMS sent ✓"
+                  ? "Nudge sent ✓"
                   : smsSent[serving.id] === "error"
-                  ? "SMS failed ✗"
+                  ? "Nudge failed ✗"
                   : smsSent[serving.id] === "sending"
                   ? "Sending…"
-                  : "📱 Nudge by SMS"}
+                  : SMS_ENABLED ? "📣 Nudge customer" : "✉ Nudge by email"}
               </button>
             )}
           </div>

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { sendBookingConfirmation } from "../lib/notifications";
 import { sendBookingEmail } from "../lib/notifyEmail";
+import { SMS_ENABLED } from "../lib/features";
 import LanguagePicker from "../components/LanguagePicker";
 import Button from "../components/Button";
 import LuxeFrame from "../components/LuxeFrame";
@@ -124,7 +125,7 @@ export default function BookingPage() {
     if (!serviceId) return setError(t("checkin.errors.pick_service"));
     if (!slot)      return setError(t("booking.pick_time"));
     if (!name.trim()) return setError(t("checkin.errors.enter_name"));
-    if (!/^\+?\d[\d\s-]{6,}$/.test(phone)) return setError(t("checkin.errors.valid_phone"));
+    if (SMS_ENABLED && !/^\+?\d[\d\s-]{6,}$/.test(phone)) return setError(t("checkin.errors.valid_phone"));
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setError("Please enter a valid email address — we'll send your confirmation there.");
     setReviewing(true);
   }
@@ -353,26 +354,32 @@ export default function BookingPage() {
         {slot && (
           <>
             <Field label={t("checkin.name_label")} value={name} onChange={setName} placeholder={t("checkin.name_placeholder")} />
-            <Field label={t("checkin.phone_label")} value={phone} onChange={setPhone} placeholder={t("checkin.phone_placeholder")} type="tel" />
+            {SMS_ENABLED && (
+              <Field label={t("checkin.phone_label")} value={phone} onChange={setPhone} placeholder={t("checkin.phone_placeholder")} type="tel" />
+            )}
             <Field label="Email" value={email} onChange={setEmail} placeholder="you@example.com" type="email" />
 
-            {/* SMS consent — separate optional checkbox, unchecked by default (A2P 10DLC requirement) */}
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={smsConsent}
-                onChange={e => setSmsConsent(e.target.checked)}
-                className="mt-0.5 shrink-0 accent-[#c9a86a]"
-              />
-              <span className="text-[11px] text-ink-mute leading-relaxed">
-                I agree to receive SMS text messages from AzQueue about my booking and appointment updates.
-                Message frequency varies (typically 1–5 per visit). Msg &amp; data rates may apply.
-                Reply <strong>STOP</strong> to cancel, <strong>HELP</strong> for help.{" "}
-                <a href="/sms/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-ink">Privacy Policy</a>
-                {" · "}
-                <a href="/sms/terms" target="_blank" rel="noopener noreferrer" className="underline hover:text-ink">Terms</a>
-              </span>
-            </label>
+            {/* SMS consent — separate optional checkbox, unchecked by default (A2P 10DLC
+                requirement). Hidden while SMS is unavailable; set VITE_SMS_ENABLED=true
+                to bring it and the phone field back. */}
+            {SMS_ENABLED && (
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={smsConsent}
+                  onChange={e => setSmsConsent(e.target.checked)}
+                  className="mt-0.5 shrink-0 accent-[#c9a86a]"
+                />
+                <span className="text-[11px] text-ink-mute leading-relaxed">
+                  I agree to receive SMS text messages from AzQueue about my booking and appointment updates.
+                  Message frequency varies (typically 1–5 per visit). Msg &amp; data rates may apply.
+                  Reply <strong>STOP</strong> to cancel, <strong>HELP</strong> for help.{" "}
+                  <a href="/sms/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-ink">Privacy Policy</a>
+                  {" · "}
+                  <a href="/sms/terms" target="_blank" rel="noopener noreferrer" className="underline hover:text-ink">Terms</a>
+                </span>
+              </label>
+            )}
 
             {error && <FormError message={error} />}
 

@@ -281,7 +281,7 @@ export default function CustomerTicket() {
         {ticket.status === "serving"   && <Serving ticket={ticket} />}
         {ticket.status === "completed" && <Completed ticket={ticket} branch={branch} />}
         {ticket.status === "no_show"   && <NoShow />}
-        {ticket.status === "cancelled" && <Cancelled />}
+        {ticket.status === "cancelled" && <Cancelled branch={branch} />}
       </div>
 
       {/* Arrival tracking — only while waiting + branch has coords */}
@@ -436,6 +436,27 @@ function Waiting({ ticket, position, avg }) {
 }
 
 function Serving({ ticket }) {
+  // Countdown to the no-show cut-off. Shown so the deadline never comes as a
+  // surprise — an unexplained cancellation feels arbitrary to a customer.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!ticket?.turn_expires_at) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [ticket?.turn_expires_at]);
+
+  const msLeft = ticket?.turn_expires_at
+    ? new Date(ticket.turn_expires_at).getTime() - now
+    : null;
+  const urgent = msLeft != null && msLeft < 5 * 60_000;
+
+  function fmt(ms) {
+    const total = Math.max(0, Math.floor(ms / 1000));
+    const m = Math.floor(total / 60);
+    const s = total % 60;
+    return `${m}:${String(s).padStart(2, "0")}`;
+  }
+
   return (
     <LuxeFrame className="p-7 text-center">
       <div className="ovline text-[#9bbd9b] mb-3 flex items-center justify-center gap-2">
@@ -450,6 +471,22 @@ function Serving({ ticket }) {
       <div className="text-[10px] text-ink-mute mt-2 tracking-wide">
         Walk in now — staff is ready for you.
       </div>
+
+      {msLeft != null && msLeft > 0 && (
+        <div
+          className={`mt-5 border px-4 py-3 ${
+            urgent ? "border-[#b56b5f]/50 bg-[#b56b5f]/10" : "border-line bg-bg-elev"
+          }`}
+        >
+          <div className={`font-mono text-2xl ${urgent ? "text-[#d49185]" : "text-ink"}`}>
+            {fmt(msLeft)}
+          </div>
+          <div className="text-[10px] text-ink-mute mt-1 leading-relaxed">
+            Please come to the counter within this time or your ticket will be
+            released to the next customer.
+          </div>
+        </div>
+      )}
     </LuxeFrame>
   );
 }
@@ -498,11 +535,22 @@ function NoShow() {
   );
 }
 
-function Cancelled() {
+function Cancelled({ branch }) {
   return (
     <LuxeFrame className="p-7 text-center">
       <div className="ovline text-ink-mute mb-3">Cancelled</div>
-      <p className="text-ink-soft text-xs">This ticket was cancelled.</p>
+      <p className="text-ink-soft text-sm mb-1">Your ticket is cancelled.</p>
+      <p className="text-ink-mute text-xs mb-5">
+        Sign in again to rejoin the queue.
+      </p>
+      {branch?.slug && (
+        <a
+          href={`/q/${branch.slug}`}
+          className="inline-block border border-gold-deep text-gold-soft text-[11px] tracking-[0.15em] uppercase px-5 py-2.5 hover:bg-[rgba(201,168,106,0.08)] transition"
+        >
+          Check in again
+        </a>
+      )}
     </LuxeFrame>
   );
 }

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { fetchPrayerTimes, getPauseStatus, getNextPrayer } from "../lib/prayerTimes";
 import { announceTicketWithVoice, unlockAudio, isAudioReady, getAudioDiagnostics, testSpeak, playChime, playServerSpeech } from "../lib/tts";
+import { loadActiveAlert } from "../lib/alerts";
 
 /**
  * Public TV display — full-screen wall surface in the waiting area.
@@ -273,6 +274,45 @@ export default function TvDisplay() {
     setAudioArmed(isAudioReady());
   }
 
+  // ── Broadcast alert banner ───────────────────────────────────
+  // Staff can push a message from the Queue page; it shows here until it
+  // expires. Polled as well as realtime so a display that was briefly
+  // offline still picks up an active alert when it comes back.
+  const [alert, setAlert] = useState(null);
+  useEffect(() => {
+    if (isDemo || !branch?.id) return;
+    let alive = true;
+
+    const refresh = async () => {
+      const a = await loadActiveAlert(branch.id);
+      if (alive) setAlert(a);
+    };
+    refresh();
+
+    const ch = supabase
+      .channel(`alerts-${branch.id}-${Date.now()}`)
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "branch_alerts", filter: `branch_id=eq.${branch.id}` },
+        refresh)
+      .subscribe();
+
+    const poll = setInterval(refresh, 30_000);
+    return () => {
+      alive = false;
+      clearInterval(poll);
+      supabase.removeChannel(ch).catch(() => {});
+    };
+  }, [isDemo, branch?.id]);
+
+  // Drop the banner the moment it expires, without waiting for a poll
+  useEffect(() => {
+    if (!alert?.expires_at) return;
+    const ms = new Date(alert.expires_at).getTime() - Date.now();
+    if (ms <= 0) { setAlert(null); return; }
+    const t = setTimeout(() => setAlert(null), ms);
+    return () => clearTimeout(t);
+  }, [alert?.id, alert?.expires_at]);
+
   // ── Audio diagnostics (?debug=audio) ─────────────────────────
   const debugAudio = params.get("debug") === "audio";
   const [diag, setDiag] = useState(null);
@@ -367,6 +407,27 @@ export default function TvDisplay() {
             </div>
           </div>
         </header>
+
+        {/* ── Broadcast alert banner ── */}
+        {alert && (
+          <div
+            style={{
+              margin: "0 0 2vh",
+              padding: "1.6vh 2vw",
+              border: "1px solid rgba(201,168,106,0.55)",
+              background: "rgba(201,168,106,0.12)",
+              display: "flex",
+              alignItems: "center",
+              gap: "1.5vw",
+              animation: "tvFlashCard 2.4s ease-in-out infinite",
+            }}
+          >
+            <span style={{ fontSize: "2.4vw", lineHeight: 1 }}>📢</span>
+            <span style={{ color: "#f0ede6", fontSize: "1.9vw", fontWeight: 300, lineHeight: 1.3 }}>
+              {alert.message}
+            </span>
+          </div>
+        )}
 
         {/* ── Main content ── */}
         <main style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 36%", gap: "4vw", minHeight: 0 }}>
