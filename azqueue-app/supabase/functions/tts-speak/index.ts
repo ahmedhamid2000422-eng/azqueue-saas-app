@@ -57,7 +57,15 @@ Deno.serve(async (req) => {
   if (!text) return json({ error: "text is required" }, 400);
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-  const SERVICE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  // Projects on the new API-key scheme expose `SB_SECRET_KEY` (sb_secret_…)
+  // while older ones expose the legacy JWT `SUPABASE_SERVICE_ROLE_KEY`.
+  // Storage rejects a non-JWT sent as a bearer token with
+  // "Invalid Compact JWS", so we prefer whichever exists and send it as
+  // BOTH `apikey` and `Authorization`, which satisfies either scheme.
+  const SERVICE_KEY =
+    Deno.env.get("SB_SECRET_KEY") ??
+    Deno.env.get("SUPABASE_SECRET_KEY") ??
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!SUPABASE_URL || !SERVICE_KEY) {
     return json({ ok: false, error: "Supabase env not available" }, 500);
   }
@@ -112,6 +120,7 @@ Deno.serve(async (req) => {
       {
         method: "POST",
         headers: {
+          apikey: SERVICE_KEY,
           Authorization: `Bearer ${SERVICE_KEY}`,
           "Content-Type": "audio/mpeg",
           "x-upsert": "true",
