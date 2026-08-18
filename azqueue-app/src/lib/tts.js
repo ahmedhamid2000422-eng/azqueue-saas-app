@@ -128,16 +128,28 @@ export async function playServerSpeech(text) {
     body: { text },
   });
   if (error) throw error;
-  if (data?.dryRun) {
-    console.warn("[tts] tts-speak has no OPENAI_API_KEY set — no speech generated");
-    return false;
-  }
-  const url = data?.url;
-  if (!url) throw new Error("tts-speak returned no url");
 
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`audio fetch ${res.status}`);
-  const buf = await res.arrayBuffer();
+  // The function replies in one of two shapes:
+  //   · { url }  — cached in Storage (normal path, cheapest)
+  //   · raw MP3  — when the cache bucket is missing/unwritable
+  // Handle both so a Storage misconfiguration degrades to "works but
+  // uncached" rather than "silent".
+  let buf;
+  if (data instanceof Blob) {
+    buf = await data.arrayBuffer();
+  } else if (data instanceof ArrayBuffer) {
+    buf = data;
+  } else {
+    if (data?.dryRun) {
+      console.warn("[tts] tts-speak has no OPENAI_API_KEY set — no speech generated");
+      return false;
+    }
+    const url = data?.url;
+    if (!url) throw new Error("tts-speak returned neither audio nor a url");
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`audio fetch ${res.status}`);
+    buf = await res.arrayBuffer();
+  }
 
   // Decode + play through the unlocked context. Using WebAudio rather than an
   // <audio> element matters here: restrictive TV WebViews often block media
