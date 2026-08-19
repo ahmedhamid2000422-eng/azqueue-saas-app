@@ -12,6 +12,8 @@
  * is unreachable so the app never breaks.
  */
 
+import { PRAYER_PAUSE_MINUTES, PRAYER_WARN_MINUTES } from "./features";
+
 const FALLBACK_KL = {
   fajr:    "05:55",
   dhuhr:   "13:15",
@@ -157,8 +159,12 @@ function capitalise(s) {
  *   - { state: "paused",      prayer, msLeft }    — currently within prayer window (hard pause)
  */
 export function getPauseStatus(times, options = {}, now = new Date()) {
-  const warnMinutes = options.warnMinutes ?? 10;
-  const pauseDurationMinutes = options.pauseDurationMinutes ?? 20;
+  // Defaults come from features.js so every surface — the TV countdown, the
+  // Islamic bar, autopilot and the spoken announcement — agrees on how long
+  // the pause lasts. Previously this was hardcoded to 20 minutes here while
+  // other copy said something different.
+  const warnMinutes = options.warnMinutes ?? PRAYER_WARN_MINUTES;
+  const pauseDurationMinutes = options.pauseDurationMinutes ?? PRAYER_PAUSE_MINUTES;
 
   const today = new Date(now);
   today.setHours(0, 0, 0, 0);

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { PRAYER_PAUSE_MINUTES, PRAYER_WARN_MINUTES } from "../lib/features";
 
 /**
  * usePrayerCountdown — drives a "pause around prayer" state machine.
@@ -16,7 +17,7 @@ import { useEffect, useRef, useState } from "react";
  *   const { paused, msUntilStart, msUntilResume } = usePrayerCountdown({
  *     targetTime: "13:10",
  *     warnMinutes: 5,
- *     pauseMinutes: 20,
+ *     pauseMinutes: 7,
  *     onApproaching: () => playSoftBell(),
  *     onResume:      () => refreshQueue(),
  *   });
@@ -24,8 +25,8 @@ import { useEffect, useRef, useState } from "react";
  */
 export function usePrayerCountdown({
   targetTime,                 // "HH:MM" (24h) — required
-  warnMinutes  = 5,           // how many minutes before the prayer to pause
-  pauseMinutes = 20,          // how long to stay paused
+  warnMinutes  = PRAYER_WARN_MINUTES,   // minutes before the prayer to wind down
+  pauseMinutes = PRAYER_PAUSE_MINUTES,  // how long to stay paused
   tickMs       = 30_000,
   onApproaching,
   onResume,

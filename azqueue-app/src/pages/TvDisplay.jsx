@@ -286,8 +286,13 @@ export default function TvDisplay() {
     const prev  = prevPauseState.current;
     prevPauseState.current = state;
 
-    if (prev === null) return;          // first read after load — don't announce
     if (state === prev) return;
+
+    // On the very first read we normally stay quiet — but if the queue is
+    // *already* paused when the display loads (staff refreshed mid-prayer),
+    // saying nothing leaves the room wondering why nobody is being called.
+    // Announce that case too, with the real remaining time.
+    if (prev === null && state !== "paused") return;
 
     if (state === "paused") {
       const mins = pauseStatus?.msLeft

@@ -40,7 +40,16 @@ export const INTERCEPT_AFTER_MINUTES = Number(
   import.meta.env.VITE_INTERCEPT_AFTER_MINUTES ?? 45,
 );
 
-/** How long the queue pauses for prayer, and how far ahead it's announced. */
+/**
+ * How long the queue stays paused for prayer, in minutes.
+ * Applies to the on-screen countdown, the autopilot hold, and the spoken
+ * announcement, so they can never disagree with each other.
+ */
 export const PRAYER_PAUSE_MINUTES = Number(
-  import.meta.env.VITE_PRAYER_PAUSE_MINUTES ?? 5,
+  import.meta.env.VITE_PRAYER_PAUSE_MINUTES ?? 7,
+);
+
+/** How many minutes before a prayer the queue starts winding down. */
+export const PRAYER_WARN_MINUTES = Number(
+  import.meta.env.VITE_PRAYER_WARN_MINUTES ?? 5,
 );
