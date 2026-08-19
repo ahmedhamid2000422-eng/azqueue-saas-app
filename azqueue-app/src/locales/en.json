@@ -21,13 +21,13 @@
     "email_placeholder": "you@example.com",
     "submit": "Secure my place",
     "submitting": "Securing your spot…",
-    "footer": "Your place is reserved the moment you submit. We'll WhatsApp you when you're nearly up.",
+    "footer": "Your place is reserved the moment you submit. We'll email you when you're nearly up.",
     "no_services": "No services available right now — please ask staff for assistance.",
     "invalid": "This check-in link is invalid or no longer active.",
     "errors": {
       "pick_service": "Please pick a service to continue.",
       "enter_name": "Please enter your name so staff can call you.",
-      "valid_phone": "Please enter a valid phone number — we'll WhatsApp you when it's your turn.",
+      "valid_phone": "Please enter a valid phone number.",
       "could_not_token": "Could not reserve your spot. Please try again.",
       "could_not_checkin": "Could not complete check-in. Please try again or ask staff for help."
     }
@@ -74,7 +74,7 @@
     "submit": "Lock in my booking",
     "submitting": "Securing your slot…",
     "confirmed": "You're booked",
-    "confirmed_body": "Your slot is confirmed. We'll WhatsApp {{phone}} a reminder before you're due.",
+    "confirmed_body": "Your slot is confirmed. We'll email you a reminder before you're due.",
     "view_ticket": "View ticket"
   },
   "display": {

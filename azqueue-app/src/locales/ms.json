@@ -18,7 +18,7 @@
     "email_placeholder": "anda@contoh.com",
     "submit": "Dapatkan tiket",
     "submitting": "Mendaftar masuk…",
-    "footer": "Kami akan WhatsApp anda apabila giliran tiba. Tiada aplikasi diperlukan.",
+    "footer": "Kami akan e-mel anda apabila giliran tiba. Tiada aplikasi diperlukan.",
     "no_services": "Belum ada perkhidmatan ditetapkan untuk cawangan ini.",
     "invalid": "Pautan ini tidak sah atau telah ditutup.",
     "errors": {
@@ -62,14 +62,14 @@
   },
   "booking": {
     "title": "Tempah awal",
-    "subtitle": "Pilih perkhidmatan dan masa. Anda akan dapat pengesahan WhatsApp.",
+    "subtitle": "Pilih perkhidmatan dan masa. Anda akan dapat pengesahan e-mel.",
     "pick_service": "Pilih perkhidmatan",
     "pick_time": "Pilih masa",
     "no_slots": "Tiada slot tersedia untuk hari itu.",
     "submit": "Sahkan tempahan",
     "submitting": "Menempah…",
     "confirmed": "Tempahan disahkan",
-    "confirmed_body": "Kami akan WhatsApp {{phone}} sebelum slot anda.",
+    "confirmed_body": "Kami akan e-mel anda sebelum slot anda.",
     "view_ticket": "Lihat tiket"
   },
   "display": {

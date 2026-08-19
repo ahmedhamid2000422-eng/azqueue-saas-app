@@ -1014,8 +1014,12 @@ export default function Queue() {
             ) : (
               <>
                 <p className="text-xs text-ink-soft mb-4">
-                  This message will be sent via SMS to all <strong>{tickets.filter(t => ["waiting","serving"].includes(t.status) && t.customer_phone).length}</strong> customers
-                  currently in queue who have a phone number.
+                  Shows as a banner on the TV display for 15 minutes, and is emailed to{" "}
+                  <strong>
+                    {tickets.filter(t => ["waiting","serving"].includes(t.status) && t.customer_email).length}
+                  </strong>{" "}
+                  of {tickets.filter(t => ["waiting","serving"].includes(t.status)).length} customers in the queue.
+                  {SMS_ENABLED && " Customers who opted in also get a text."}
                 </p>
                 <textarea
                   value={alertMessage}
@@ -1098,7 +1102,7 @@ export default function Queue() {
               onClick={() => setAlertOpen(true)}
               disabled={tickets.filter(t => ["waiting","serving"].includes(t.status)).length === 0}
               className="text-[9px] border border-line px-2.5 py-1 text-ink-mute hover:text-amber-400 hover:border-amber-800 transition disabled:opacity-30 ovline"
-              title="Send a custom SMS alert to all customers currently in queue"
+              title="Post a message on the TV display and email everyone in the queue"
             >
               📢 Alert queue
             </button>
@@ -1399,12 +1403,12 @@ export default function Queue() {
                       </span>
                     )}
                   </div>
-                  {/* "Your turn" SMS nudge — only shown when customer has a phone */}
-                  {t.customer_phone && (
+                  {/* "Your turn" nudge — sends on every channel we have for them */}
+                  {(t.customer_email || t.customer_phone) && (
                     <button
                       onClick={() => sendYourTurn(t)}
                       disabled={smsSent[t.id] === "sending"}
-                      title="Send 'Your turn' SMS"
+                      title={SMS_ENABLED ? "Send 'Your turn' by email and SMS" : "Send 'Your turn' by email"}
                       className={`text-[10px] px-2 py-1 border leading-none transition-colors ${
                         smsSent[t.id] === "sent"
                           ? "border-[#506b50] text-[#9bbd9b]"
@@ -1421,7 +1425,7 @@ export default function Queue() {
                         ? "Failed ✗"
                         : smsSent[t.id] === "sending"
                         ? "…"
-                        : "📱 SMS"}
+                        : SMS_ENABLED ? "📣 Nudge" : "✉ Email"}
                     </button>
                   )}
                   <TicketActionsMenu

@@ -18,7 +18,7 @@
     "email_placeholder": "vous@exemple.com",
     "submit": "Obtenir mon ticket",
     "submitting": "Enregistrement…",
-    "footer": "Nous vous enverrons un WhatsApp à votre tour. Aucune appli nécessaire.",
+    "footer": "Nous vous enverrons un e-mail à votre tour. Aucune appli nécessaire.",
     "no_services": "Aucun service configuré pour cette agence.",
     "invalid": "Ce lien n'est pas valide ou n'est plus actif.",
     "errors": {
@@ -62,14 +62,14 @@
   },
   "booking": {
     "title": "Réserver à l'avance",
-    "subtitle": "Choisissez un service et une heure. Confirmation par WhatsApp.",
+    "subtitle": "Choisissez un service et une heure. Confirmation par e-mail.",
     "pick_service": "Choisir un service",
     "pick_time": "Choisir l'heure",
     "no_slots": "Aucun créneau disponible ce jour-là.",
     "submit": "Confirmer la réservation",
     "submitting": "Réservation…",
     "confirmed": "Réservation confirmée",
-    "confirmed_body": "Un rappel sera envoyé par WhatsApp à {{phone}}.",
+    "confirmed_body": "Un rappel vous sera envoyé par e-mail.",
     "view_ticket": "Voir le ticket"
   },
   "display": {
