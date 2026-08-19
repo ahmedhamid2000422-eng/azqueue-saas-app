@@ -14,9 +14,19 @@ import { sendAlertEmail } from "./notifyEmail";
 import { sendBroadcastAlert } from "./notify";
 import { SMS_ENABLED } from "./features";
 
-/** Post an alert banner for all TV displays of a branch. */
+/**
+ * Post an alert banner for all TV displays of a branch.
+ *
+ * Any alert already showing is cleared first, so only one message is ever
+ * live per branch. Without this, superseded alerts linger in the table until
+ * their own expiry — invisible on screen, but they'd resurface if the newer
+ * one were taken down.
+ */
 export async function postBranchAlert(branchId, message, { minutes = 15, userId = null } = {}) {
   if (!branchId || !message?.trim()) return { ok: false };
+
+  await clearActiveAlerts(branchId);
+
   const expiresAt = new Date(Date.now() + minutes * 60_000).toISOString();
   const { data, error } = await supabase
     .from("branch_alerts")
@@ -49,13 +59,25 @@ export async function loadActiveAlert(branchId) {
   return data?.[0] ?? null;
 }
 
-/** Clear an alert early (staff action). */
+/** Clear a specific alert early (staff "Take down" action). */
 export async function clearBranchAlert(alertId) {
   if (!alertId) return;
   await supabase
     .from("branch_alerts")
     .update({ cleared_at: new Date().toISOString() })
     .eq("id", alertId);
+}
+
+/** Clear every still-live alert for a branch. */
+export async function clearActiveAlerts(branchId) {
+  if (!branchId) return;
+  const { error } = await supabase
+    .from("branch_alerts")
+    .update({ cleared_at: new Date().toISOString() })
+    .eq("branch_id", branchId)
+    .is("cleared_at", null)
+    .gt("expires_at", new Date().toISOString());
+  if (error) console.warn("[alerts] could not clear previous alerts", error);
 }
 
 /**

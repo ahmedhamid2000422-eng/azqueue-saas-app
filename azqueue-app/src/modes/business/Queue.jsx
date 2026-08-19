@@ -8,7 +8,7 @@ import { logServiceTime } from "../../lib/autopilot";
 import { sendCallNotice, sendThanks } from "../../lib/notifications";
 import { sendCalledNotification, sendWaitUpdate } from "../../lib/notify";
 import { sendCalledEmail } from "../../lib/notifyEmail";
-import { postBranchAlert, broadcastToQueue } from "../../lib/alerts";
+import { postBranchAlert, broadcastToQueue, loadActiveAlert, clearBranchAlert } from "../../lib/alerts";
 import { SMS_ENABLED, TURN_TIMEOUT_MINUTES, NEAR_FRONT_POSITION } from "../../lib/features";
 import { sendWaitEmail } from "../../lib/notifyEmail";
 import { announceTicket } from "../../lib/tts";
@@ -82,6 +82,10 @@ export default function Queue() {
   // SMS "Your turn" button: ticketId → "sending" | "sent" | "error"
   const [smsSent, setSmsSent] = useState({});
   const [clearConfirm, setClearConfirm] = useState(false);
+
+  // Currently-live broadcast banner (so staff can see and take it down)
+  const [activeAlert, setActiveAlert] = useState(null);
+  const [alertMinutes, setAlertMinutes] = useState(15); // how long it stays on the TV
 
   // Broadcast alert modal
   const [alertOpen,    setAlertOpen]    = useState(false);
@@ -621,6 +625,37 @@ export default function Queue() {
     setBusy(false);
   }
 
+  /* ── Track the live broadcast banner ───────────────────────────────
+     Staff need to see that a message is on the TV and be able to pull it
+     down early — otherwise the only way to remove it is to wait out the
+     15-minute expiry.                                                    */
+  const refreshActiveAlert = useCallback(async () => {
+    if (!branch?.id) return;
+    setActiveAlert(await loadActiveAlert(branch.id));
+  }, [branch?.id]);
+
+  useEffect(() => {
+    if (!branch?.id) return;
+    refreshActiveAlert();
+    const id = setInterval(refreshActiveAlert, 30_000);
+    return () => clearInterval(id);
+  }, [branch?.id, refreshActiveAlert]);
+
+  // Drop it from the UI the moment it expires, without waiting for a poll
+  useEffect(() => {
+    if (!activeAlert?.expires_at) return;
+    const ms = new Date(activeAlert.expires_at).getTime() - Date.now();
+    if (ms <= 0) { setActiveAlert(null); return; }
+    const t = setTimeout(() => setActiveAlert(null), ms);
+    return () => clearTimeout(t);
+  }, [activeAlert?.id, activeAlert?.expires_at]);
+
+  async function dismissAlert() {
+    if (!activeAlert) return;
+    await clearBranchAlert(activeAlert.id);
+    setActiveAlert(null);
+  }
+
   /* ── "You're almost up" reminder ────────────────────────────────────
      When a waiting ticket reaches NEAR_FRONT_POSITION (3rd in line) we send
      one heads-up on every active channel. `near_front_notified_at` is stamped
@@ -769,9 +804,10 @@ export default function Queue() {
 
     // 1. Banner on the TV displays (independent of who has contact details)
     const banner = await postBranchAlert(branch.id, message, {
-      minutes: 15,
+      minutes: alertMinutes,
       userId: user?.id ?? null,
     });
+    refreshActiveAlert();
 
     // 2. Direct notifications
     const { emailed, texted } = await broadcastToQueue(
@@ -1029,6 +1065,25 @@ export default function Queue() {
                   className="w-full bg-bg-elev border border-line focus:border-gold-deep outline-none text-sm px-3 py-2.5 text-ink placeholder:text-ink-mute resize-none mb-4"
                   autoFocus
                 />
+
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="ovline text-[9px] text-ink-mute">Show on TV for</span>
+                  {[5, 15, 30, 60].map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setAlertMinutes(m)}
+                      className={`text-[10px] px-2 py-1 border transition ${
+                        alertMinutes === m
+                          ? "border-gold-deep text-gold-soft bg-[rgba(201,168,106,0.08)]"
+                          : "border-line text-ink-mute hover:border-line-2 hover:text-ink"
+                      }`}
+                    >
+                      {m < 60 ? `${m} min` : "1 hr"}
+                    </button>
+                  ))}
+                </div>
+
                 <div className="flex gap-3">
                   <button
                     onClick={sendBroadcast}
@@ -1091,6 +1146,23 @@ export default function Queue() {
           </div>
         </div>
         <div className="text-right shrink-0 flex flex-col items-end gap-2">
+          {/* Live broadcast banner — visible so staff know a message is on the
+              TV, and can pull it down before the 15-minute expiry. */}
+          {activeAlert && (
+            <div className="flex items-center gap-2 border border-amber-800/60 bg-amber-900/10 px-2.5 py-1.5 max-w-[320px]">
+              <span className="text-[11px] shrink-0">📢</span>
+              <span className="text-[10px] text-amber-200/90 text-left leading-snug line-clamp-2">
+                {activeAlert.message}
+              </span>
+              <button
+                onClick={dismissAlert}
+                title="Remove this message from the TV display"
+                className="text-[9px] ovline border border-line px-2 py-0.5 text-ink-mute hover:text-ink hover:border-line-2 transition shrink-0"
+              >
+                Take down
+              </button>
+            </div>
+          )}
           <div>
             <div className="ovline text-[9px]">Customer link</div>
             <a href={customerUrl} target="_blank" rel="noreferrer" className="font-mono text-[10px] text-gold-soft hover:text-gold underline-offset-2 hover:underline break-all">
@@ -1100,7 +1172,6 @@ export default function Queue() {
           <div className="flex gap-2">
             <button
               onClick={() => setAlertOpen(true)}
-              disabled={tickets.filter(t => ["waiting","serving"].includes(t.status)).length === 0}
               className="text-[9px] border border-line px-2.5 py-1 text-ink-mute hover:text-amber-400 hover:border-amber-800 transition disabled:opacity-30 ovline"
               title="Post a message on the TV display and email everyone in the queue"
             >
