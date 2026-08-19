@@ -14,7 +14,7 @@ import Card from "../../components/Card";
  *
  * Three states:
  *   · idle    — no current customer; "Pull next customer" or "Take a break"
- *   · serving — customer assigned; Complete / Skip / Pass / Park
+ *   · serving — customer assigned; Complete / Skip / Pass / Return
  *   · break   — calm overlay with elapsed time + Back to it
  */
 export default function StaffQueue() {
@@ -375,7 +375,7 @@ function ServingPanel({ ticket, elapsed, staffList, onComplete, onSkip, onPass, 
         Complete →
       </Button>
       <div className="grid grid-cols-3 gap-2">
-        <Button variant="ghost" onClick={onSendBack} disabled={disabled} className="w-full">Park</Button>
+        <Button variant="ghost" onClick={onSendBack} disabled={disabled} className="w-full">Return</Button>
         <Button variant="ghost" onClick={onSkip} disabled={disabled} className="w-full">Skip</Button>
         <div className="relative">
           <Button

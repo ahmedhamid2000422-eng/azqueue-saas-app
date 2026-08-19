@@ -1276,7 +1276,7 @@ export default function Queue() {
             }`}>
               <span>↩</span>
               <span>
-                Parked back <strong>{serving.bounce_count}×</strong> — this customer may need
+                Returned to queue <strong>{serving.bounce_count}×</strong> — this customer may need
                 {serving.bounce_count >= 3 ? " direct manager attention." : " a dedicated counter."}
               </span>
             </div>
@@ -1308,8 +1308,8 @@ export default function Queue() {
             <Button variant="ghost" onClick={skipServing} disabled={busy || !serving}>
               Skip
             </Button>
-            <Button variant="ghost" onClick={sendBackToQueue} disabled={busy || !serving} title="Park this customer back in the queue">
-              Park
+            <Button variant="ghost" onClick={sendBackToQueue} disabled={busy || !serving} title="Return this customer to the queue">
+              Return
             </Button>
             {serving && staffList.length > 1 && (
               <ReassignMenu
@@ -1392,7 +1392,7 @@ export default function Queue() {
                     {t.token}
                     {(t.bounce_count ?? 0) > 0 && (
                       <span
-                        title={`Parked back ${t.bounce_count}× — may need attention`}
+                        title={`Returned to queue ${t.bounce_count}× — may need attention`}
                         className={`text-[9px] font-mono px-1 leading-none rounded-sm ${
                           t.bounce_count >= 3
                             ? "bg-red-900/30 text-red-400"
@@ -1942,7 +1942,7 @@ export default function Queue() {
                     </div>
                     <div className="text-[10px] text-ink-mute mt-0.5">
                       {isBounce
-                        ? `Parked back ${ticket.bounce_count || 0}x — customer may need direct attention`
+                        ? `Returned to queue ${ticket.bounce_count || 0}x — customer may need direct attention`
                         : "Waiting beyond SLA threshold — act now"}
                     </div>
                   </div>
