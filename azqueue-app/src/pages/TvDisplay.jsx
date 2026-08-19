@@ -553,6 +553,36 @@ export default function TvDisplay() {
               Test server voice
             </button>
           </div>
+
+          {/* Rehearse the real announcements without waiting for a prayer time
+              or posting a live alert to the room. */}
+          <div style={{ display: "flex", gap: "0.6vw", marginTop: "0.6vh", flexWrap: "wrap" }}>
+            <button
+              onClick={() => announcePrayerPause({
+                prayer:   pauseStatus?.prayer ?? nextPrayer?.name ?? "Dhuhr",
+                minutes:  PRAYER_PAUSE_MINUTES,
+                branchId: branch?.id,
+              })}
+              style={diagBtn}
+            >
+              Test prayer pause
+            </button>
+            <button
+              onClick={() => announcePrayerPause({ resuming: true, branchId: branch?.id })}
+              style={diagBtn}
+            >
+              Test resume
+            </button>
+            <button
+              onClick={() => announceAlert({
+                message:  "We are running about twenty minutes behind schedule. Thank you for your patience.",
+                branchId: branch?.id,
+              })}
+              style={diagBtn}
+            >
+              Test alert voice
+            </button>
+          </div>
           {diag.serverSpeech && (
             <div style={{ marginTop: "0.6vh", fontSize: "0.75vw", color: diag.serverSpeech === "played" ? "#9bbd9b" : "#d49185" }}>
               Server speech: {diag.serverSpeech}
