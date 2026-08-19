@@ -86,6 +86,7 @@ export default function Queue() {
   // Currently-live broadcast banner (so staff can see and take it down)
   const [activeAlert, setActiveAlert] = useState(null);
   const [alertMinutes, setAlertMinutes] = useState(15); // how long it stays on the TV
+  const [alertSpeak,   setAlertSpeak]   = useState(false); // read aloud on the TV too
 
   // Broadcast alert modal
   const [alertOpen,    setAlertOpen]    = useState(false);
@@ -827,6 +828,7 @@ export default function Queue() {
     const banner = await postBranchAlert(branch.id, message, {
       minutes: alertMinutes,
       userId: user?.id ?? null,
+      speak: alertSpeak,
     });
     refreshActiveAlert();
 
@@ -843,12 +845,14 @@ export default function Queue() {
       emailed,
       texted,
       onScreen: banner.ok,
+      spoken:   banner.ok && alertSpeak,
     });
 
     setTimeout(() => {
       setAlertOpen(false);
       setAlertMessage("");
       setAlertResult(null);
+      setAlertSpeak(false);
     }, 4000);
   }
 
@@ -1090,7 +1094,14 @@ export default function Queue() {
               <div className="text-center py-4">
                 <div className="text-2xl mb-2">✓</div>
                 <p className="text-sm text-ink">
-                  {alertResult.onScreen && <>Showing on the TV display<br /></>}
+                  {alertResult.onScreen && (
+                    <>
+                      {alertResult.spoken
+                        ? "Announced and showing on the TV display"
+                        : "Showing on the TV display"}
+                      <br />
+                    </>
+                  )}
                   {alertResult.emailed > 0
                     ? <>Emailed <strong>{alertResult.emailed}</strong> of {alertResult.total} in queue</>
                     : <span className="text-ink-mute">No one in the queue has an email address</span>}
@@ -1115,6 +1126,22 @@ export default function Queue() {
                   className="w-full bg-bg-elev border border-line focus:border-gold-deep outline-none text-sm px-3 py-2.5 text-ink placeholder:text-ink-mute resize-none mb-4"
                   autoFocus
                 />
+
+                <label className="flex items-start gap-2.5 cursor-pointer mb-4">
+                  <input
+                    type="checkbox"
+                    checked={alertSpeak}
+                    onChange={(e) => setAlertSpeak(e.target.checked)}
+                    className="mt-0.5 shrink-0 accent-[#c9a86a]"
+                  />
+                  <span className="text-[11px] text-ink-soft leading-relaxed">
+                    Announce out loud on the TV
+                    <span className="block text-[10px] text-ink-mute">
+                      Plays a chime, then reads the message aloud once. The banner
+                      still shows either way.
+                    </span>
+                  </span>
+                </label>
 
                 <div className="flex items-center gap-2 mb-4">
                   <span className="ovline text-[9px] text-ink-mute">Show on TV for</span>

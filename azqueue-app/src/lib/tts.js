@@ -247,6 +247,34 @@ export async function announcePrayerPause({ prayer, minutes = 5, branchId, resum
 }
 
 /**
+ * Read a staff broadcast aloud on the TV display.
+ *
+ * Same chime → voice path as ticket calls, so it works on TV browsers with
+ * no Speech API via the server-side fallback.
+ */
+export async function announceAlert({ message, branchId }) {
+  if (typeof window === "undefined" || !message?.trim()) return;
+  if (branchId && !isTtsEnabled(branchId)) return;
+
+  playChime();
+
+  const text = `Attention please. ${message.trim()}`;
+
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+    setTimeout(() => speak(text), CHIME_MS);
+    return;
+  }
+
+  try {
+    await new Promise((r) => setTimeout(r, CHIME_MS));
+    await playServerSpeech(text);
+  } catch (e) {
+    console.warn("[tts] alert announcement failed", e);
+  }
+}
+
+/**
  * Diagnostics for the TV display's ?debug=audio panel.
  * Tells you whether this device can actually speak, and with which voices.
  */

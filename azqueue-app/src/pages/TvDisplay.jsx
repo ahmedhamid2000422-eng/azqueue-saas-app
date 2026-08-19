@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { fetchPrayerTimes, getPauseStatus, getNextPrayer } from "../lib/prayerTimes";
 import { announceTicketWithVoice, unlockAudio, isAudioReady, getAudioDiagnostics, testSpeak, playChime, playServerSpeech } from "../lib/tts";
-import { announcePrayerPause } from "../lib/tts";
+import { announcePrayerPause, announceAlert } from "../lib/tts";
 import { loadActiveAlert } from "../lib/alerts";
 import { PRAYER_PAUSE_MINUTES } from "../lib/features";
 
@@ -332,6 +332,17 @@ export default function TvDisplay() {
       supabase.removeChannel(ch).catch(() => {});
     };
   }, [isDemo, branch?.id]);
+
+  // Read the alert aloud once, if staff ticked "Announce out loud".
+  // Keyed on the alert id so the 30s poll and realtime refresh can't make it
+  // repeat, and so a display opened mid-alert doesn't blurt out an old one.
+  const spokenAlertRef = useRef(null);
+  useEffect(() => {
+    if (!alert?.id || !alert.speak) return;
+    if (spokenAlertRef.current === alert.id) return;
+    spokenAlertRef.current = alert.id;
+    announceAlert({ message: alert.message, branchId: branch?.id });
+  }, [alert?.id, alert?.speak, alert?.message, branch?.id]);
 
   // Drop the banner the moment it expires, without waiting for a poll
   useEffect(() => {

@@ -22,7 +22,7 @@ import { SMS_ENABLED } from "./features";
  * their own expiry — invisible on screen, but they'd resurface if the newer
  * one were taken down.
  */
-export async function postBranchAlert(branchId, message, { minutes = 15, userId = null } = {}) {
+export async function postBranchAlert(branchId, message, { minutes = 15, userId = null, speak = false } = {}) {
   if (!branchId || !message?.trim()) return { ok: false };
 
   await clearActiveAlerts(branchId);
@@ -35,6 +35,7 @@ export async function postBranchAlert(branchId, message, { minutes = 15, userId 
       message:    message.trim(),
       created_by: userId,
       expires_at: expiresAt,
+      speak,
     })
     .select("id")
     .single();
@@ -50,7 +51,7 @@ export async function loadActiveAlert(branchId) {
   if (!branchId) return null;
   const { data } = await supabase
     .from("branch_alerts")
-    .select("id, message, expires_at, created_at")
+    .select("id, message, expires_at, created_at, speak")
     .eq("branch_id", branchId)
     .is("cleared_at", null)
     .gt("expires_at", new Date().toISOString())
