@@ -30,3 +30,17 @@ export const TURN_TIMEOUT_MINUTES = Number(
 export const NEAR_FRONT_POSITION = Number(
   import.meta.env.VITE_NEAR_FRONT_POSITION ?? 3,
 );
+
+/**
+ * How long a customer must have been with staff before "Call next" asks what
+ * to do with them first. Below this, calling next just completes the current
+ * visit — prompting every time is noise.
+ */
+export const INTERCEPT_AFTER_MINUTES = Number(
+  import.meta.env.VITE_INTERCEPT_AFTER_MINUTES ?? 45,
+);
+
+/** How long the queue pauses for prayer, and how far ahead it's announced. */
+export const PRAYER_PAUSE_MINUTES = Number(
+  import.meta.env.VITE_PRAYER_PAUSE_MINUTES ?? 5,
+);

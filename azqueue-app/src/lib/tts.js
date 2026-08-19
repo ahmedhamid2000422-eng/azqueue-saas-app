@@ -211,6 +211,42 @@ function speak(text) {
 }
 
 /**
+ * Announce a prayer pause on the TV display.
+ *
+ * Uses the same chime → voice path as ticket calls, including the server-side
+ * fallback for TV browsers with no Speech API.
+ *
+ *   announcePrayerPause({ prayer: "Dhuhr", minutes: 5, branchId })
+ *     → "Attention please. The queue will pause for Dhuhr prayer for the next
+ *        5 minutes. We will resume shortly. Thank you for your patience."
+ */
+export async function announcePrayerPause({ prayer, minutes = 5, branchId, resuming = false }) {
+  if (typeof window === "undefined") return;
+  if (branchId && !isTtsEnabled(branchId)) return;
+
+  playChime();
+
+  const text = resuming
+    ? "Thank you for waiting. The queue is now open again."
+    : `Attention please. The queue will pause for ${prayer ? prayer + " prayer" : "prayer"} ` +
+      `for the next ${minutes} minute${minutes === 1 ? "" : "s"}. ` +
+      `We will resume shortly. Thank you for your patience.`;
+
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+    setTimeout(() => speak(text), CHIME_MS);
+    return;
+  }
+
+  try {
+    await new Promise((r) => setTimeout(r, CHIME_MS));
+    await playServerSpeech(text);
+  } catch (e) {
+    console.warn("[tts] prayer announcement failed", e);
+  }
+}
+
+/**
  * Diagnostics for the TV display's ?debug=audio panel.
  * Tells you whether this device can actually speak, and with which voices.
  */

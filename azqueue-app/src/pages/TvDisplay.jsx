@@ -4,7 +4,9 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { fetchPrayerTimes, getPauseStatus, getNextPrayer } from "../lib/prayerTimes";
 import { announceTicketWithVoice, unlockAudio, isAudioReady, getAudioDiagnostics, testSpeak, playChime, playServerSpeech } from "../lib/tts";
+import { announcePrayerPause } from "../lib/tts";
 import { loadActiveAlert } from "../lib/alerts";
+import { PRAYER_PAUSE_MINUTES } from "../lib/features";
 
 /**
  * Public TV display — full-screen wall surface in the waiting area.
@@ -273,6 +275,33 @@ export default function TvDisplay() {
     await unlockAudio();
     setAudioArmed(isAudioReady());
   }
+
+  // ── Prayer pause announcement ────────────────────────────────
+  // Spoken once when the queue pauses, and once when it reopens. Without
+  // this the screen changes silently and anyone not looking at it has no
+  // idea why nobody is being called.
+  const prevPauseState = useRef(null);
+  useEffect(() => {
+    const state = pauseStatus?.state ?? null;
+    const prev  = prevPauseState.current;
+    prevPauseState.current = state;
+
+    if (prev === null) return;          // first read after load — don't announce
+    if (state === prev) return;
+
+    if (state === "paused") {
+      const mins = pauseStatus?.msLeft
+        ? Math.max(1, Math.round(pauseStatus.msLeft / 60000))
+        : PRAYER_PAUSE_MINUTES;
+      announcePrayerPause({
+        prayer:   pauseStatus?.prayer,
+        minutes:  mins,
+        branchId: branch?.id,
+      });
+    } else if (prev === "paused") {
+      announcePrayerPause({ resuming: true, branchId: branch?.id });
+    }
+  }, [pauseStatus?.state, pauseStatus?.prayer, branch?.id]);
 
   // ── Broadcast alert banner ───────────────────────────────────
   // Staff can push a message from the Queue page; it shows here until it

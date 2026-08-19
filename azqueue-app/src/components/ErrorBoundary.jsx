@@ -17,7 +17,7 @@ import { Component } from "react";
 export default class ErrorBoundary extends Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, stack: "", showDetails: false, copied: false };
   }
 
   static getDerivedStateFromError(error) {
@@ -27,10 +27,37 @@ export default class ErrorBoundary extends Component {
   componentDidCatch(error, info) {
     // Log for debugging without crashing further
     console.error("[ErrorBoundary] caught:", error, info?.componentStack ?? "");
+    this.setState({ stack: info?.componentStack ?? "" });
   }
 
   handleReset() {
-    this.setState({ hasError: false, error: null });
+    this.setState({ hasError: false, error: null, stack: "", showDetails: false, copied: false });
+  }
+
+  /** Everything someone would need to diagnose this, as one pasteable block. */
+  detailText() {
+    const e = this.state.error;
+    return [
+      `Message: ${e?.message ?? "(none)"}`,
+      `Page: ${typeof window !== "undefined" ? window.location.pathname : "?"}`,
+      `Time: ${new Date().toISOString()}`,
+      "",
+      "Stack:",
+      e?.stack ?? "(none)",
+      "",
+      "Component stack:",
+      this.state.stack || "(none)",
+    ].join("\n");
+  }
+
+  async copyDetails() {
+    try {
+      await navigator.clipboard.writeText(this.detailText());
+      this.setState({ copied: true });
+      setTimeout(() => this.setState({ copied: false }), 2500);
+    } catch {
+      this.setState({ showDetails: true }); // clipboard blocked — at least reveal it
+    }
   }
 
   render() {
@@ -101,25 +128,56 @@ export default class ErrorBoundary extends Component {
           continues, contact support.
         </p>
 
-        {/* Show error message in dev mode */}
-        {import.meta.env.DEV && this.state.error && (
-          <pre
-            style={{
-              fontSize: 11,
-              color: "#d49185",
-              background: "#1a1a1e",
-              border: "1px solid #2a2a2e",
-              borderRadius: 2,
-              padding: "1rem 1.25rem",
-              maxWidth: 560,
-              whiteSpace: "pre-wrap",
-              wordBreak: "break-word",
-              textAlign: "left",
-              marginBottom: "1.5rem",
-            }}
-          >
-            {this.state.error?.message}
-          </pre>
+        {/* Technical details — available in production too. Hiding these
+            meant nobody could report what actually broke, which made
+            intermittent errors effectively undiagnosable. */}
+        {this.state.error && (
+          <div style={{ marginBottom: "1.5rem", maxWidth: 560, width: "100%" }}>
+            <div style={{ display: "flex", gap: "0.5rem", justifyContent: "center", marginBottom: "0.75rem" }}>
+              <button
+                onClick={() => this.setState((s) => ({ showDetails: !s.showDetails }))}
+                style={{
+                  background: "transparent", color: "#6e6c65",
+                  border: "1px solid #26262a", padding: "0.35rem 0.9rem",
+                  fontSize: 11, cursor: "pointer", borderRadius: 1,
+                }}
+              >
+                {this.state.showDetails ? "Hide details" : "Show technical details"}
+              </button>
+              <button
+                onClick={() => this.copyDetails()}
+                style={{
+                  background: "transparent",
+                  color: this.state.copied ? "#9bbd9b" : "#6e6c65",
+                  border: `1px solid ${this.state.copied ? "#506b50" : "#26262a"}`,
+                  padding: "0.35rem 0.9rem",
+                  fontSize: 11, cursor: "pointer", borderRadius: 1,
+                }}
+              >
+                {this.state.copied ? "Copied ✓" : "Copy error"}
+              </button>
+            </div>
+
+            {this.state.showDetails && (
+              <pre
+                style={{
+                  fontSize: 10,
+                  color: "#d49185",
+                  background: "#1a1a1e",
+                  border: "1px solid #2a2a2e",
+                  borderRadius: 2,
+                  padding: "1rem 1.25rem",
+                  maxHeight: 260,
+                  overflow: "auto",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                  textAlign: "left",
+                }}
+              >
+                {this.detailText()}
+              </pre>
+            )}
+          </div>
         )}
 
         <div style={{ display: "flex", gap: "0.75rem" }}>

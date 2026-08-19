@@ -16,14 +16,28 @@ import { fetchPrayerTimes, getPauseStatus } from "../lib/prayerTimes";
  *   { paused, pausedReason, secondsUntilNext, targetIntervalSec, avgServiceSec }
  *   so the dashboard can show a live countdown + status pill.
  */
-export function useAutopilot({ branch, serving, waiting, onCallNext }) {
+export function useAutopilot({ branch, serving, waiting, onCallNext, paused = false }) {
   const [avgServiceSec, setAvgServiceSec] = useState(null);
   const [tick, setTick] = useState(0);
   const [decision, setDecision] = useState({ action: "wait", reason: "starting…" });
   const [activeStaffCount] = useState(1); // Phase 3 will wire this from staff table
   const [times, setTimes] = useState(null);
 
-  const lastCallRef = useRef(0); // throttle: never call twice within 5s
+  // Double-call guards.
+  //
+  //   lastCallRef       — wall-clock throttle
+  //   lastCalledIdRef   — which ticket we last asked to be called
+  //   inFlightRef       — true while onCallNext() is still running
+  //
+  // The decide-effect re-runs every second. onCallNext() is async: it writes
+  // to the database and waits for a reload, which can easily take longer than
+  // a tick. Without these guards `decide()` keeps seeing the pre-call state
+  // and fires again, so two customers get called at once.
+  const lastCallRef     = useRef(0);
+  const lastCalledIdRef = useRef(null);
+  const inFlightRef     = useRef(false);
+
+  const CALL_THROTTLE_MS = 15_000;
 
   // Refresh the rolling average when serving changes (different service may apply)
   useEffect(() => {
@@ -60,6 +74,11 @@ export function useAutopilot({ branch, serving, waiting, onCallNext }) {
   useEffect(() => {
     if (!branch?.autopilot || !times) return;
 
+    if (paused) {
+      setDecision({ action: "halt", reason: "paused by staff" });
+      return;
+    }
+
     const pauseStatus = getPauseStatus(times);
     const d = decide({
       serving,
@@ -70,21 +89,37 @@ export function useAutopilot({ branch, serving, waiting, onCallNext }) {
     });
     setDecision(d);
 
-    if (d.action === "call") {
-      const now = Date.now();
-      if (now - lastCallRef.current > 5000) {
-        lastCallRef.current = now;
-        onCallNext?.();
-      }
-    }
-  }, [tick, branch?.autopilot, serving?.id, waiting.length, avgServiceSec, times, activeStaffCount]);
+    if (d.action !== "call") return;
+
+    const next = waiting[0];
+    if (!next) return;
+
+    // Already calling — wait for it to finish rather than stacking another.
+    if (inFlightRef.current) return;
+
+    // Same head-of-queue ticket we just called: the update hasn't landed
+    // yet. Calling again here is exactly what double-announces a customer.
+    if (lastCalledIdRef.current === next.id) return;
+
+    if (Date.now() - lastCallRef.current < CALL_THROTTLE_MS) return;
+
+    lastCallRef.current     = Date.now();
+    lastCalledIdRef.current = next.id;
+    inFlightRef.current     = true;
+
+    Promise.resolve(onCallNext?.())
+      .catch((e) => console.warn("[autopilot] call failed", e))
+      .finally(() => { inFlightRef.current = false; });
+  }, [tick, branch?.autopilot, paused, serving?.id, waiting, avgServiceSec, times, activeStaffCount]);
 
   return {
-    enabled: !!branch?.autopilot,
+    enabled: !!branch?.autopilot && !paused,
     decision,
     avgServiceSec,
-    paused: decision.action === "halt",
-    pausedReason: decision.action === "halt" ? decision.reason : null,
+    paused: paused || decision.action === "halt",
+    pausedReason: paused ? "paused by staff"
+                 : decision.action === "halt" ? decision.reason
+                 : null,
     secondsUntilNext: decision.secondsUntilNext ?? null,
     targetIntervalSec: decision.targetIntervalSec ?? null,
   };

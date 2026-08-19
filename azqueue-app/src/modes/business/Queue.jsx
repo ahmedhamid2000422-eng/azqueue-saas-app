@@ -9,7 +9,7 @@ import { sendCallNotice, sendThanks } from "../../lib/notifications";
 import { sendCalledNotification, sendWaitUpdate } from "../../lib/notify";
 import { sendCalledEmail } from "../../lib/notifyEmail";
 import { postBranchAlert, broadcastToQueue, loadActiveAlert, clearBranchAlert } from "../../lib/alerts";
-import { SMS_ENABLED, TURN_TIMEOUT_MINUTES, NEAR_FRONT_POSITION } from "../../lib/features";
+import { SMS_ENABLED, TURN_TIMEOUT_MINUTES, NEAR_FRONT_POSITION, INTERCEPT_AFTER_MINUTES } from "../../lib/features";
 import { sendWaitEmail } from "../../lib/notifyEmail";
 import { announceTicket } from "../../lib/tts";
 import { arrivalState, formatEta } from "../../lib/arrival";
@@ -101,6 +101,9 @@ export default function Queue() {
   const [elapsedSec, setElapsedSec] = useState(0);
   // Intercept modal — shown when staff taps "Call next" while already serving
   const [interceptPending, setInterceptPending] = useState(false);
+  // Ticket the staff member dismissed the "still serving" prompt for, so it
+  // isn't shown again for that same customer.
+  const interceptDismissedRef = useRef(null);
   // Manager = branch owner OR manager-tier plan
   const isManager    = branch?.owner_id === user?.id || getLimits(user).managerMode;
 
@@ -456,14 +459,32 @@ export default function Queue() {
     setBusy(false);
   }
 
-  // callNext — if already serving, show the intercept modal instead of
-  // auto-completing. The modal lets staff choose how to resolve first.
+  // callNext — if someone is already being served, ask what to do with them
+  // first. But only when the visit is genuinely running long: prompting on
+  // every call is noise, because normally staff finish one customer and move
+  // straight to the next.
+  //
+  // Dismissing the prompt ("Cancel") suppresses it for that ticket, so it
+  // doesn't reappear on the very next click.
   async function callNext() {
     if (waiting.length === 0) return;
+
     if (serving) {
-      setInterceptPending(true);
-      return;
+      const startedAt = serving.started_at ?? serving.called_at;
+      const servingMs = startedAt ? Date.now() - new Date(startedAt).getTime() : 0;
+      const runningLong = servingMs > INTERCEPT_AFTER_MINUTES * 60_000;
+      const dismissed = interceptDismissedRef.current === serving.id;
+
+      if (runningLong && !dismissed) {
+        setInterceptPending(true);
+        return;
+      }
+
+      // Not running long (or already dismissed) → complete the current
+      // customer and move on, which is what staff expect from "Call next".
+      await directComplete(serving);
     }
+
     await callNextInner();
   }
 
@@ -913,12 +934,36 @@ export default function Queue() {
     setBusy(false);
   }
 
-  /* ── Autopilot ─────────────────────────────────────────────────── */
+  /* ── Autopilot ─────────────────────────────────────────────────────
+     Staff can pause auto-calling without disabling autopilot for the whole
+     branch — useful when case complexity varies and they'd rather call
+     people manually for a while. Kept in localStorage so a refresh doesn't
+     silently resume calling behind their back.                          */
+  const [autopilotPaused, setAutopilotPaused] = useState(false);
+
+  // Load the saved pause state once the branch is known
+  useEffect(() => {
+    if (!branch?.id) return;
+    try {
+      setAutopilotPaused(localStorage.getItem(`azq.autopilot.paused.${branch.id}`) === "1");
+    } catch { /* private mode */ }
+  }, [branch?.id]);
+
+  useEffect(() => {
+    if (!branch?.id) return;
+    try {
+      const key = `azq.autopilot.paused.${branch.id}`;
+      if (autopilotPaused) localStorage.setItem(key, "1");
+      else localStorage.removeItem(key);
+    } catch { /* private mode — pause just won't survive a refresh */ }
+  }, [autopilotPaused, branch?.id]);
+
   const autopilot = useAutopilot({
     branch,
     serving,
     waiting,
     onCallNext: callNext,
+    paused: autopilotPaused,
   });
 
   // First-run users are redirected to /business/onboarding by the render guard below.
@@ -984,7 +1029,12 @@ export default function Queue() {
           onComplete={interceptResolveComplete}
           onReturn={interceptResolveReturn}
           onNoShow={interceptResolveNoShow}
-          onDismiss={() => setInterceptPending(false)}
+          onDismiss={() => {
+            // Remember the dismissal so the prompt doesn't reappear for this
+            // same customer on the next "Call next" click.
+            interceptDismissedRef.current = serving?.id ?? null;
+            setInterceptPending(false);
+          }}
         />
       )}
 
@@ -1216,15 +1266,35 @@ export default function Queue() {
           <div className="flex justify-between items-center mb-5 pb-4 border-b border-line">
             <span className="ovline text-[10px]">Now Serving</span>
             <div className="flex items-center gap-4">
-              {autopilot.enabled && (
-                <span className="ovline text-[10px] text-gold-soft flex items-center">
-                  <span className="pip breathe mr-1.5" style={{ background: "#c9a86a" }} />
-                  {autopilot.paused
-                    ? `Autopilot · ${autopilot.pausedReason}`
-                    : autopilot.secondsUntilNext != null
-                      ? `Autopilot · next in ${formatSec(autopilot.secondsUntilNext)}`
-                      : `Autopilot · ${autopilot.avgServiceSec ? "calibrated" : "learning"}`}
-                </span>
+              {/* Autopilot status doubles as the pause control. Auto-calling
+                  is disruptive when case complexity varies, so staff need to
+                  stop it in one click without digging into Settings. */}
+              {branch?.autopilot && (
+                <button
+                  onClick={() => setAutopilotPaused((v) => !v)}
+                  title={autopilotPaused
+                    ? "Resume automatic calling"
+                    : "Pause automatic calling — you'll call customers manually"}
+                  className={`ovline text-[10px] flex items-center border px-2 py-1 transition ${
+                    autopilotPaused
+                      ? "border-[#b56b5f]/50 text-[#d49185] hover:border-[#b56b5f]"
+                      : "border-transparent text-gold-soft hover:border-gold-deep/50"
+                  }`}
+                >
+                  {autopilotPaused ? (
+                    <>❚❚ Autopilot paused · Resume</>
+                  ) : (
+                    <>
+                      <span className="pip breathe mr-1.5" style={{ background: "#c9a86a" }} />
+                      {autopilot.paused
+                        ? `Autopilot · ${autopilot.pausedReason}`
+                        : autopilot.secondsUntilNext != null
+                          ? `Autopilot · next in ${formatSec(autopilot.secondsUntilNext)}`
+                          : `Autopilot · ${autopilot.avgServiceSec ? "calibrated" : "learning"}`}
+                      <span className="ml-2 opacity-60">· Pause</span>
+                    </>
+                  )}
+                </button>
               )}
               <span className="ovline text-[10px] text-[#9bbd9b] flex items-center">
                 <span className="pip breathe mr-1.5" /> Counter 1 · Live
