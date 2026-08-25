@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { decide, getAvgServiceSeconds } from "../lib/autopilot";
 import { fetchPrayerTimes, getPauseStatus } from "../lib/prayerTimes";
+import { AUTOPILOT_ENABLED } from "../lib/features";
 
 /**
  * useAutopilot — runs the autopilot loop on the dashboard.
@@ -72,7 +73,7 @@ export function useAutopilot({ branch, serving, waiting, onCallNext, paused = fa
 
   // Decide on every tick
   useEffect(() => {
-    if (!branch?.autopilot || !times) return;
+    if (!AUTOPILOT_ENABLED || !branch?.autopilot || !times) return;
 
     if (paused) {
       setDecision({ action: "halt", reason: "paused by staff" });
@@ -113,7 +114,7 @@ export function useAutopilot({ branch, serving, waiting, onCallNext, paused = fa
   }, [tick, branch?.autopilot, paused, serving?.id, waiting, avgServiceSec, times, activeStaffCount]);
 
   return {
-    enabled: !!branch?.autopilot && !paused,
+    enabled: AUTOPILOT_ENABLED && !!branch?.autopilot && !paused,
     decision,
     avgServiceSec,
     paused: paused || decision.action === "halt",

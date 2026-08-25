@@ -9,7 +9,7 @@ import { sendCallNotice, sendThanks } from "../../lib/notifications";
 import { sendCalledNotification, sendWaitUpdate } from "../../lib/notify";
 import { sendCalledEmail } from "../../lib/notifyEmail";
 import { postBranchAlert, broadcastToQueue, loadActiveAlert, clearBranchAlert } from "../../lib/alerts";
-import { SMS_ENABLED, TURN_TIMEOUT_MINUTES, NEAR_FRONT_POSITION, INTERCEPT_AFTER_MINUTES } from "../../lib/features";
+import { SMS_ENABLED, TURN_TIMEOUT_MINUTES, NEAR_FRONT_POSITION, INTERCEPT_AFTER_MINUTES, AUTOPILOT_ENABLED } from "../../lib/features";
 import { sendWaitEmail } from "../../lib/notifyEmail";
 import { announceTicket } from "../../lib/tts";
 import { arrivalState, formatEta } from "../../lib/arrival";
@@ -1296,7 +1296,7 @@ export default function Queue() {
               {/* Autopilot status doubles as the pause control. Auto-calling
                   is disruptive when case complexity varies, so staff need to
                   stop it in one click without digging into Settings. */}
-              {branch?.autopilot && (
+              {AUTOPILOT_ENABLED && branch?.autopilot && (
                 <button
                   onClick={() => setAutopilotPaused((v) => !v)}
                   title={autopilotPaused

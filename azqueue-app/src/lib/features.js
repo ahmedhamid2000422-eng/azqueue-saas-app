@@ -21,6 +21,20 @@
  */
 export const SMS_ENABLED = import.meta.env.VITE_SMS_ENABLED === "true";
 
+/**
+ * AUTOPILOT_ENABLED — whether the queue may call customers automatically.
+ *
+ * Currently OFF. Autopilot paces calls from a rolling average service time,
+ * which breaks down when case length varies wildly — a 5-minute document
+ * drop-off and a 1-hour immigration consult can't share one interval, so it
+ * ends up calling people while staff are still busy.
+ *
+ * With this off, the autopilot loop never runs and its UI is hidden; staff
+ * call each customer with "Call next". Set VITE_AUTOPILOT_ENABLED=true to
+ * bring it back without touching per-branch settings.
+ */
+export const AUTOPILOT_ENABLED = import.meta.env.VITE_AUTOPILOT_ENABLED === "true";
+
 /** Minutes a customer has to arrive after being called before auto-cancel. */
 export const TURN_TIMEOUT_MINUTES = Number(
   import.meta.env.VITE_TURN_TIMEOUT_MINUTES ?? 30,
