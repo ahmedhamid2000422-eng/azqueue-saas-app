@@ -9,6 +9,7 @@ import { getGAConfig, fetchGAMetrics } from "../../lib/googleAnalytics";
 import Card, { CardHeader } from "../../components/Card";
 import Stat from "../../components/Stat";
 import Button from "../../components/Button";
+import AiInsights from "../../components/AiInsights";
 
 /**
  * Insights — branch-level metrics pulled from the get_insights_payload RPC.
@@ -222,6 +223,11 @@ export default function Insights() {
         <Stat label="Peak hour"      value={loading ? "…" : fmtHour(data?.peak_hour)}          hint="Most completions" />
         <Stat label="Waiting now"    value={loading ? "…" : data?.waiting_now ?? 0}            hint="In queue" />
         <Stat label="Serving now"    value={loading ? "…" : data?.serving_now ?? 0}            hint="At counters" />
+      </div>
+
+      {/* ── Statistical analysis (AI-narrated) ──────────────────── */}
+      <div className="mb-6">
+        <AiInsights branch={branch} days={90} />
       </div>
 
       {/* ── Alerts ──────────────────────────────────────────────── */}
