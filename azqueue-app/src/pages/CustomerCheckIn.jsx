@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabase";
 import { sendCheckinConfirmation } from "../lib/notify";
 import { sendCheckinEmail } from "../lib/notifyEmail";
 import { SMS_ENABLED } from "../lib/features";
+import { estimateWaitFor, formatWait } from "../lib/waitEstimator";
 import { findOrCreateCustomer, logQueueEvent, generatePersona } from "../lib/customers";
 import { getCustomerCard, punchDots, hasUnclaimedReward } from "../lib/loyalty";
 import { getEffectiveChecklist, buildChecklistMessage } from "../lib/checklists";
@@ -121,7 +122,20 @@ export default function CustomerCheckIn() {
     // Confirmation notifications (non-blocking). Email is the primary channel —
     // transactional, no carrier registration needed. SMS only if opted in.
     if (email.trim() || (smsConsent && phone.trim())) {
-      const notify = (ahead) => {
+      const notify = async (ahead) => {
+        // Real ETA from this branch's own service-time history, rather than a
+        // flat guess per person. Returns null when there's too little data,
+        // in which case the messages simply omit the estimate.
+        let etaText = null;
+        try {
+          const est = await estimateWaitFor({
+            branchId: branch.id,
+            position: (ahead ?? 0) + 1,
+            serviceId,
+          });
+          etaText = formatWait(est);
+        } catch { /* no estimate — messages omit the line */ }
+
         if (email.trim()) {
           sendCheckinEmail({
             email:      email.trim(),
@@ -133,7 +147,7 @@ export default function CustomerCheckIn() {
           });
         }
         if (smsConsent && phone.trim()) {
-          sendCheckinConfirmation(phone.trim(), name.trim(), tokenData, ahead, branch.name);
+          sendCheckinConfirmation(phone.trim(), name.trim(), tokenData, ahead, branch.name, etaText);
         }
       };
 

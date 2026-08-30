@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams, useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { loadServiceStats, estimateWait, formatWait } from "../lib/waitEstimator";
 import { supabase } from "../lib/supabase";
 import { distanceMeters, estimateEtaSec, arrivalState, formatDistance, formatEta } from "../lib/arrival";
 import { punchDots, hasUnclaimedReward } from "../lib/loyalty";
@@ -32,7 +33,10 @@ export default function CustomerTicket() {
   const [branch, setBranch] = useState(null);
   const [service, setService] = useState(null);
   const [position, setPosition] = useState(null);   // # of waiting tickets ahead
-  const [avgServiceMin, setAvgServiceMin] = useState(15);
+  // Real service-time statistics for this branch. Previously this was a
+  // hardcoded 15-minute guess multiplied by queue position, which ignored
+  // both the actual caseload and how many counters were open.
+  const [waitStats, setWaitStats] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [justJoined, setJustJoined] = useState(false); // show success banner on fresh check-in
@@ -69,7 +73,6 @@ export default function CustomerTicket() {
         setTicket(t);
         setBranch(b);
         setService(s);
-        if (s?.duration_min) setAvgServiceMin(s.duration_min);
         setLoading(false);
         // Show success banner if the ticket was created in the last 90 seconds
         const ageMs = Date.now() - new Date(t.created_at).getTime();
@@ -81,6 +84,17 @@ export default function CustomerTicket() {
     })();
     return () => { cancelled = true; };
   }, [ticketId]);
+
+  // Load real service-time statistics for this branch so the ETA reflects
+  // what actually happens here, rather than a fixed guess per person.
+  useEffect(() => {
+    if (!ticket?.branch_id) return;
+    let cancelled = false;
+    loadServiceStats(ticket.branch_id)
+      .then((st) => { if (!cancelled) setWaitStats(st); })
+      .catch(() => {});   // no stats → estimator falls back and hides the ETA
+    return () => { cancelled = true; };
+  }, [ticket?.branch_id]);
 
   // Load loyalty card stored during check-in
   useEffect(() => {
@@ -245,7 +259,8 @@ export default function CustomerTicket() {
           branch={branch}
           service={service}
           position={position}
-          avg={avgServiceMin}
+          waitStats={waitStats}
+          serviceId={ticket.service_id}
           resetIn={kioskResetIn}
           onReset={() => branch?.slug && navigate(`/q/${branch.slug}?kiosk=1`, { replace: true })}
         />
@@ -277,7 +292,7 @@ export default function CustomerTicket() {
 
       {/* The ticket */}
       <div className="mt-8">
-        {ticket.status === "waiting"   && <Waiting ticket={ticket} service={service} position={position} avg={avgServiceMin} />}
+        {ticket.status === "waiting"   && <Waiting ticket={ticket} service={service} position={position} waitStats={waitStats} />}
         {ticket.status === "serving"   && <Serving ticket={ticket} />}
         {ticket.status === "completed" && <Completed ticket={ticket} branch={branch} />}
         {ticket.status === "no_show"   && <NoShow />}
@@ -336,8 +351,10 @@ export default function CustomerTicket() {
    on purpose — this is read from across a counter, not held in a hand —
    and it auto-resets so the next person isn't stuck looking at someone
    else's ticket. */
-function KioskConfirmation({ ticket, branch, service, position, avg, resetIn, onReset }) {
-  const etaMin = position == null ? null : Math.max(1, position * avg);
+function KioskConfirmation({ ticket, branch, service, position, waitStats, serviceId, resetIn, onReset }) {
+  const est = position == null ? null
+    : estimateWait({ position, serviceId, stats: waitStats });
+  const etaText = formatWait(est);
   const served = ticket.status === "serving";
   const done = ticket.status === "completed" || ticket.status === "cancelled" || ticket.status === "no_show";
 
@@ -366,7 +383,7 @@ function KioskConfirmation({ ticket, branch, service, position, avg, resetIn, on
           <div className="bg-bg-elev p-4 text-center">
             <div className="ovline text-[9px]">{served ? "Status" : "Est. wait"}</div>
             <div className="font-display text-xl mt-1 gold-text-soft">
-              {served ? "Now serving" : etaMin == null ? "—" : `~${etaMin}m`}
+              {served ? "Now serving" : etaText ?? "—"}
             </div>
           </div>
         </div>
@@ -390,10 +407,14 @@ function KioskConfirmation({ ticket, branch, service, position, avg, resetIn, on
 
 /* ── Status panels ─────────────────────────────────────────────────── */
 
-function Waiting({ ticket, position, avg }) {
+function Waiting({ ticket, position, waitStats }) {
   const { t } = useTranslation();
-  // Soft ETA based on position × avg service time
-  const etaMin = position == null ? null : Math.max(1, position * avg);
+  // Evidence-based ETA: median service time for THIS service, divided by the
+  // number of counters actually serving concurrently, with a range that
+  // reflects how variable the caseload really is.
+  const est = position == null ? null
+    : estimateWait({ position, serviceId: ticket?.service_id, stats: waitStats });
+  const etaText = formatWait(est);
   const almostUp = position != null && position <= 1;
 
   return (
@@ -427,7 +448,7 @@ function Waiting({ ticket, position, avg }) {
         <div className="bg-bg-elev p-3 text-center">
           <div className="ovline text-[8px]">{t("ticket.eta")}</div>
           <div className="font-display text-2xl mt-1 gold-text-soft">
-            {etaMin == null ? "—" : `~${etaMin}m`}
+            {etaText ?? "—"}
           </div>
         </div>
       </div>

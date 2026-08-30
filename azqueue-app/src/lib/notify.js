@@ -82,14 +82,18 @@ async function sendSms(to, body) {
  * @param {number} position   Number of people ahead (0 = next)
  * @param {string} branchName Branch display name
  */
-export async function sendCheckinConfirmation(phone, name, token, position, branchName) {
+export async function sendCheckinConfirmation(phone, name, token, position, branchName, etaText = null) {
   if (!phone) return;
   const ahead = position ?? 0;
-  const wait  = Math.max(1, ahead) * 10;
+  // etaText comes from waitEstimator (median service time, per service, divided
+  // by open counters). If the caller has no reliable estimate we omit the line
+  // entirely — this used to assume a flat 10 minutes per person, which was
+  // wrong for any business whose visits aren't all the same length.
   const body  =
     `AzQueue: Hi ${name}, you joined the queue at ${branchName}.\n` +
     `You are #${token} · ${ahead} ${ahead === 1 ? "person" : "people"} ahead.\n` +
-    `Est. wait: ~${wait} min. We'll text you when it's your turn.\n` +
+    (etaText ? `Est. wait: ${etaText}. ` : "") +
+    `We'll text you when it's your turn.\n` +
     `Reply STOP to opt out, HELP for help.`;
   await sendSms(phone, body);
 }
@@ -121,13 +125,13 @@ export async function sendCalledNotification(phone, name, token, windowNumber, s
  * @param {number} position      Current position in queue (1 = next)
  * @param {string} [branchName]  Branch display name (defaults to "AzQueue")
  */
-export async function sendWaitUpdate(phone, name, position, branchName = "AzQueue") {
+export async function sendWaitUpdate(phone, name, position, branchName = "AzQueue", etaText = null) {
   if (!phone) return;
-  const pos  = Math.max(1, position ?? 1);
-  const wait = pos * 10;
+  const pos = Math.max(1, position ?? 1);
   const body =
     `AzQueue: Hi ${name}, you're still #${pos} in line.\n` +
-    `Est. ${wait} more minutes. Thank you for waiting.\n` +
+    (etaText ? `Est. ${etaText} to go. ` : "") +
+    `Thank you for waiting.\n` +
     `${branchName}. Reply STOP to opt out.`;
   await sendSms(phone, body);
 }
