@@ -48,8 +48,6 @@ const FAQ = [
     a: "By WhatsApp, by default. Customers receive three messages: ticket confirmation, a five-minutes-out heads-up, and a you're-next call. SMS and email are available as fallbacks. No app install required." },
   { q: "Can walk-ins and bookings really share one queue?",
     a: "Yes — that's the core of AzQueue. Bookings hold a soft priority window around their slot. Walk-ins fill the gaps. Both streams are ordered fairly by the same engine, so neither group ever feels skipped." },
-  { q: "Does Autopilot replace my staff?",
-    a: "No. Autopilot just calls the next customer at the right pace. Your staff still serve, greet and decide. Autopilot watches real service time and slows down when you fall behind, speeds up when the queue grows." },
   { q: "Can I export my queue and revenue data?",
     a: "Yes. Insights exports to CSV and PDF on any plan. Growth and Enterprise include API access for custom dashboards and accounting integrations." },
   { q: "What's included in the 14-day trial?",

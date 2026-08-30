@@ -111,9 +111,7 @@ export default function Topbar() {
 
         <div className="hidden md:flex items-center gap-2">
           <span className="pip breathe" />
-          <span className="text-[#9bbd9b] text-[11px]">
-            {branch?.autopilot ? "Autopilot active" : "Manual mode"}
-          </span>
+          <span className="text-[#9bbd9b] text-[11px]">Live</span>
         </div>
       </div>
 

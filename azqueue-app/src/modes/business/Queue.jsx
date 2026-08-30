@@ -3,13 +3,13 @@ import { Navigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/AuthContext";
 import { useBranch } from "../../lib/BranchContext";
-import { useAutopilot } from "../../hooks/useAutopilot";
 import { logServiceTime } from "../../lib/autopilot";
+import { loadServiceStats } from "../../lib/waitEstimator";
 import { sendCallNotice, sendThanks } from "../../lib/notifications";
 import { sendCalledNotification, sendWaitUpdate } from "../../lib/notify";
 import { sendCalledEmail } from "../../lib/notifyEmail";
 import { postBranchAlert, broadcastToQueue, loadActiveAlert, clearBranchAlert } from "../../lib/alerts";
-import { SMS_ENABLED, TURN_TIMEOUT_MINUTES, NEAR_FRONT_POSITION, INTERCEPT_AFTER_MINUTES, AUTOPILOT_ENABLED } from "../../lib/features";
+import { SMS_ENABLED, TURN_TIMEOUT_MINUTES, NEAR_FRONT_POSITION, INTERCEPT_AFTER_MINUTES } from "../../lib/features";
 import { sendWaitEmail } from "../../lib/notifyEmail";
 import { announceTicket } from "../../lib/tts";
 import { arrivalState, formatEta } from "../../lib/arrival";
@@ -938,37 +938,21 @@ export default function Queue() {
     setBusy(false);
   }
 
-  /* ── Autopilot ─────────────────────────────────────────────────────
-     Staff can pause auto-calling without disabling autopilot for the whole
-     branch — useful when case complexity varies and they'd rather call
-     people manually for a while. Kept in localStorage so a refresh doesn't
-     silently resume calling behind their back.                          */
-  const [autopilotPaused, setAutopilotPaused] = useState(false);
-
-  // Load the saved pause state once the branch is known
-  useEffect(() => {
-    if (!branch?.id) return;
-    try {
-      setAutopilotPaused(localStorage.getItem(`azq.autopilot.paused.${branch.id}`) === "1");
-    } catch { /* private mode */ }
-  }, [branch?.id]);
+  /* ── Typical service time ──────────────────────────────────────────
+     Shown as a stat so staff can see how long a visit actually takes here.
+     This is the MEDIAN of completed visits, not the mean: one two-hour
+     immigration file would otherwise drag the number away from what a
+     normal appointment looks like.                                      */
+  const [avgServiceSec, setAvgServiceSec] = useState(null);
 
   useEffect(() => {
+    let cancelled = false;
     if (!branch?.id) return;
-    try {
-      const key = `azq.autopilot.paused.${branch.id}`;
-      if (autopilotPaused) localStorage.setItem(key, "1");
-      else localStorage.removeItem(key);
-    } catch { /* private mode — pause just won't survive a refresh */ }
-  }, [autopilotPaused, branch?.id]);
-
-  const autopilot = useAutopilot({
-    branch,
-    serving,
-    waiting,
-    onCallNext: callNext,
-    paused: autopilotPaused,
-  });
+    loadServiceStats(branch.id)
+      .then((s) => { if (!cancelled) setAvgServiceSec(s?.overall?.median ? s.overall.median * 60 : null); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [branch?.id, serving?.id]);
 
   // First-run users are redirected to /business/onboarding by the render guard below.
 
@@ -1293,36 +1277,6 @@ export default function Queue() {
           <div className="flex justify-between items-center mb-5 pb-4 border-b border-line">
             <span className="ovline text-[10px]">Now Serving</span>
             <div className="flex items-center gap-4">
-              {/* Autopilot status doubles as the pause control. Auto-calling
-                  is disruptive when case complexity varies, so staff need to
-                  stop it in one click without digging into Settings. */}
-              {AUTOPILOT_ENABLED && branch?.autopilot && (
-                <button
-                  onClick={() => setAutopilotPaused((v) => !v)}
-                  title={autopilotPaused
-                    ? "Resume automatic calling"
-                    : "Pause automatic calling — you'll call customers manually"}
-                  className={`ovline text-[10px] flex items-center border px-2 py-1 transition ${
-                    autopilotPaused
-                      ? "border-[#b56b5f]/50 text-[#d49185] hover:border-[#b56b5f]"
-                      : "border-transparent text-gold-soft hover:border-gold-deep/50"
-                  }`}
-                >
-                  {autopilotPaused ? (
-                    <>❚❚ Autopilot paused · Resume</>
-                  ) : (
-                    <>
-                      <span className="pip breathe mr-1.5" style={{ background: "#c9a86a" }} />
-                      {autopilot.paused
-                        ? `Autopilot · ${autopilot.pausedReason}`
-                        : autopilot.secondsUntilNext != null
-                          ? `Autopilot · next in ${formatSec(autopilot.secondsUntilNext)}`
-                          : `Autopilot · ${autopilot.avgServiceSec ? "calibrated" : "learning"}`}
-                      <span className="ml-2 opacity-60">· Pause</span>
-                    </>
-                  )}
-                </button>
-              )}
               <span className="ovline text-[10px] text-[#9bbd9b] flex items-center">
                 <span className="pip breathe mr-1.5" /> Counter 1 · Live
               </span>
@@ -1620,8 +1574,8 @@ export default function Queue() {
         <Stat label="Scheduled"  value={scheduledCount} hint="Bookings today" />
         <Stat
           label="Avg service"
-          value={autopilot.avgServiceSec ? `${Math.round(autopilot.avgServiceSec / 60)}m` : "—"}
-          hint={autopilot.avgServiceSec ? "Rolling avg" : "Learning…"}
+          value={avgServiceSec ? `${Math.round(avgServiceSec / 60)}m` : "—"}
+          hint="Recent average"
         />
       </div>
 

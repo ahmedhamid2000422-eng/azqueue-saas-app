@@ -239,7 +239,7 @@ export default function StaffProfile() {
         <SectionHead
           eyebrow="Routing preference"
           title="How strongly to prefer this staff per service"
-          body="When AI routing is enabled, higher scores mean autopilot prefers this person for that service. Use 3 as neutral."
+          body="Higher scores mark this person as a stronger fit for that service. Use 3 as neutral."
         />
         {servicesHandled.length === 0 ? (
           <p className="text-ink-mute text-[11px] italic">Pick services above to set preferences here.</p>
@@ -342,7 +342,7 @@ export default function StaffProfile() {
         <SectionHead
           eyebrow="Estimated service time"
           title="Minutes this staff typically takes per service"
-          body="Optional. Autopilot uses this as a starting baseline before learning from real data."
+          body="Optional. Used as a starting baseline for wait estimates until there is real data."
         />
         {servicesHandled.length === 0 ? (
           <p className="text-ink-mute text-[11px] italic">Pick services above first.</p>

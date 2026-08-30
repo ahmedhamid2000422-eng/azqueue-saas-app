@@ -1786,12 +1786,6 @@ function ModesTab({ branch, reload }) {
           </div>
         )}
         <Toggle
-          label="Autopilot"
-          desc="Auto-call next customer at adaptive pace"
-          on={!!branch.autopilot}
-          setOn={(v) => toggle("autopilot", v)}
-        />
-        <Toggle
           label="Islamic Mode"
           desc="Prayer-aware queue with auto-pause"
           on={!!branch.islamic_mode}

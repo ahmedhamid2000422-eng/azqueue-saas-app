@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Sidebar from "../../components/Sidebar";
 import IslamicBar from "../../components/IslamicBar";
+import AiAssistDock from "../../components/AiAssistDock";
 import Topbar from "../../components/Topbar";
 import { useBranch } from "../../lib/BranchContext";
 import Queue from "./Queue";
@@ -87,6 +88,11 @@ export default function BusinessDashboard() {
           </Routes>
         </div>
       </main>
+
+      {/* AI Assist lives outside <Routes> on purpose: anything rendered inside
+          a route is unmounted the moment you navigate, which would wipe the
+          conversation every time you changed page. */}
+      <AiAssistDock />
     </div>
   );
 }

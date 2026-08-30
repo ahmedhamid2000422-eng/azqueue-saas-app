@@ -13,7 +13,7 @@ import Button from "../../components/Button";
  *   Step 1 — Branch basics: name + city
  *   Step 2 — Location: geolocate or skip (drives prayer times)
  *   Step 3 — Services: pick from suggested presets or add custom
- *   Step 4 — Modes: Autopilot + Islamic Mode toggles
+ *   Step 4 — Modes: Islamic Mode toggle
  *   Step 5 — Done: links to print poster, set up TV, invite staff
  *
  * Used by Queue.jsx when the signed-in user has no branches yet.
@@ -465,7 +465,9 @@ export default function Onboarding() {
   const [customDuration, setCustomDuration] = useState("20");
 
   // Step 4
-  const [autopilot, setAutopilot] = useState(true);
+  // Autopilot is retired — the column still exists so old rows stay valid,
+  // but new branches are created with it off and there is no UI for it.
+  const [autopilot] = useState(false);
   const [islamic, setIslamic]     = useState(true);
   const [maxAppts, setMaxAppts]   = useState("50");
 
@@ -792,12 +794,7 @@ export default function Onboarding() {
 
         {step === 4 && (
           <Card luxe className="p-8">
-            <Section eyebrow="Step 4" title="Two final choices">
-              <Toggle
-                label="Autopilot"
-                desc="Auto-call the next customer at an adaptive pace based on real service times."
-                on={autopilot} setOn={setAutopilot}
-              />
+            <Section eyebrow="Step 4" title="One final choice">
               <Toggle
                 label="Islamic Mode"
                 desc="Prayer-aware queue with auto-pause around the five daily prayers."
