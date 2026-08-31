@@ -79,26 +79,55 @@ if (noPhone) {
   console.log(`  ${noPhone.toLocaleString()} have no phone number — imported, but they won't merge with future visits.`);
 }
 
-/* ── Write, in batches ────────────────────────────────────────────── */
-const withPhone = rows.filter((r) => r.phone);
-const without   = rows.filter((r) => !r.phone);
+/* ── Write, in batches ──────────────────────────────────────────────
+   NOT an upsert. The unique index on (branch_id, phone) is PARTIAL —
+   `where phone is not null` — and Postgres won't use a partial index to
+   resolve ON CONFLICT, so the obvious `.upsert({ onConflict })` fails with
+   "no unique or exclusion constraint matching the ON CONFLICT
+   specification". Instead: read what's already there, update those rows by
+   id, insert the rest. Still safe to re-run — an existing person is updated
+   in place, never duplicated and never added to twice. */
 const BATCH = 500;
 let done = 0, failed = 0;
 
-for (let i = 0; i < withPhone.length; i += BATCH) {
-  const slice = withPhone.slice(i, i + BATCH);
-  const { error } = await db
-    .from("customers")
-    .upsert(slice, { onConflict: "branch_id,phone", ignoreDuplicates: false });
-  if (error) { failed += slice.length; console.error(`  batch ${i}: ${error.message}`); }
-  else { done += slice.length; process.stdout.write(`\r  upserted ${done.toLocaleString()}/${withPhone.length.toLocaleString()}`); }
-}
-console.log("");
+const { data: existing, error: exErr } = await db
+  .from("customers")
+  .select("id, phone")
+  .eq("branch_id", BRANCH)
+  .limit(100_000);
 
-for (let i = 0; i < without.length; i += BATCH) {
-  const { error } = await db.from("customers").insert(without.slice(i, i + BATCH));
-  if (error) { failed += Math.min(BATCH, without.length - i); console.error(`  no-phone batch ${i}: ${error.message}`); }
+if (exErr) { console.error("Could not read existing customers:", exErr.message); process.exit(1); }
+
+const existingByPhone = new Map(
+  (existing ?? []).filter((c) => c.phone).map((c) => [normalise(c.phone), c.id])
+);
+console.log(`  ${existingByPhone.size.toLocaleString()} people already in this branch`);
+
+const toUpdate = [];
+const toInsert = [];
+for (const r of rows) {
+  const id = r.phone ? existingByPhone.get(r.phone) : null;
+  if (id) toUpdate.push({ id, ...r });
+  else toInsert.push(r);
 }
+
+for (let i = 0; i < toInsert.length; i += BATCH) {
+  const slice = toInsert.slice(i, i + BATCH);
+  const { error } = await db.from("customers").insert(slice);
+  if (error) { failed += slice.length; console.error(`  insert ${i}: ${error.message}`); }
+  else { done += slice.length; process.stdout.write(`\r  inserted ${done.toLocaleString()}/${toInsert.length.toLocaleString()}`); }
+}
+if (toInsert.length) console.log("");
+
+/* Updates go one at a time — there are usually few of them, and a failure
+   here should name the row rather than take a batch of 500 down with it. */
+for (const u of toUpdate) {
+  const { id, ...fields } = u;
+  const { error } = await db.from("customers").update(fields).eq("id", id);
+  if (error) { failed += 1; console.error(`  update ${id}: ${error.message}`); }
+  else done += 1;
+}
+if (toUpdate.length) console.log(`  updated ${toUpdate.length.toLocaleString()} existing`);
 
 /* ── Aggregates that have no per-row source ───────────────────────── */
 const months = raw.monthly?.labels ?? [];
