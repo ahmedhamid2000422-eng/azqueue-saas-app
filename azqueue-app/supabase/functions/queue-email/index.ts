@@ -55,6 +55,8 @@ Deno.serve(async (req) => {
     holdMinutes: b.holdMinutes != null ? Number(b.holdMinutes) : null,
     arriveBy:    b.arriveBy    ? String(b.arriveBy)    : null,
     quietNote:   b.quietNote   ? String(b.quietNote)   : null,
+    items:       Array.isArray(b.items) ? b.items.map(String) : [],
+    reminder:    b.reminder    ? String(b.reminder)    : null,
   });
 
   if (!content) return json({ error: `unknown type "${type}"` }, 400);
@@ -109,6 +111,10 @@ type Ctx = {
      caller from that branch's own arrivals. Null when there isn't enough
      history to say anything true. */
   quietNote: string | null;
+  /* Checklist email: the actual items, so the customer can act on the email
+     itself rather than following a link while standing in a car park. */
+  items: string[];
+  reminder: string | null;
 };
 
 function buildContent(type: string, c: Ctx) {
@@ -194,6 +200,24 @@ function buildContent(type: string, c: Ctx) {
         badgeCap: "When",
         body:     [detail, arrive, quiet].filter(Boolean) as string[],
         cta:      c.ticketUrl ? { label: "View booking", url: c.ticketUrl } : null,
+        branchName: c.branchName,
+      });
+    }
+
+    case "checklist": {
+      /* Sent when someone at the door realises they're missing a document.
+         The whole value is that they can act on it — so the list is the
+         body, not a link to a list. */
+      const items = (c.items ?? []).map((i) => `• ${i}`);
+      const tail = [c.reminder, c.quietNote].filter(Boolean) as string[];
+      return wrap({
+        subject:  `What to bring for your ${c.serviceName || "visit"} at ${c.branchName}`,
+        heading:  `What to bring`,
+        lead:     `Here's the list for ${c.serviceName || "your visit"}. Bring these and we'll take it from there.`,
+        badge:    "",
+        badgeCap: "",
+        body:     [...items, ...tail],
+        cta:      null,
         branchName: c.branchName,
       });
     }

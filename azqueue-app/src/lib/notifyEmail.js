@@ -123,6 +123,24 @@ export function sendBookingEmail({
   });
 }
 
+/**
+ * "What to bring" — sent when a walk-in realises at the door that they're
+ * missing something. Contains the actual list, because someone standing
+ * outside needs to act on it, not click through to it.
+ */
+export function sendChecklistEmail({ email, serviceName, items, reminder, branchName, quietPhrase }) {
+  return send({
+    type: "checklist",
+    to: email,
+    name: "",
+    serviceName,
+    items,
+    reminder: reminder ?? null,
+    branchName,
+    quietNote: quietPhrase ? `We're usually quieter ${quietPhrase}, if that suits you better.` : null,
+  });
+}
+
 export function sendAlertEmail({ email, name, message, branchName }) {
   return send({ type: "alert", to: email, name, message, branchName });
 }

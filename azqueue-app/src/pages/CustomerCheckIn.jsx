@@ -7,6 +7,8 @@ import { sendCheckinEmail } from "../lib/notifyEmail";
 import { SMS_ENABLED } from "../lib/features";
 import { estimateWaitFor, formatWait } from "../lib/waitEstimator";
 import QuietSlotNudge from "../components/QuietSlotNudge";
+import ServiceChecklist from "../components/ServiceChecklist";
+import { loadHourShape, findQuietHour, quietPhrase } from "../lib/quietHours";
 import { findOrCreateCustomer, logQueueEvent, generatePersona } from "../lib/customers";
 import { getCustomerCard, punchDots, hasUnclaimedReward } from "../lib/loyalty";
 import { getEffectiveChecklist, buildChecklistMessage } from "../lib/checklists";
@@ -47,6 +49,21 @@ export default function CustomerCheckIn() {
      joining now would actually cost. Refreshed when the service changes,
      since the estimate is per-service. */
   const [waitingCount, setWaitingCount] = useState(null);
+
+  /* When this branch is genuinely quieter, from its own arrivals. Used to
+     tell someone who has to fetch a document when it's worth coming back. */
+  const [quiet, setQuiet] = useState(null);
+  useEffect(() => {
+    let off = false;
+    if (!branch?.id) return;
+    loadHourShape(supabase, branch.id)
+      .then((shape) => {
+        const q = findQuietHour(shape);
+        if (!off) setQuiet(q && new Date().getHours() < q.hour ? quietPhrase(q) : null);
+      })
+      .catch(() => {});
+    return () => { off = true; };
+  }, [branch?.id]);
 
   useEffect(() => {
     let off = false;
@@ -270,6 +287,17 @@ export default function CustomerCheckIn() {
           );
         })}
       </div>
+
+      {/* What to bring — shown BEFORE joining, which is the entire point.
+          Told at the counter after a 90-minute wait, a missing document
+          wastes the whole visit; told at the door, the wait becomes the time
+          in which to go and fetch it. */}
+      <ServiceChecklist
+        branch={branch}
+        serviceName={services.find((s) => s.id === serviceId)?.name}
+        quietPhrase={quiet}
+        email={email}
+      />
 
       {/* Offers an afternoon appointment when the queue is long. Renders
           nothing when the wait is short or no slots are free, so it never

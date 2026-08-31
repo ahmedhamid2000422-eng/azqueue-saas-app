@@ -399,6 +399,95 @@ toward the floor. Keeping it separate keeps both sets of numbers honest.
 
 ---
 
+---
+
+# The Complete panel
+
+**Problem it solves.** Today, Call next silently completes whoever was being
+served. That means Complete is never a deliberate act, so the last customer of
+the day is never completed at all — their visit is recorded as lasting
+overnight, which quietly poisons the service-time median that everything else
+depends on.
+
+**Change.** Pressing Call next while someone is being served opens the Complete
+panel for that person first, then calls the next customer. Finishing becomes
+the step, and calling the next person becomes its consequence — which is what
+it already means in practice.
+
+## The one question it asks
+
+Deliberately minimal. Staff will answer this dozens of times a day; a long list
+gets clicked past without reading, and the data becomes worse than none.
+
+> **How did this end?**
+>
+> - **Done** — finished, nothing outstanding
+> - **Needs documents** — can't proceed until they bring something
+> - **Drop-off / waiting** — we keep the paperwork, they go home *(→ back queue,
+>   then asks for a category)*
+> - **Passed to someone else** — another person is picking it up
+
+Four options, one tap, no free text. **Done** is the default and visually
+primary; the day should be one button when nothing unusual happened.
+
+Only "Drop-off / waiting" asks a second question (which category), because
+that's the one that changes what happens next. The others just record and move
+on.
+
+The label is the owner's wording, and deliberately so: it's what staff already
+say to each other about these cases. A label people recognise gets pressed
+correctly; an invented one gets guessed at.
+
+## Notes on each
+
+- **Needs documents** — worth capturing separately from Done because a visit
+  that ends this way is a visit that has to happen again. If this is a large
+  share of visits, telling people what to bring *before* they come is the
+  highest-value change the business could make, and right now nothing measures
+  it.
+
+  **Which documents, without anyone typing.** The obvious objection is that a
+  useful email has to name what's missing, and staff won't write that at a
+  counter. They don't have to: `src/lib/checklists.js` already holds a
+  per-service list of what to bring, and the check-in page already uses it.
+  So this option shows that service's checklist and staff TICK what was
+  missing. Two or three taps, no free text, and the email composes itself:
+
+  > To continue we still need:
+  > • Photo ID
+  > • Last year's return
+
+  The customer never has to describe their case, and neither does staff — the
+  service already implies the document set.
+
+  Two things fall out of this for free. The email is specific enough to act
+  on, which is the difference between someone returning prepared and returning
+  empty-handed a second time. And you get counts of WHICH document is most
+  often missing, which tells you exactly what to put on the booking page and
+  the door sign so it stops happening at all.
+- **Drop-off / waiting** — the back-queue handoff. Sets `handed_off_at` and
+  asks for Drop-off / Immigration / Taxes.
+- **Passed to someone else** — records that the case moved, without any
+  judgement attached. Over months this is what shows where work actually flows,
+  which is the honest version of the "who can handle what" question.
+
+## Deliberately NOT in the first version
+
+- free-text notes on completion (nobody types them at a counter)
+- a reason for *why* documents were missing
+- anything resembling a quality or difficulty rating
+
+Add these only if the four buttons prove too coarse in real use. Starting
+narrow and widening on evidence is cheaper than starting wide and discovering
+nobody fills it in.
+
+## Build note
+
+Do this on an **empty queue**. It changes the call-and-complete path, which is
+the one flow that must not break during a working day.
+
+---
+
 ## Explicitly not in scope
 
 - skill levels, certifications, "can handle / cannot handle" routing
