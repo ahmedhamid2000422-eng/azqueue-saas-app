@@ -68,16 +68,23 @@ export default function ClientIntelligence() {
     (async () => {
       /* Tickets carry the visit history; customers carry the identity. Both
          are branch-scoped and behind RLS. */
-      const [{ data: tickets, error: tErr }, { data: customers, error: cErr }] =
+      const [{ data: tickets, error: tErr }, { data: customers, error: cErr }, { data: summary }] =
         await Promise.all([
           supabase.from("tickets")
             .select("id, customer_id, customer_name, customer_phone, created_at, status")
             .eq("branch_id", branch.id)
             .limit(50_000),
           supabase.from("customers")
-            .select("id, display_name, phone, created_at, last_seen_at")
+            .select("id, display_name, phone, created_at, last_seen_at, imported_visits, first_seen_at, import_source")
             .eq("branch_id", branch.id)
             .limit(50_000),
+          /* Aggregates from a previous system, where the individual visits
+             don't exist as rows to count. Absent for branches that started
+             on AzQueue — the page works fine without it. */
+          supabase.from("branch_history_summary")
+            .select("source, total_visits, unique_people, hours, days, months, range_from, range_to")
+            .eq("branch_id", branch.id)
+            .maybeSingle(),
         ]);
 
       if (cancelled) return;
@@ -111,8 +118,47 @@ export default function ClientIntelligence() {
           rec.n = c.display_name ?? rec.n;
           rec.p = c.phone ?? rec.p;
         }
-        rec.t = tierFor(rec.v);
       }
+
+      /* ── Fold in imported history ──────────────────────────────────
+         Someone with 9 visits on the old system who came in again last week
+         should read as 10, not as two separate people. Matching is on
+         normalised phone, which is the only field typed consistently across
+         two systems — names get spelled differently every visit. */
+      const norm = (p) => (p ?? "").replace(/[^\d+]/g, "");
+      const byPhone = new Map();
+      for (const rec of byKey.values()) if (norm(rec.p)) byPhone.set(norm(rec.p), rec);
+
+      let importedTotal = 0;
+      for (const c of customers ?? []) {
+        const prior = c.imported_visits ?? 0;
+        if (!prior) continue;
+        importedTotal += prior;
+
+        const key = norm(c.phone);
+        const live = key ? byPhone.get(key) : null;
+        const firstSeen = c.first_seen_at ? new Date(c.first_seen_at) : null;
+
+        if (live) {
+          live.v += prior;                                   // one person, two systems
+          live.prior = prior;
+          if (firstSeen && firstSeen < live.f) live.f = firstSeen;
+        } else {
+          // Known only from the old system — hasn't been back since the move.
+          const last = c.last_seen_at ? new Date(c.last_seen_at) : firstSeen;
+          byKey.set(`imp:${c.id}`, {
+            key: `imp:${c.id}`,
+            n: c.display_name ?? "—",
+            p: c.phone ?? "",
+            v: prior,
+            prior,
+            f: firstSeen ?? last,
+            l: last,
+          });
+        }
+      }
+
+      for (const rec of byKey.values()) rec.t = tierFor(rec.v);
 
       const people = [...byKey.values()].sort((a, b) => b.v - a.v || b.l - a.l);
 
@@ -136,20 +182,37 @@ export default function ClientIntelligence() {
       const tiers = Object.fromEntries(TIER_ORDER.map((t) => [t, 0]));
       for (const p of people) tiers[p.t] += 1;
 
+      /* Charts: prefer the imported distributions when they exist, because
+         they cover far more visits than AzQueue has recorded so far. Live
+         hours are used once this branch has its own history. Never summed —
+         the two sources cover different periods, and adding them would
+         double-count the overlap. */
+      const useImportedCharts = !!summary && rows.length < (summary.total_visits ?? 0);
+
       setData({
         total:  rows.length,
+        imported: importedTotal,
+        summary,
+        chartSource: useImportedCharts ? (summary.source ?? "previous system") : "azqueue",
         unique: people.length,
         customers: people,
         tiers,
-        hours: {
-          labels: activeHours.map((x) => `${x.h}:00`),
-          values: activeHours.map((x) => x.v),
-        },
-        days: {
-          labels: DAY_LABELS,
-          values: dayCounts,
-          closed: dayCounts.map((v) => v < MIN_FOR_DAY_COMPARISON),
-        },
+        hours: useImportedCharts && summary.hours
+          ? summary.hours
+          : {
+              labels: activeHours.map((x) => `${x.h}:00`),
+              values: activeHours.map((x) => x.v),
+            },
+        days: useImportedCharts && summary.days
+          ? {
+              ...summary.days,
+              closed: (summary.days.values ?? []).map((v) => v < MIN_FOR_DAY_COMPARISON),
+            }
+          : {
+              labels: DAY_LABELS,
+              values: dayCounts,
+              closed: dayCounts.map((v) => v < MIN_FOR_DAY_COMPARISON),
+            },
         months: {
           labels: months.map((m) => m[0]),
           values: months.map((m) => m[1]),
@@ -221,10 +284,16 @@ export default function ClientIntelligence() {
       <header className="mb-6">
         <h1 className="font-display text-3xl font-light tracking-tightest">Clients</h1>
         <p className="text-ink-mute text-[11px] mt-1.5 leading-relaxed">
-          {data.unique.toLocaleString()} people · {data.total.toLocaleString()} visits
-          {data.range && <> · {fmtDate(data.range.from)} – {fmtDate(data.range.to)}</>}
+          {data.unique.toLocaleString()} people ·{" "}
+          {(data.total + data.imported).toLocaleString()} visits
+          {data.imported > 0 && (
+            <span className="opacity-70">
+              {" "}({data.imported.toLocaleString()} from {data.summary?.source ?? "your previous system"},
+              {" "}{data.total.toLocaleString()} on AzQueue)
+            </span>
+          )}
           <span className="mx-1.5 opacity-50">·</span>
-          counted from your own records, updated live
+          your branch only, updated as people check in
         </p>
       </header>
 

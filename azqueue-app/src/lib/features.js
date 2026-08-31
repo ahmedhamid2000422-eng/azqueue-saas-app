@@ -21,6 +21,15 @@
  */
 export const SMS_ENABLED = import.meta.env.VITE_SMS_ENABLED === "true";
 
+/* Features that are built but not yet live for customers. The pages behind
+   these still exist and still query real tables — they're gated because the
+   thing that FILLS those tables isn't running yet (no WhatsApp number
+   connected, no survey emails going out). Showing an permanently empty page
+   reads as a bug; saying "soon" reads as a roadmap.
+   Flip to "true" in Vercel env vars when the underlying pipe is live. */
+export const WHATSAPP_ENABLED = import.meta.env.VITE_WHATSAPP_ENABLED === "true";
+export const REVIEWS_ENABLED  = import.meta.env.VITE_REVIEWS_ENABLED === "true";
+
 /**
  * AUTOPILOT_ENABLED — whether the queue may call customers automatically.
  *

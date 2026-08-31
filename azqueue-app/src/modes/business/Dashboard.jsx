@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import ProductTour, { TourInvite, hasSeenTour, isSnoozed, snoozeTour } from "../../components/ProductTour";
+import ComingSoon from "../../components/ComingSoon";
+import { WHATSAPP_ENABLED, REVIEWS_ENABLED } from "../../lib/features";
 import Sidebar from "../../components/Sidebar";
 import IslamicBar from "../../components/IslamicBar";
 import AiAssistDock from "../../components/AiAssistDock";
@@ -30,9 +32,9 @@ const QUEUE_NAV = [
   { label: "Schedule", path: "/schedule" },
   { label: "Stations",  path: "/stations",  badge: "OPS" },
   { label: "Customers", path: "/customers", badge: "NEW" },
-  { label: "Leads",     path: "/leads",     badge: "WA" },
+  { label: "WhatsApp",  path: "/leads",     badge: "SOON" },
   { label: "Insights",  path: "/insights" },
-  { label: "Reviews",   path: "/reviews" },
+  { label: "Reviews",   path: "/reviews",   badge: "SOON" },
   { label: "Intel",    path: "/intelligence", badge: "AI" },
   { label: "Manager",  path: "/manager", badge: "PRO" },
   { label: "Display",  path: "/display" },
@@ -45,7 +47,7 @@ const GYM_NAV = [
   { label: "Bookings",  path: "/bookings" },
   { label: "Schedule",  path: "/schedule" },
   { label: "Students",  path: "/customers", badge: "NEW" },
-  { label: "Leads",     path: "/leads",     badge: "WA" },
+  { label: "WhatsApp",  path: "/leads",     badge: "SOON" },
   { label: "Insights",  path: "/insights" },
   { label: "Manager",   path: "/manager", badge: "PRO" },
   { label: "Display",   path: "/display" },
@@ -99,9 +101,39 @@ export default function BusinessDashboard() {
             <Route path="schedule" element={<Schedule />} />
             <Route path="stations"   element={<Stations />} />
             <Route path="customers"  element={<Customers />} />
-            <Route path="leads"      element={<Leads />} />
+            <Route
+              path="leads"
+              element={WHATSAPP_ENABLED ? <Leads /> : (
+                <ComingSoon
+                  title="WhatsApp"
+                  summary="Let people join the queue, check their place and get their turn notice over WhatsApp, without installing anything."
+                  points={[
+                    "Customers message your number to take a ticket",
+                    "Automatic replies for “where am I in the queue?”",
+                    "Their turn notice arrives in the same chat",
+                    "Anything the bot can't answer is handed to a person",
+                  ]}
+                  needs="Waiting on an approved WhatsApp Business number. The page below is already built — it turns on the moment the number is connected."
+                />
+              )}
+            />
             <Route path="insights"   element={<Insights />} />
-            <Route path="reviews"       element={<Reviews />} />
+            <Route
+              path="reviews"
+              element={REVIEWS_ENABLED ? <Reviews /> : (
+                <ComingSoon
+                  title="Reviews"
+                  summary="Ask every customer how their visit went, a short while after they leave, and collect the answers here."
+                  points={[
+                    "A one-question survey emailed automatically after a visit",
+                    "Scores tracked per staff member and per service",
+                    "Unhappy answers flagged straight away, while you can still fix it",
+                    "Happy customers invited to leave a public Google review",
+                  ]}
+                  needs="Waiting on the feedback email going out after each visit. Nothing will appear here until those start sending."
+                />
+              )}
+            />
             <Route path="intelligence" element={<ClientIntelligence />} />
             <Route path="manager"      element={<Manager />} />
             <Route path="display"    element={<DisplaySetup />} />

@@ -44,9 +44,18 @@ export default function Sidebar({ mode, items, footerName, footerRole }) {
                 <span className={active ? "tracking-wide" : ""}>{it.label}</span>
               </span>
               {it.badge && (
-                <span className="text-[9px] bg-gold text-[#141410] px-1.5 rounded-full font-semibold">
-                  {it.badge}
-                </span>
+                /* "Soon" is deliberately quiet — an unfinished feature
+                   shouldn't shout louder than the ones that work. Everything
+                   else keeps the solid gold pill. */
+                it.badge === "SOON" ? (
+                  <span className="text-[8px] border border-line text-ink-mute px-1.5 py-px tracking-wider">
+                    SOON
+                  </span>
+                ) : (
+                  <span className="text-[9px] bg-gold text-[#141410] px-1.5 rounded-full font-semibold">
+                    {it.badge}
+                  </span>
+                )
               )}
             </Link>
           );
