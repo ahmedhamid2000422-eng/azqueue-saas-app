@@ -7,6 +7,7 @@ import { announceTicketWithVoice, unlockAudio, isAudioReady, getAudioDiagnostics
 import { announcePrayerPause, announceAlert } from "../lib/tts";
 import { loadActiveAlert } from "../lib/alerts";
 import { PRAYER_PAUSE_MINUTES } from "../lib/features";
+import { hoursForToday } from "../lib/openingHours";
 
 /**
  * Public TV display — full-screen wall surface in the waiting area.
@@ -79,7 +80,7 @@ export default function TvDisplay() {
       setLoading(true);
       const { data: branchRow, error: bErr } = await supabase
         .from("branches")
-        .select("id, slug, name, city, timezone, lat, lng, islamic_mode")
+        .select("id, slug, name, city, timezone, lat, lng, islamic_mode, hours")
         .eq("slug", slug).single();
       if (bErr || !branchRow) {
         if (!cancelled) { setError("display.invalid"); setLoading(false); }
@@ -391,6 +392,10 @@ export default function TvDisplay() {
   );
 
   const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+  // Today's trading hours. Recomputed as `now` ticks so it rolls over at
+  // midnight without the screen needing a reload — TVs run for weeks.
+  const today = hoursForToday(branch?.hours, now);
   const isPaused = pauseStatus?.state === "paused";
 
   return (
@@ -414,11 +419,18 @@ export default function TvDisplay() {
             <div style={{ color: "#c9a86a", fontSize: "1.6vw", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase" }}>
               {branch.name}
             </div>
-            {branch.city && (
-              <div style={{ color: "#6b6a64", fontSize: "1vw", marginTop: "0.3vh", letterSpacing: "0.1em" }}>
-                {branch.city}
-              </div>
-            )}
+            {/* City · today's trading hours. Customers walking in want to know
+                whether there is time to be seen today; staff want it visible
+                without opening anything. */}
+            <div style={{ color: "#6b6a64", fontSize: "1vw", marginTop: "0.3vh", letterSpacing: "0.1em" }}>
+              {branch.city && <span>{branch.city}</span>}
+              {branch.city && today && <span style={{ margin: "0 0.6vw", opacity: 0.5 }}>·</span>}
+              {today && (
+                today.closed
+                  ? <span>Closed today</span>
+                  : <span>Open {today.openPretty} – {today.closePretty}</span>
+              )}
+            </div>
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "3vw" }}>
@@ -814,7 +826,33 @@ function TvPausedHero({ pauseStatus }) {
 }
 
 /* ── Up Next right column ─────────────────────────────────────── */
+/* How many fit on screen at once, and how long each page holds. 8 seconds is
+   long enough to find your own name from across a waiting room without the
+   board feeling like it's flickering. */
+const PAGE_SIZE = 7;
+const PAGE_MS   = 8000;
+
 function TvUpNext({ waiting, services, branded, branchSlug }) {
+  /* Paging. Without this, anyone past position 7 never appears on the board
+     at all — which is precisely the person most likely to be anxious about
+     whether they've been forgotten. Order is never reversed: position in the
+     queue is the one thing on this screen that has to stay trustworthy. */
+  const pages = Math.max(1, Math.ceil(waiting.length / PAGE_SIZE));
+  const [page, setPage] = useState(0);
+
+  useEffect(() => {
+    if (pages <= 1) { setPage(0); return; }
+    const id = setInterval(() => setPage((p) => (p + 1) % pages), PAGE_MS);
+    return () => clearInterval(id);
+  }, [pages]);
+
+  // If the queue shrinks while we're on a later page, don't strand the board
+  // on an empty one.
+  useEffect(() => { if (page >= pages) setPage(0); }, [page, pages]);
+
+  const start   = page * PAGE_SIZE;
+  const visible = waiting.slice(start, start + PAGE_SIZE);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", borderLeft: "1px solid rgba(255,255,255,0.06)", paddingLeft: "3vw" }}>
       {/* Section header */}
@@ -822,8 +860,17 @@ function TvUpNext({ waiting, services, branded, branchSlug }) {
         <div style={{ color: "#6b6a64", fontSize: "1.1vw", letterSpacing: "0.25em", textTransform: "uppercase" }}>
           Up Next
         </div>
-        <div style={{ fontFamily: "monospace", fontSize: "1.4vw", color: "#3a3830" }}>
-          {waiting.length}
+        <div style={{ display: "flex", alignItems: "baseline", gap: "0.8vw" }}>
+          {/* Which slice of the queue is on screen, so nobody thinks the board
+              is only ever showing the first seven people. */}
+          {pages > 1 && (
+            <span style={{ fontFamily: "monospace", fontSize: "0.9vw", color: "#6b6a64", letterSpacing: "0.05em" }}>
+              {start + 1}–{Math.min(start + PAGE_SIZE, waiting.length)}
+            </span>
+          )}
+          <span style={{ fontFamily: "monospace", fontSize: "1.4vw", color: "#3a3830" }}>
+            {waiting.length}
+          </span>
         </div>
       </div>
 
@@ -834,7 +881,7 @@ function TvUpNext({ waiting, services, branded, branchSlug }) {
             Queue is empty
           </div>
         ) : (
-          waiting.slice(0, 7).map((tk, i) => (
+          visible.map((tk, i) => (
             <div
               key={tk.id}
               style={{
@@ -849,9 +896,9 @@ function TvUpNext({ waiting, services, branded, branchSlug }) {
             >
               {/* Token */}
               <div style={{
-                fontSize: i === 0 ? "4vw" : "3vw",
+                fontSize: start + i === 0 ? "4vw" : "3vw",
                 fontWeight: 200,
-                color: i === 0 ? "#c9a86a" : "#8a8880",
+                color: start + i === 0 ? "#c9a86a" : "#8a8880",
                 lineHeight: 1,
                 minWidth: "6vw",
                 letterSpacing: "-0.02em",
@@ -862,7 +909,7 @@ function TvUpNext({ waiting, services, branded, branchSlug }) {
 
               {/* Name + service */}
               <div>
-                <div style={{ fontSize: i === 0 ? "1.8vw" : "1.4vw", color: i === 0 ? "#f0ede6" : "#9a9890", fontWeight: 300, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <div style={{ fontSize: start + i === 0 ? "1.8vw" : "1.4vw", color: start + i === 0 ? "#f0ede6" : "#9a9890", fontWeight: 300, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {tk.customer_name}
                 </div>
                 {services[tk.service_id] && (

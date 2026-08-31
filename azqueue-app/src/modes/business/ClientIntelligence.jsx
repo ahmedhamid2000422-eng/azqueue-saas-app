@@ -1,256 +1,358 @@
 import { useEffect, useState, useMemo } from "react";
+import { supabase } from "../../lib/supabase";
+import { useBranch } from "../../lib/BranchContext";
 
 /**
- * ClientIntelligence — Aztax client base imported from Qminder.
+ * ClientIntelligence — your client base, built from your own records.
  *
- * Shows 9,308 clients with loyalty tiers, visit history, promo offers,
- * and market insights derived from 17,752 queue tickets (Jan 2023 – Apr 2026).
+ * HISTORY, worth knowing before changing this file:
+ * This page previously fetched a static file, /aztax-clients.json, that was
+ * committed into public/. Two things were wrong with that:
  *
- * Data is pre-processed and served as a static JSON from /public/aztax-clients.json.
+ *   1. Anything in public/ is served to the open internet with no auth. That
+ *      file held 9,308 real client names and phone numbers, downloadable by
+ *      anyone who guessed the URL. For a tax and immigration practice, that
+ *      is about as sensitive as a customer list gets.
+ *   2. The filename was hardcoded, so every branch on AzQueue would have been
+ *      shown the same firm's clients.
+ *
+ * It now reads `customers` and `tickets` for the CURRENT branch through the
+ * normal Supabase client, so row-level security applies and each business
+ * sees only its own people. Please don't reintroduce a bundled data file —
+ * if a large history needs importing, it belongs in the database.
+ *
+ * All figures below are counted, not modelled. Nothing here is an estimate.
  */
 
+/* Loyalty tiers. These are BUSINESS RULES chosen for readability, not
+   findings from the data — a "VIP" is anyone with 10+ recorded visits, which
+   is a definition, not a discovery. Kept explicit so nobody mistakes the
+   labels for analysis. */
 const TIER_META = {
-  VIP:       { color: "#c8a84b", bg: "rgba(200,168,75,0.12)",  border: "rgba(200,168,75,0.35)", label: "VIP ★",    min: 10 },
-  Loyal:     { color: "#9b7bff", bg: "rgba(155,123,255,0.10)", border: "rgba(155,123,255,0.3)", label: "Loyal",    min: 5  },
-  Regular:   { color: "#4caf79", bg: "rgba(76,175,121,0.10)",  border: "rgba(76,175,121,0.3)",  label: "Regular",  min: 3  },
-  Returning: { color: "#5b8fb9", bg: "rgba(91,143,185,0.10)",  border: "rgba(91,143,185,0.3)",  label: "Returning",min: 2  },
-  New:       { color: "#666",    bg: "rgba(102,102,102,0.08)", border: "rgba(102,102,102,0.2)", label: "New",      min: 1  },
+  VIP:       { color: "#c8a84b", bg: "rgba(200,168,75,0.12)",  border: "rgba(200,168,75,0.35)", label: "VIP ★",     min: 10 },
+  Loyal:     { color: "#9b7bff", bg: "rgba(155,123,255,0.10)", border: "rgba(155,123,255,0.3)", label: "Loyal",     min: 5  },
+  Regular:   { color: "#4caf79", bg: "rgba(76,175,121,0.10)",  border: "rgba(76,175,121,0.3)",  label: "Regular",   min: 3  },
+  Returning: { color: "#5b8fb9", bg: "rgba(91,143,185,0.10)",  border: "rgba(91,143,185,0.3)",  label: "Returning", min: 2  },
+  New:       { color: "#666",    bg: "rgba(102,102,102,0.08)", border: "rgba(102,102,102,0.2)", label: "New",       min: 1  },
 };
 
+const TIER_ORDER = ["VIP", "Loyal", "Regular", "Returning", "New"];
+const DAY_LABELS  = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+/* A weekday with almost no trading isn't a quiet day, it's a closed one.
+   Showing "Sunday is 0.02% of visits" invites a conclusion about Sundays
+   that the data cannot support, so days below this are marked as closed
+   rather than compared. */
+const MIN_FOR_DAY_COMPARISON = 20;
+
+function tierFor(visits) {
+  for (const name of TIER_ORDER) if (visits >= TIER_META[name].min) return name;
+  return "New";
+}
+
 export default function ClientIntelligence() {
-  const [data, setData]     = useState(null);
+  const { branch } = useBranch();
+  const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [tier, setTier]     = useState("all");
-  const [page, setPage]     = useState(0);
+  const [error, setError]     = useState(null);
+  const [search, setSearch]   = useState("");
+  const [tier, setTier]       = useState("all");
+  const [page, setPage]       = useState(0);
   const PAGE_SIZE = 50;
 
   useEffect(() => {
-    fetch("/aztax-clients.json")
-      .then(r => r.json())
-      .then(d => { setData(d); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, []);
+    let cancelled = false;
+    if (!branch?.id) return;
+    setLoading(true); setError(null); setPage(0);
+
+    (async () => {
+      /* Tickets carry the visit history; customers carry the identity. Both
+         are branch-scoped and behind RLS. */
+      const [{ data: tickets, error: tErr }, { data: customers, error: cErr }] =
+        await Promise.all([
+          supabase.from("tickets")
+            .select("id, customer_id, customer_name, customer_phone, created_at, status")
+            .eq("branch_id", branch.id)
+            .limit(50_000),
+          supabase.from("customers")
+            .select("id, display_name, phone, created_at, last_seen_at")
+            .eq("branch_id", branch.id)
+            .limit(50_000),
+        ]);
+
+      if (cancelled) return;
+      if (tErr || cErr) { setError((tErr ?? cErr).message); setLoading(false); return; }
+
+      const rows = tickets ?? [];
+
+      /* Group visits per person. Prefer customer_id; fall back to phone, then
+         name, so walk-ins recorded before the customers table existed still
+         collapse into one person instead of inflating the client count. */
+      const byKey = new Map();
+      for (const t of rows) {
+        const key = t.customer_id ?? t.customer_phone ?? t.customer_name;
+        if (!key) continue;
+        const at = new Date(t.created_at);
+        const cur = byKey.get(key);
+        if (cur) {
+          cur.v += 1;
+          if (at < cur.f) cur.f = at;
+          if (at > cur.l) cur.l = at;
+        } else {
+          byKey.set(key, { key, n: t.customer_name ?? "—", p: t.customer_phone ?? "", v: 1, f: at, l: at });
+        }
+      }
+
+      /* Fill in names for anyone matched by customer_id. */
+      const custById = new Map((customers ?? []).map((c) => [c.id, c]));
+      for (const rec of byKey.values()) {
+        const c = custById.get(rec.key);
+        if (c) {
+          rec.n = c.display_name ?? rec.n;
+          rec.p = c.phone ?? rec.p;
+        }
+        rec.t = tierFor(rec.v);
+      }
+
+      const people = [...byKey.values()].sort((a, b) => b.v - a.v || b.l - a.l);
+
+      /* Distributions — plain counts of what happened. */
+      const hourCounts = new Array(24).fill(0);
+      const dayCounts  = new Array(7).fill(0);
+      const monthMap   = new Map();
+      for (const t of rows) {
+        const d = new Date(t.created_at);
+        hourCounts[d.getHours()] += 1;
+        dayCounts[(d.getDay() + 6) % 7] += 1;          // Monday-first
+        const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        monthMap.set(k, (monthMap.get(k) ?? 0) + 1);
+      }
+
+      const activeHours = hourCounts
+        .map((v, h) => ({ h, v }))
+        .filter((x) => x.v > 0);
+
+      const months = [...monthMap.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+      const tiers = Object.fromEntries(TIER_ORDER.map((t) => [t, 0]));
+      for (const p of people) tiers[p.t] += 1;
+
+      setData({
+        total:  rows.length,
+        unique: people.length,
+        customers: people,
+        tiers,
+        hours: {
+          labels: activeHours.map((x) => `${x.h}:00`),
+          values: activeHours.map((x) => x.v),
+        },
+        days: {
+          labels: DAY_LABELS,
+          values: dayCounts,
+          closed: dayCounts.map((v) => v < MIN_FOR_DAY_COMPARISON),
+        },
+        months: {
+          labels: months.map((m) => m[0]),
+          values: months.map((m) => m[1]),
+        },
+        range: rows.length
+          ? {
+              from: new Date(Math.min(...rows.map((t) => +new Date(t.created_at)))),
+              to:   new Date(Math.max(...rows.map((t) => +new Date(t.created_at)))),
+            }
+          : null,
+      });
+      setLoading(false);
+    })();
+
+    return () => { cancelled = true; };
+  }, [branch?.id]);
 
   const filtered = useMemo(() => {
     if (!data) return [];
     const q = search.toLowerCase().trim();
-    return data.customers.filter(c => {
+    return data.customers.filter((c) => {
       const tierMatch = tier === "all" || c.t === tier;
-      const searchMatch = !q || c.n.toLowerCase().includes(q) || c.p.includes(q);
+      const searchMatch = !q || c.n.toLowerCase().includes(q) || (c.p ?? "").includes(q);
       return tierMatch && searchMatch;
     });
   }, [data, search, tier]);
 
-  const pageData = useMemo(() => filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE), [filtered, page]);
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageData = useMemo(
+    () => filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+    [filtered, page]
+  );
 
-  function handleTier(t) { setTier(t); setPage(0); }
-  function handleSearch(v) { setSearch(v); setPage(0); }
+  const fmtDate = (d) => d?.toLocaleDateString(undefined, { month: "short", year: "numeric" }) ?? "—";
 
+  /* ── States ─────────────────────────────────────────────────────── */
   if (loading) {
+    return <div className="p-8 text-ink-mute ovline">Reading your client history…</div>;
+  }
+
+  if (error) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-ink-mute text-sm">Loading client data…</div>
+      <div className="p-8">
+        <div className="text-[#d49185] text-sm mb-2">Couldn't load your clients</div>
+        <div className="text-ink-mute text-xs">{error}</div>
       </div>
     );
   }
-  if (!data) {
+
+  if (!data || data.unique === 0) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-[#d49185] text-sm">Could not load aztax-clients.json</div>
-      </div>
-    );
-  }
-
-  const maxVisits = data.customers[0]?.v ?? 1;
-
-  return (
-    <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
-
-      {/* Header */}
-      <div>
-        <div className="ovline text-gold-soft mb-1">Aztax · Qminder Import</div>
-        <h1 className="font-display text-2xl font-light tracking-tighter">Client Intelligence</h1>
-        <p className="text-ink-mute text-xs mt-1">
-          {data.total.toLocaleString()} queue tickets · {data.unique.toLocaleString()} unique clients · Jan 2023 – Apr 2026
+      <div className="p-8 max-w-lg">
+        <h1 className="font-display text-3xl font-light tracking-tightest mb-3">Clients</h1>
+        <p className="text-ink-soft text-sm leading-relaxed mb-2">
+          Nothing to show yet. Every person who checks in or books appears here
+          automatically, with how many times they've visited.
+        </p>
+        <p className="text-ink-mute text-xs leading-relaxed">
+          If you have history from a previous system, it needs importing into
+          AzQueue before it will show up on this page.
         </p>
       </div>
+    );
+  }
 
-      {/* KPI Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        {[
-          { num: data.total.toLocaleString(),   lbl: "Total Tickets" },
-          { num: data.unique.toLocaleString(),  lbl: "Unique Clients" },
-          { num: data.tiers.VIP ?? 0,           lbl: "VIP (10+ visits)" },
-          { num: (data.tiers.VIP ?? 0) + (data.tiers.Loyal ?? 0), lbl: "Loyal+ (5+ visits)" },
-          { num: (data.tiers.VIP ?? 0) + (data.tiers.Loyal ?? 0) + (data.tiers.Regular ?? 0), lbl: "Regulars (3+ visits)" },
-        ].map((k, i) => (
-          <div key={i} className="bg-bg-elev border border-line rounded-sm p-4">
-            <div className="text-2xl font-bold text-gold-soft font-mono">{k.num}</div>
-            <div className="text-[10px] text-ink-mute mt-1 uppercase tracking-wide">{k.lbl}</div>
+  /* ── Render ─────────────────────────────────────────────────────── */
+  return (
+    <div className="p-8">
+      <header className="mb-6">
+        <h1 className="font-display text-3xl font-light tracking-tightest">Clients</h1>
+        <p className="text-ink-mute text-[11px] mt-1.5 leading-relaxed">
+          {data.unique.toLocaleString()} people · {data.total.toLocaleString()} visits
+          {data.range && <> · {fmtDate(data.range.from)} – {fmtDate(data.range.to)}</>}
+          <span className="mx-1.5 opacity-50">·</span>
+          counted from your own records, updated live
+        </p>
+      </header>
+
+      {/* Tier counts */}
+      <div className="flex flex-wrap gap-2 mb-5">
+        <button
+          onClick={() => { setTier("all"); setPage(0); }}
+          className={`text-[10px] ovline border px-2.5 py-1.5 transition ${
+            tier === "all" ? "border-gold-deep text-gold-soft" : "border-line text-ink-mute hover:text-ink"
+          }`}
+        >
+          All · {data.unique.toLocaleString()}
+        </button>
+        {TIER_ORDER.map((t) => (
+          <button
+            key={t}
+            onClick={() => { setTier(t); setPage(0); }}
+            className="text-[10px] ovline border px-2.5 py-1.5 transition"
+            style={{
+              borderColor: tier === t ? TIER_META[t].color : "rgba(255,255,255,0.08)",
+              color: tier === t ? TIER_META[t].color : "#8a8880",
+              background: tier === t ? TIER_META[t].bg : "transparent",
+            }}
+          >
+            {TIER_META[t].label} · {(data.tiers[t] ?? 0).toLocaleString()}
+          </button>
+        ))}
+      </div>
+
+      {/* Search */}
+      <input
+        value={search}
+        onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+        placeholder="Search by name or phone"
+        className="w-full max-w-sm bg-bg-elev border border-line focus:border-gold-deep outline-none px-3 py-2 text-xs text-ink placeholder:text-ink-mute mb-5"
+      />
+
+      {/* Client list */}
+      <div className="border border-line mb-4">
+        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 px-4 py-2.5 border-b border-line ovline text-[8px] text-ink-mute">
+          <span>Name</span><span>Visits</span><span>First</span><span>Last</span>
+        </div>
+        {pageData.map((c) => (
+          <div
+            key={c.key}
+            className="grid grid-cols-[1fr_auto_auto_auto] gap-4 px-4 py-2.5 border-b border-line last:border-b-0 items-center hover:bg-[rgba(201,168,106,0.03)] transition"
+          >
+            <div className="min-w-0">
+              <div className="text-xs text-ink truncate">{c.n}</div>
+              {c.p && <div className="text-[10px] text-ink-mute font-mono mt-0.5">{c.p}</div>}
+            </div>
+            <span
+              className="text-[10px] px-2 py-0.5 border"
+              style={{ color: TIER_META[c.t].color, borderColor: TIER_META[c.t].border, background: TIER_META[c.t].bg }}
+            >
+              {c.v}
+            </span>
+            <span className="text-[10px] text-ink-mute font-mono">{fmtDate(c.f)}</span>
+            <span className="text-[10px] text-ink-mute font-mono">{fmtDate(c.l)}</span>
           </div>
         ))}
       </div>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <MiniBarChart title="Monthly Traffic" labels={data.monthly.labels} values={data.monthly.values} accent="#c8a84b" />
-        <MiniBarChart title="Busiest Hours" labels={data.hours.labels} values={data.hours.values} accent="#9b7bff" />
-        <MiniBarChart title="By Weekday" labels={data.days.labels} values={data.days.values} accent="#4caf79" />
-      </div>
-
-      {/* Insights */}
-      <div>
-        <div className="ovline text-[9px] mb-3">Market Insights</div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {[
-            { icon: "🚀", title: "Tax Season Spike", body: "Volume hit 1,185 tickets in Feb 2026 — 350%+ above average. Staff up and open early every Jan–Mar." },
-            { icon: "⏰", title: "Peak: 10am – 2pm", body: "55% of visits land in this 4-hour window. Consider express lanes or appointment slots mid-day." },
-            { icon: "📅", title: "Monday Rush", body: "Monday is the busiest day — nearly 2× Friday volume. Consider extended Monday hours or a fast-track queue." },
-            { icon: "💼", title: "Tax Filing Dominates", body: "72% of all services are Tax Filing. Bundling ITIN + filing into one visit cuts repeat trips and boosts revenue." },
-            { icon: "🔁", title: "Strong Repeat Rate", body: "42% of clients return at least twice. 22% have 3+ visits — a loyalty programme converts these into advocates." },
-            { icon: "👑", title: "VIP Opportunity", body: `${data.tiers.VIP ?? 0} clients have visited 10+ times. Offer them a dedicated line, annual tax package, or referral bonus today.` },
-          ].map((ins, i) => (
-            <div key={i} className="bg-bg-elev border border-line border-l-2 border-l-gold-deep rounded-sm p-4">
-              <div className="text-sm font-semibold mb-1">{ins.icon} {ins.title}</div>
-              <p className="text-[11px] text-ink-soft leading-relaxed">{ins.body}</p>
-            </div>
-          ))}
+      {totalPages > 1 && (
+        <div className="flex items-center gap-3 mb-8">
+          <button
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={page === 0}
+            className="text-[10px] ovline border border-line px-2.5 py-1.5 text-ink-mute hover:text-ink transition disabled:opacity-30"
+          >
+            Previous
+          </button>
+          <span className="text-[11px] text-ink-mute">{page + 1} / {totalPages}</span>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            disabled={page >= totalPages - 1}
+            className="text-[10px] ovline border border-line px-2.5 py-1.5 text-ink-mute hover:text-ink transition disabled:opacity-30"
+          >
+            Next
+          </button>
         </div>
-      </div>
+      )}
 
-      {/* Client Table */}
-      <div>
-        <div className="ovline text-[9px] mb-3">Client List — {filtered.length.toLocaleString()} shown</div>
-
-        {/* Filters */}
-        <div className="flex flex-wrap gap-2 mb-4 items-center">
-          <input
-            type="text"
-            placeholder="Search name or phone…"
-            value={search}
-            onChange={e => handleSearch(e.target.value)}
-            className="bg-bg-elev border border-line focus:border-gold-deep outline-none text-xs px-3 py-2 text-ink placeholder:text-ink-mute w-56 rounded-sm"
-          />
-          {["all", "VIP", "Loyal", "Regular", "Returning", "New"].map(t => {
-            const meta = t === "all" ? null : TIER_META[t];
-            const active = tier === t;
-            return (
-              <button
-                key={t}
-                onClick={() => handleTier(t)}
-                className="px-3 py-1.5 text-[11px] rounded-full border transition"
-                style={active
-                  ? { borderColor: meta?.color ?? "#c8a84b", color: meta?.color ?? "#c8a84b", background: meta?.bg ?? "rgba(200,168,75,0.08)" }
-                  : { borderColor: "rgba(255,255,255,0.08)", color: "#666" }
-                }
-              >
-                {t === "all" ? "All" : `${meta?.label} (${data.tiers[t] ?? 0})`}
-              </button>
-            );
-          })}
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="ml-auto flex items-center gap-2">
-              <button
-                onClick={() => setPage(p => Math.max(0, p - 1))}
-                disabled={page === 0}
-                className="text-[11px] text-ink-mute hover:text-ink disabled:opacity-30 px-2 py-1 border border-line rounded-sm"
-              >← Prev</button>
-              <span className="text-[11px] text-ink-mute">{page + 1} / {totalPages}</span>
-              <button
-                onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-                disabled={page >= totalPages - 1}
-                className="text-[11px] text-ink-mute hover:text-ink disabled:opacity-30 px-2 py-1 border border-line rounded-sm"
-              >Next →</button>
-            </div>
-          )}
-        </div>
-
-        {/* Table */}
-        <div className="border border-line overflow-x-auto">
-          <table className="w-full text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-line bg-bg-elev">
-                {["#", "Name", "Phone", "Tier", "Visits", "Services", "First Visit", "Last Visit", "Promo Offer"].map(h => (
-                  <th key={h} className="px-3 py-2.5 text-left text-[10px] uppercase tracking-wide text-ink-mute font-medium whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {pageData.map((c, i) => {
-                const meta = TIER_META[c.t] ?? TIER_META.New;
-                const barW = Math.max(4, Math.round((c.v / maxVisits) * 60));
-                return (
-                  <tr key={c.p + i} className="border-b border-line hover:bg-white/[0.01] transition">
-                    <td className="px-3 py-2 text-ink-mute font-mono">{page * PAGE_SIZE + i + 1}</td>
-                    <td className="px-3 py-2 font-medium text-ink">{c.n}</td>
-                    <td className="px-3 py-2 font-mono text-ink-mute text-[11px]">{c.p}</td>
-                    <td className="px-3 py-2">
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold"
-                        style={{ background: meta.bg, color: meta.color, border: `1px solid ${meta.border}` }}>
-                        {meta.label}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-gold-soft font-mono w-5">{c.v}</span>
-                        <div className="h-1 rounded-full bg-gold-deep/70" style={{ width: barW }} />
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 text-ink-mute">{c.s.join(", ")}</td>
-                    <td className="px-3 py-2 text-ink-mute font-mono">{c.f}</td>
-                    <td className="px-3 py-2 text-ink-mute font-mono">{c.l}</td>
-                    <td className="px-3 py-2">
-                      <span className="text-[#4caf79] bg-[rgba(76,175,121,0.08)] border border-[rgba(76,175,121,0.2)] px-2 py-0.5 rounded text-[10px]">
-                        {c.pr}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-
-          {filtered.length === 0 && (
-            <div className="text-center text-ink-mute py-10 text-sm">No clients match your filters.</div>
-          )}
-        </div>
+      {/* Distributions */}
+      <div className="grid md:grid-cols-2 gap-6">
+        <MiniBarChart title="Busiest hours" labels={data.hours.labels} values={data.hours.values} accent="#9b7bff" />
+        <MiniBarChart title="Busiest days" labels={data.days.labels} values={data.days.values} closed={data.days.closed} accent="#4caf79" />
       </div>
     </div>
   );
 }
 
-/* ── Mini Bar Chart (pure SVG, no deps) ─────────────────────────── */
-function MiniBarChart({ title, labels, values, accent }) {
-  const max = Math.max(...values, 1);
-  const H = 60;
-  const W = 260;
+/* ── Bar chart ────────────────────────────────────────────────────────
+   Days marked `closed` are drawn faintly and excluded from the scale, so a
+   day the business doesn't trade can't masquerade as a quiet trading day. */
+function MiniBarChart({ title, labels, values, closed, accent }) {
+  const W = 320, H = 90;
+  const considered = values.filter((_, i) => !closed?.[i]);
+  const max = Math.max(...considered, 1);
   const barW = Math.floor((W - (labels.length - 1) * 2) / labels.length);
-  // Only show every Nth label to avoid crowding
   const step = Math.ceil(labels.length / 6);
 
   return (
-    <div className="bg-bg-elev border border-line rounded-sm p-4">
-      <div className="text-[10px] uppercase tracking-wide text-ink-mute mb-3">{title}</div>
-      <svg viewBox={`0 0 ${W} ${H + 16}`} width="100%" style={{ overflow: "visible" }}>
+    <div className="border border-line p-4">
+      <div className="ovline text-[9px] text-ink-mute mb-3">{title}</div>
+      <svg viewBox={`0 0 ${W} ${H + 18}`} className="w-full">
         {values.map((v, i) => {
-          const h = Math.max(2, Math.round((v / max) * H));
+          const isClosed = closed?.[i];
+          const h = isClosed ? 2 : Math.max(2, Math.round((v / max) * H));
           const x = i * (barW + 2);
           return (
             <g key={i}>
-              <rect x={x} y={H - h} width={barW} height={h} fill={accent} opacity={0.75} rx={1} />
+              <rect x={x} y={H - h} width={barW} height={h} fill={accent} opacity={isClosed ? 0.15 : 0.75} />
               {i % step === 0 && (
                 <text x={x + barW / 2} y={H + 12} textAnchor="middle" fill="#555" fontSize={7}>
-                  {labels[i]?.replace(':00','').replace(/^\d{4}-/,'')}
+                  {labels[i]}
                 </text>
               )}
             </g>
           );
         })}
       </svg>
+      {closed?.some(Boolean) && (
+        <div className="text-[9px] text-ink-mute mt-2 leading-relaxed">
+          Faded days had too few visits to compare — treated as closed rather
+          than quiet.
+        </div>
+      )}
     </div>
   );
 }

@@ -58,6 +58,7 @@ const STOPS = [
       "Everyone waiting shows up here, oldest first. Press Call next to take the " +
       "person at the front, and their number appears on the TV and is read out loud.",
     tip: "If someone steps away, use Return instead of No-show — it puts them back in line.",
+    ask: ["How busy are we right now?", "How long has the first person been waiting?"],
   },
   {
     path: "bookings",
@@ -67,6 +68,7 @@ const STOPS = [
       "Anyone who booked a time online appears here. They join the queue automatically " +
       "when they arrive, so you don't have to add them by hand.",
     tip: "Share your booking link and people can reserve a slot instead of waiting.",
+    ask: ["How many people booked for today?", "Do people who book actually show up?"],
   },
   {
     path: "customers",
@@ -76,6 +78,7 @@ const STOPS = [
       "Every walk-in and booking is saved here with how many times they've visited. " +
       "Useful when a returning client calls and you want their history before they arrive.",
     tip: "You can export the whole list to Excel whenever you need it.",
+    ask: ["How many people come back a second time?", "How many new people came in this week?"],
   },
   {
     path: "insights",
@@ -85,6 +88,7 @@ const STOPS = [
       "How long people wait, how many you serve, when your busy hours are, and how many " +
       "give up and leave. All measured from your own branch — nothing is estimated.",
     tip: "Worth a look once a week. The busy-hours chart is the one that usually changes minds about staffing.",
+    ask: ["Explain this page in simple words", "Why do people leave without being seen?", "What should I fix first?"],
   },
   {
     path: "schedule",
@@ -94,6 +98,7 @@ const STOPS = [
       "Set your opening hours and mark staff as away or closed. The booking page only " +
       "offers times you're actually open, so nobody books an empty chair.",
     tip: "Prayer pauses are set here too — the queue holds itself automatically.",
+    ask: ["Which day of the week is busiest?", "Do I need more staff?"],
   },
   {
     path: "settings",
@@ -106,12 +111,39 @@ const STOPS = [
   },
   {
     path: "",
+    label: "AI Assist",
+    title: "Ask instead of hunting for it",
+    body:
+      "See the AI Assist button in the bottom-right corner? Tap it and ask a question " +
+      "in your own words. It reads your real numbers and answers in plain language — " +
+      "and it answers in Arabic if you write in Arabic.",
+    tip:
+      "Use the Simple / Detail switch at the top of the panel. Simple avoids all the " +
+      "technical words; Detail gives the full statistics.",
+    ask: [
+      "How busy are we right now?",
+      "How long are people waiting today?",
+      "Do I need more staff?",
+      "Explain my Insights page in simple words",
+    ],
+    /* Honest framing. The assistant does NOT learn from being used — it has no
+       memory between conversations. What genuinely improves is the DATA: every
+       visit makes the statistics more reliable, which makes the answers better.
+       Saying "it learns from you" would be a pleasant lie, and the whole point
+       of this feature is that it doesn't tell those. */
+    note:
+      "It gets more useful over time — not because it learns from you, but because " +
+      "every customer you serve adds to the history it reads. The longer you use " +
+      "AzQueue, the more certain its answers become.",
+  },
+  {
+    path: "",
     label: "Done",
     title: "That's everything",
     body:
       "You've now seen every part of AzQueue. If you ever want to run through it " +
       "again, click your name at the top right and choose Take the tour.",
-    tip: "The AI Assist button in the bottom corner answers questions about any of this in plain language.",
+    tip: "Nothing here can break anything. Click around — that's the fastest way to learn it.",
     last: true,
   },
 ];
@@ -184,6 +216,32 @@ export default function ProductTour({ open, onClose }) {
           {stop.tip && (
             <p className="text-[11px] text-ink-mute leading-relaxed mt-2 border-l border-gold-deep/50 pl-2.5">
               {stop.tip}
+            </p>
+          )}
+
+          {/* What you could ask AI Assist from this page. Concrete examples
+              beat any amount of explaining what an assistant "can do". */}
+          {stop.ask?.length > 0 && (
+            <div className="mt-3">
+              <div className="ovline text-[8px] text-ink-mute mb-1.5">
+                Try asking AI Assist
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {stop.ask.map((q) => (
+                  <span
+                    key={q}
+                    className="text-[10px] border border-line px-2 py-1 text-ink-soft"
+                  >
+                    “{q}”
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {stop.note && (
+            <p className="text-[10.5px] text-ink-mute leading-relaxed mt-3 italic font-display">
+              {stop.note}
             </p>
           )}
 
