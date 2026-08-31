@@ -6,6 +6,7 @@ import { sendCheckinConfirmation } from "../lib/notify";
 import { sendCheckinEmail } from "../lib/notifyEmail";
 import { SMS_ENABLED } from "../lib/features";
 import { estimateWaitFor, formatWait } from "../lib/waitEstimator";
+import QuietSlotNudge from "../components/QuietSlotNudge";
 import { findOrCreateCustomer, logQueueEvent, generatePersona } from "../lib/customers";
 import { getCustomerCard, punchDots, hasUnclaimedReward } from "../lib/loyalty";
 import { getEffectiveChecklist, buildChecklistMessage } from "../lib/checklists";
@@ -41,6 +42,22 @@ export default function CustomerCheckIn() {
   const [smsConsent, setSmsConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
+
+  /* How many are already waiting — the nudge needs it to work out what
+     joining now would actually cost. Refreshed when the service changes,
+     since the estimate is per-service. */
+  const [waitingCount, setWaitingCount] = useState(null);
+
+  useEffect(() => {
+    let off = false;
+    if (!branch?.id) return;
+    supabase.from("tickets")
+      .select("id", { count: "exact", head: true })
+      .eq("branch_id", branch.id)
+      .eq("status", "waiting")
+      .then(({ count }) => { if (!off) setWaitingCount(count ?? 0); });
+    return () => { off = true; };
+  }, [branch?.id, serviceId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -253,6 +270,19 @@ export default function CustomerCheckIn() {
           );
         })}
       </div>
+
+      {/* Offers an afternoon appointment when the queue is long. Renders
+          nothing when the wait is short or no slots are free, so it never
+          gets in the way of a quick check-in. */}
+      <QuietSlotNudge
+        branch={branch}
+        serviceId={serviceId}
+        waitingCount={waitingCount}
+        onBook={(when) =>
+          navigate(`/b/${branch.slug}?at=${encodeURIComponent(when.toISOString())}` +
+                   (serviceId ? `&service=${serviceId}` : ""))
+        }
+      />
 
       <form onSubmit={handleSubmit} className={`mt-6 ${isKiosk ? "space-y-8" : "space-y-6"}`}>
         {/* Service picker */}

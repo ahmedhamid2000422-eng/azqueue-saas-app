@@ -215,6 +215,13 @@ export default function TvDisplay() {
   const [flashing, setFlashing] = useState({}); // ticketId → true while flashing
   const flashTimers = useRef({});
 
+  /* Full-screen call banner. The per-card flash is easy to miss from across a
+     waiting room, especially by someone looking at their phone. This takes
+     the whole screen for three seconds — long enough to catch the eye and
+     read a token, short enough that the board is never really unavailable. */
+  const [banner, setBanner] = useState(null);   // { token, name, counter }
+  const bannerTimer = useRef(null);
+
   const hydrated = useRef(false);
   useEffect(() => {
     // First pass after load: remember what's already on screen without
@@ -242,6 +249,12 @@ export default function TvDisplay() {
           branchId:     branch?.id,
         });
 
+        /* Latest call wins — if two people are called within three seconds,
+           showing the older one would send someone to the wrong counter. */
+        clearTimeout(bannerTimer.current);
+        setBanner({ token: tk.token, name: tk.customer_name, counter: staffName ?? null });
+        bannerTimer.current = setTimeout(() => setBanner(null), 3000);
+
         setFlashing((f) => ({ ...f, [tk.id]: true }));
         clearTimeout(flashTimers.current[tk.id]);
         flashTimers.current[tk.id] = setTimeout(() => {
@@ -259,6 +272,7 @@ export default function TvDisplay() {
   // Clear any pending flash timers on unmount
   useEffect(() => () => {
     Object.values(flashTimers.current).forEach(clearTimeout);
+    clearTimeout(bannerTimer.current);
   }, []);
 
   // ── Audio unlock ─────────────────────────────────────────────
@@ -407,6 +421,45 @@ export default function TvDisplay() {
           ? "radial-gradient(ellipse 80% 60% at 50% -10%, rgba(127,163,127,0.15), transparent 65%)"
           : "radial-gradient(ellipse 80% 60% at 50% -10%, rgba(201,168,106,0.12), transparent 65%)",
       }} />
+
+      {/* ── Call banner ──────────────────────────────────────────────
+          Takes the whole screen for three seconds when someone is called.
+          The per-card flash underneath is easy to miss from across a room,
+          particularly by the person most likely to miss it: the one looking
+          at their phone. Three seconds is long enough to look up and read a
+          token, short enough that the board is never really gone. */}
+      {banner && (
+        <div
+          style={{
+            position: "absolute", inset: 0, zIndex: 60,
+            background: "rgba(10,10,8,0.94)",
+            display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "center",
+            animation: "tvBannerIn 0.25s ease-out",
+          }}
+        >
+          <div style={{ color: "#c9a86a", fontSize: "2vw", letterSpacing: "0.35em", textTransform: "uppercase", marginBottom: "2vh" }}>
+            Now serving
+          </div>
+          <div style={{
+            fontSize: "16vw", lineHeight: 1, fontWeight: 200, color: "#f0ede6",
+            letterSpacing: "-0.02em",
+            animation: "tvBannerPulse 1s ease-in-out infinite",
+          }}>
+            {banner.token}
+          </div>
+          {banner.name && (
+            <div style={{ color: "#c9a86a", fontSize: "3vw", fontWeight: 300, marginTop: "2vh" }}>
+              {banner.name}
+            </div>
+          )}
+          {banner.counter && (
+            <div style={{ color: "#8a8880", fontSize: "1.6vw", letterSpacing: "0.15em", marginTop: "1vh", textTransform: "uppercase" }}>
+              {banner.counter}
+            </div>
+          )}
+        </div>
+      )}
 
       <div style={{ position: "relative", height: "100vh", display: "flex", flexDirection: "column", padding: "3vh 4vw" }}>
 
@@ -619,6 +672,14 @@ export default function TvDisplay() {
         @keyframes tvFlashToken {
           0%, 100% { color: #c9a86a; text-shadow: 0 0 80px rgba(201,168,106,0.25); }
           50%      { color: #ffe9b0; text-shadow: 0 0 120px rgba(201,168,106,0.85); }
+        }
+        @keyframes tvBannerIn {
+          from { opacity: 0; transform: scale(0.96); }
+          to   { opacity: 1; transform: scale(1); }
+        }
+        @keyframes tvBannerPulse {
+          0%, 100% { text-shadow: 0 0 60px rgba(201,168,106,0.35); }
+          50%      { text-shadow: 0 0 140px rgba(201,168,106,0.9); }
         }
         @keyframes tvFlashCard {
           0%, 100% { background: rgba(201,168,106,0.03); box-shadow: none; }

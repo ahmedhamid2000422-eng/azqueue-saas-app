@@ -55,9 +55,13 @@ const STOPS = [
     label: "The queue",
     title: "This is where the day happens",
     body:
-      "Everyone waiting shows up here, oldest first. Press Call next to take the " +
-      "person at the front, and their number appears on the TV and is read out loud.",
-    tip: "If someone steps away, use Return instead of No-show — it puts them back in line.",
+      "Everyone waiting shows up here, oldest first. There are only four buttons you " +
+      "need all day: Call next takes the person at the front, Complete finishes them, " +
+      "Return puts someone back in line if they stepped away, and No-show removes them " +
+      "if they've gone. That's the whole job.",
+    tip:
+      "Prefer Return over No-show when you're not sure — someone in the toilet keeps " +
+      "their place, and nobody has to argue about it at the counter.",
     ask: ["How busy are we right now?", "How long has the first person been waiting?"],
     why: "Calling people from here is what puts their number on the TV and sends their email. Calling out names by hand skips all of it.",
   },

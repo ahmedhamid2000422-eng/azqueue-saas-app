@@ -21,10 +21,17 @@
  */
 export const SMS_ENABLED = import.meta.env.VITE_SMS_ENABLED === "true";
 
+/* The check-in page's "it's busy, quieter after 4" panel.
+   Defaults ON, but set VITE_CHECKIN_NUDGE=false in Vercel and redeploy to
+   silence it instantly — no code change, no waiting on a developer. Worth
+   having because the cost of this one landing badly is an argument at the
+   counter that the owner has to absorb personally. */
+export const CHECKIN_NUDGE_ENABLED = import.meta.env.VITE_CHECKIN_NUDGE !== "false";
+
 /* Features that are built but not yet live for customers. The pages behind
    these still exist and still query real tables — they're gated because the
    thing that FILLS those tables isn't running yet (no WhatsApp number
-   connected, no survey emails going out). Showing an permanently empty page
+   connected, no survey emails going out). Showing a permanently empty page
    reads as a bug; saying "soon" reads as a roadmap.
    Flip to "true" in Vercel env vars when the underlying pipe is live. */
 export const WHATSAPP_ENABLED = import.meta.env.VITE_WHATSAPP_ENABLED === "true";
