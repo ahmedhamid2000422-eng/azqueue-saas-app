@@ -496,3 +496,44 @@ the one flow that must not break during a working day.
 
 Those need this stage running for months first. Build the record before the
 inference.
+
+---
+
+# Later: rotating band on the TV
+
+**Idea (owner's).** A thin band along the bottom of the wall display,
+rotating one message at a time — the same paging mechanic already used by
+Up Next. There is space for it: the footer strip currently holds only the
+AzQueue mark.
+
+**Why service averages belong there eventually.** "Immigration · usually
+about 45 minutes" doesn't help the person waiting decide anything — they've
+already chosen and joined. Its value is that it EXPLAINS a long wait.
+Someone watching a counter for forty minutes thinks the staff are slow; a
+board saying that work usually takes forty-five minutes turns suspicion into
+patience, at no cost.
+
+**Why not yet.** There are ~13 completed tickets in AzQueue, and the imported
+Qminder history has no start/end times — durations weren't in that export.
+Any average shown today would be invented, in front of customers, which is
+the worst possible audience for a made-up number. It also depends on the
+Complete panel: until the last customer of each day is properly completed,
+a few "overnight" visits would wreck the median at this sample size.
+
+**Order:** Complete panel → a few weeks of real service times → then add
+averages to the rotation, gated on a minimum sample per service.
+
+## What the band can carry NOW
+
+So the band earns its place immediately rather than waiting:
+
+- "Scan the code at the door to join the queue" — the message most likely to
+  change behaviour, shown to a captive audience
+- "Open 9:00 AM – 6:00 PM · usually quieter after 4pm"
+- "Collecting paperwork? Please use the pickup desk"
+- prayer time / pause notices, if not already shown elsewhere
+
+Service averages join the same rotation later. Each entry should be
+independently switchable off, and anything derived from data must disappear
+on its own when the sample is too small — the same rule the rest of the app
+follows.
