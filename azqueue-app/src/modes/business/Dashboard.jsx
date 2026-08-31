@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
+import ProductTour, { TourInvite, hasSeenTour, isSnoozed, snoozeTour } from "../../components/ProductTour";
 import Sidebar from "../../components/Sidebar";
 import IslamicBar from "../../components/IslamicBar";
 import AiAssistDock from "../../components/AiAssistDock";
@@ -56,6 +57,29 @@ export default function BusinessDashboard() {
   const { branch } = useBranch();
   const isGym = branch?.business_type === "gym";
 
+  /* Tour state. The invite reappears on every fresh sign-in until someone
+     actually completes the tour — closing it only snoozes for this visit. */
+  const [touring, setTouring] = useState(false);
+  const [invite,  setInvite]  = useState(false);
+
+  useEffect(() => {
+    if (!branch?.id) return;
+    // Small delay so the page has painted — an offer that appears mid-load
+    // reads as an error dialog and gets dismissed on reflex.
+    const t = setTimeout(() => {
+      if (!hasSeenTour() && !isSnoozed()) setInvite(true);
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [branch?.id]);
+
+  /* "Take the tour" in the user menu. An event rather than prop-drilling
+     through Topbar, which knows nothing about the tour and shouldn't. */
+  useEffect(() => {
+    const start = () => { setInvite(false); setTouring(true); };
+    window.addEventListener("azq:start-tour", start);
+    return () => window.removeEventListener("azq:start-tour", start);
+  }, []);
+
   return (
     <div className="flex min-h-screen">
       <Sidebar
@@ -93,6 +117,17 @@ export default function BusinessDashboard() {
           a route is unmounted the moment you navigate, which would wipe the
           conversation every time you changed page. */}
       <AiAssistDock />
+
+      {/* Guided tour. Also outside <Routes>, because it navigates between
+          pages as it runs — anything inside the router would unmount itself
+          at the first step. */}
+      {invite && (
+        <TourInvite
+          onStart={() => { setInvite(false); setTouring(true); }}
+          onDismiss={() => { setInvite(false); snoozeTour(); }}
+        />
+      )}
+      <ProductTour open={touring} onClose={() => setTouring(false)} />
     </div>
   );
 }

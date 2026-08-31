@@ -145,6 +145,18 @@ export default function Topbar() {
                 Platform admin →
               </Link>
             )}
+            {/* Replay the walkthrough. Lives in the user menu because that's
+                where people look when they're lost, and it costs nothing to
+                offer twice. */}
+            <button
+              onClick={() => {
+                setOpen(false);
+                window.dispatchEvent(new CustomEvent("azq:start-tour"));
+              }}
+              className="w-full text-left px-4 py-3 text-xs text-ink-soft hover:text-ink hover:bg-surface-2 transition border-b border-line"
+            >
+              Take the tour
+            </button>
             <button
               onClick={handleSignOut}
               className="w-full text-left px-4 py-3 text-xs text-ink-soft hover:text-ink hover:bg-surface-2 transition"

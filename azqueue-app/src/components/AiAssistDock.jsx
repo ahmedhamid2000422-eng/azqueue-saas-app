@@ -17,15 +17,58 @@ import { buildFacts } from "../lib/insightsEngine";
  * the first question pays the cost of loading history.
  */
 
+/* Example questions. Written the way someone would actually speak, not the
+   way a dashboard would label a metric — "how long are people waiting" gets
+   clicked, "wait time analysis" does not. Mixed between right-now questions
+   and business questions so it's clear the assistant handles both. */
 const SUGGESTIONS = [
-  "How are my wait times?",
-  "Should I add more staff?",
-  "Why are customers leaving?",
+  "How busy are we right now?",
+  "How long are people waiting today?",
+  "What time of day is busiest?",
+  "Why do people leave without being seen?",
+  "Do I need more staff?",
+  "How many people came in this week?",
+  "Which service takes the longest?",
   "What should I fix first?",
 ];
 
 const KEY = (branchId) => `azq.assist.${branchId ?? "none"}`;
+const LEVEL_KEY = "azq.assist.level";
 const DAYS = 90;
+
+/* Simple is the default: the person at the counter is often not the person
+   who asked for the statistics, and a number nobody understands changes no
+   decisions. Stored in localStorage, not sessionStorage, so the choice
+   survives closing the browser — it's a preference, not part of a chat. */
+function loadLevel() {
+  try { return localStorage.getItem(LEVEL_KEY) === "detailed" ? "detailed" : "simple"; }
+  catch { return "simple"; }
+}
+
+/* ── First-run tutorial ─────────────────────────────────────────────
+   Shown once, the first time someone opens the dock. Deliberately three
+   short points and a button — nobody reads a tour, so this has to be
+   skimmable in about five seconds. Reopenable from the "?" in the header
+   for anyone who dismissed it and later wondered what the thing does. */
+const TOUR_KEY = "azq.assist.tour.seen";
+
+const TOUR = [
+  {
+    icon: "①",
+    title: "Ask it anything about your queue",
+    body: "Type a normal question, the way you'd say it out loud — \"how busy are we right now\", \"why do people leave\", \"do I need more staff\". Tap one of the examples below to start.",
+  },
+  {
+    icon: "②",
+    title: "Every number comes from your own branch",
+    body: "It reads your real check-ins and visits. It is not allowed to guess or use figures from other businesses. If it doesn't know, it says so.",
+  },
+  {
+    icon: "③",
+    title: "Simple or Detail, up to you",
+    body: "Simple gives plain answers with no jargon. Detail gives the full statistics. Switch any time using the buttons at the top.",
+  },
+];
 
 export default function AiAssistDock() {
   const { branch } = useBranch();
@@ -36,7 +79,28 @@ export default function AiAssistDock() {
   const [error, setError]       = useState(null);
   const [ctx, setCtx]           = useState(null);
   const [unread, setUnread]     = useState(false);
+  const [level, setLevel]       = useState(loadLevel);
+  const [tour, setTour]         = useState(false);
+  const [neverOpened, setNeverOpened] = useState(() => {
+    try { return !localStorage.getItem(TOUR_KEY); } catch { return false; }
+  });
   const scrollRef = useRef(null);
+
+  /* Show the tutorial the first time the panel is ever opened. */
+  useEffect(() => {
+    if (!open) return;
+    try { if (!localStorage.getItem(TOUR_KEY)) setTour(true); } catch { /* private mode */ }
+  }, [open]);
+
+  function dismissTour() {
+    setTour(false);
+    setNeverOpened(false);
+    try { localStorage.setItem(TOUR_KEY, "1"); } catch { /* private mode */ }
+  }
+
+  useEffect(() => {
+    try { localStorage.setItem(LEVEL_KEY, level); } catch { /* private mode */ }
+  }, [level]);
 
   /* Restore the transcript for this branch (survives navigation AND reload) */
   useEffect(() => {
@@ -81,6 +145,55 @@ export default function AiAssistDock() {
     return built;
   }
 
+  /**
+   * A snapshot of the queue as it stands RIGHT NOW, plus today's totals.
+   *
+   * The 90-day statistics answer "how does this business run"; they cannot
+   * answer "how are we doing this morning", which is what someone standing
+   * at the counter actually wants to know. This is deliberately NOT cached —
+   * a stale live number is worse than no live number.
+   *
+   * Only aggregates leave the browser. No names, no emails, no phone
+   * numbers: the assistant never needs to identify an individual customer,
+   * so it is never given the means to.
+   */
+  async function loadLiveSnapshot() {
+    try {
+      const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+
+      const [{ data: open }, { data: today }] = await Promise.all([
+        supabase.from("tickets")
+          .select("id, status, created_at, called_at")
+          .eq("branch_id", branch.id)
+          .in("status", ["waiting", "serving"])
+          .limit(500),
+        supabase.from("tickets")
+          .select("id, status")
+          .eq("branch_id", branch.id)
+          .gte("created_at", startOfDay.toISOString())
+          .limit(2000),
+      ]);
+
+      const now     = Date.now();
+      const waiting = (open ?? []).filter((t) => t.status === "waiting");
+      const serving = (open ?? []).filter((t) => t.status === "serving");
+      const mins    = (t) => Math.round((now - new Date(t.created_at).getTime()) / 60000);
+      const longest = waiting.length ? Math.max(...waiting.map(mins)) : 0;
+      const count   = (s) => (today ?? []).filter((t) => t.status === s).length;
+
+      return {
+        waitingNow:      waiting.length,
+        beingServedNow:  serving.length,
+        longestWaitMins: longest,
+        todayCheckedIn:  today?.length ?? 0,
+        todayCompleted:  count("completed"),
+        todayCancelled:  count("cancelled") + count("expired"),
+      };
+    } catch {
+      return null;   // live data is a bonus; never block the answer on it
+    }
+  }
+
   async function send(text) {
     const question = (text ?? input).trim();
     if (!question || busy || !branch?.id) return;
@@ -92,12 +205,15 @@ export default function AiAssistDock() {
 
     try {
       const built = await loadContext();
+      const live  = await loadLiveSnapshot();   // always fresh — never cached
       const { data, error: fErr } = await supabase.functions.invoke("ai-insights", {
         body: {
           facts: built.facts,
           sampleSize: built.sampleSize,
           businessName: branch.name,
           days: DAYS,
+          level,
+          live,
           messages: next,
         },
       });
@@ -137,6 +253,12 @@ export default function AiAssistDock() {
             <span className="text-[#141410] font-display text-[10px] font-semibold">AQ</span>
           </span>
           <span className="ovline text-[9px] text-gold-soft">AI Assist</span>
+          {/* "New" until they've seen the tutorial — a quiet nudge to open it once. */}
+          {neverOpened && (
+            <span className="ovline text-[7px] border border-gold-deep/60 text-gold-soft px-1 py-0.5">
+              New
+            </span>
+          )}
           {unread && <span className="w-1.5 h-1.5 rounded-full bg-[#9bbd9b]" />}
         </button>
       )}
@@ -160,6 +282,34 @@ export default function AiAssistDock() {
               </div>
             </div>
             <div className="flex items-center gap-1">
+              {/* Reading level. Simple avoids statistical vocabulary entirely —
+                  it's the default because the person on the counter usually
+                  isn't the one who asked for the statistics. */}
+              <div className="flex border border-line mr-1">
+                {["simple", "detailed"].map((l) => (
+                  <button
+                    key={l}
+                    onClick={() => setLevel(l)}
+                    title={l === "simple"
+                      ? "Plain language, no jargon"
+                      : "Full statistical detail"}
+                    className={`text-[9px] ovline px-2 py-1 transition ${
+                      level === l
+                        ? "bg-[rgba(201,168,106,0.12)] text-gold-soft"
+                        : "text-ink-mute hover:text-ink"
+                    }`}
+                  >
+                    {l === "simple" ? "Simple" : "Detail"}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setTour(true)}
+                title="What is this?"
+                className="text-[10px] border border-line w-[22px] h-[22px] text-ink-mute hover:text-gold-soft hover:border-gold-deep transition leading-none"
+              >
+                ?
+              </button>
               {messages.length > 0 && (
                 <button
                   onClick={() => { setMessages([]); setError(null); }}
@@ -180,7 +330,36 @@ export default function AiAssistDock() {
           </div>
 
           <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3.5">
-            {messages.length === 0 && (
+            {/* First-run tutorial. Replaces the message area entirely so it
+                can't be scrolled past or missed. */}
+            {tour && (
+              <div className="mb-1">
+                <div className="ovline text-[9px] text-gold-soft mb-3">
+                  Your new assistant
+                </div>
+
+                {TOUR.map((t) => (
+                  <div key={t.title} className="flex gap-2.5 mb-3.5">
+                    <span className="text-gold-soft text-[13px] leading-none mt-0.5 shrink-0">
+                      {t.icon}
+                    </span>
+                    <div>
+                      <div className="text-[12px] text-ink leading-snug mb-0.5">{t.title}</div>
+                      <p className="text-[11px] text-ink-mute leading-relaxed">{t.body}</p>
+                    </div>
+                  </div>
+                ))}
+
+                <button
+                  onClick={dismissTour}
+                  className="ovline text-[9px] border border-gold-deep px-3 py-1.5 text-gold-soft hover:bg-[rgba(201,168,106,0.1)] transition w-full"
+                >
+                  Got it
+                </button>
+              </div>
+            )}
+
+            {!tour && messages.length === 0 && (
               <div className="text-[12px] text-ink-soft leading-relaxed">
                 <p className="mb-1">
                   Ask me about your queue — wait times, how busy you really are, why people
@@ -225,7 +404,7 @@ export default function AiAssistDock() {
             )}
           </div>
 
-          {messages.length === 0 && (
+          {!tour && messages.length === 0 && (
             <div className="px-4 pb-2.5 flex flex-wrap gap-1.5 shrink-0">
               {SUGGESTIONS.map((s) => (
                 <button

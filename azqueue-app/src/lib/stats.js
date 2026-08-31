@@ -191,7 +191,7 @@ export function describe(values) {
   return {
     n, mean, sd,
     cv: mean ? sd / mean : null,       // coefficient of variation
-    median: q(0.5), p90: q(0.9), min: sorted[0], max: sorted[n - 1],
+    median: q(0.5), p75: q(0.75), p90: q(0.9), min: sorted[0], max: sorted[n - 1],
   };
 }
 

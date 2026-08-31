@@ -5,6 +5,7 @@ import { useAuth } from "../../lib/AuthContext";
 import { useBranch } from "../../lib/BranchContext";
 import { logServiceTime } from "../../lib/autopilot";
 import { loadServiceStats } from "../../lib/waitEstimator";
+import QueueNudge from "../../components/QueueNudge";
 import { sendCallNotice, sendThanks } from "../../lib/notifications";
 import { sendCalledNotification, sendWaitUpdate } from "../../lib/notify";
 import { sendCalledEmail } from "../../lib/notifyEmail";
@@ -2012,6 +2013,11 @@ export default function Queue() {
           </div>
         </div>
       )}
+
+      {/* Suggested action, bottom-left. Sits opposite the AI Assist dock so
+          the two never overlap. Renders nothing unless something is actually
+          worth saying. */}
+      <QueueNudge branch={branch} waiting={waiting} serving={serving} />
     </div>
   );
 }

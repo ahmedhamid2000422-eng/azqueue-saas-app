@@ -131,6 +131,50 @@ genuinely need something specific from them to go further.
 
 If asked to rewrite something in plainer English, just produce the plainer
 version. Do not narrate that you understand the request first.
+
+LANGUAGE
+Reply in the language the person wrote to you in. If they write in Arabic,
+answer in Arabic; if they switch mid-conversation, switch with them. Keep
+numbers in Western digits (94.6, not ٩٤٫٦) so they match what is on screen
+elsewhere in AzQueue. Never mention that you are translating — just answer.
+`.trim();
+
+/* ── Reading level ──────────────────────────────────────────────────
+   The dock has a Simple / Detailed switch. Simple is the default because
+   the person running the counter day to day is often not the person who
+   asked for the statistics, and a number nobody understands changes no
+   decisions.                                                          */
+const SIMPLE_RULES = `
+WRITE FOR SOMEONE WHO IS NOT A STATISTICIAN. This is the strongest style
+instruction you have — it outranks the style notes above wherever they
+conflict.
+
+- Short sentences. Everyday words. Aim for the way you would explain it to a
+  friend behind the counter, not the way you would write a report.
+- Do NOT use these words: median, percentile, standard deviation, variance,
+  rho, utilisation, correlation, statistically significant, p-value,
+  confidence interval, distribution, abandonment rate, conversion rate.
+  Say the meaning instead:
+    median          -> "the usual wait" / "most people"
+    90th percentile -> "the unluckiest one in ten"
+    variability     -> "some people wait far longer than others"
+    rho / capacity   -> "you have enough staff for how busy you are"
+    abandonment     -> "people who gave up and left"
+    cancellation    -> "people who cancelled"
+- Round numbers to something a person can hold in their head. 94.6 minutes
+  becomes "about an hour and a half". 39% becomes "about 4 in 10".
+- At most three points. Lead with the one that costs them money.
+- No numbered lists of five things. Write it as you would say it out loud.
+- Still never invent a figure. Simple language, same honesty.
+
+If they explicitly ask for the precise number or the technical term, give it
+to them — being clear is the goal, not withholding.
+`.trim();
+
+const DETAILED_RULES = `
+The person has asked for the detailed view. Use the proper statistical terms
+and exact figures, and explain what each one means in business terms as you
+go. Confidence intervals, significance and rho are all fair game here.
 `.trim();
 
 Deno.serve(async (req) => {
@@ -143,6 +187,15 @@ Deno.serve(async (req) => {
     businessName?: string;
     sampleSize?: number;
     days?: number;
+    level?: "simple" | "detailed";
+    live?: {
+      waitingNow?: number;
+      beingServedNow?: number;
+      longestWaitMins?: number;
+      todayCheckedIn?: number;
+      todayCompleted?: number;
+      todayCancelled?: number;
+    } | null;
   };
   try { body = await req.json(); } catch { return json({ ok: false, error: "Invalid JSON" }, 400); }
 
@@ -161,14 +214,38 @@ Deno.serve(async (req) => {
       ? `VERIFIED STATISTICS for ${body.businessName ?? "this business"} ` +
         `(${body.sampleSize ?? "?"} tickets over the last ${body.days ?? 90} days):\n` +
         facts.map((f, i) => `${i + 1}. ${f}`).join("\n")
-      : `NO VERIFIED STATISTICS ARE AVAILABLE. This business has too little history ` +
-        `to compute anything reliable. You must not state any figure about their ` +
-        `operation — not a wait time, not a rate, not a volume, not an estimate. ` +
-        `Say plainly that there isn't enough data yet, and answer generally.`;
+      : `NO LONG-RUN STATISTICS ARE AVAILABLE. This business has too little ` +
+        `history to compute averages, rates or trends reliably. You must not ` +
+        `state any such figure — no average wait, no rate, no trend, no ` +
+        `estimate. Say plainly that there isn't enough history yet. (If a ` +
+        `"THE QUEUE RIGHT NOW" section appears below, those live counts ARE ` +
+        `usable — they are a direct reading, not a statistic.)`;
+
+  /* The queue as it stands right now. Counts as verified data — it is read
+     straight from their tickets table moments before the question is sent. */
+  const L = body.live;
+  const liveBlock = L
+    ? `\n\nTHE QUEUE RIGHT NOW (read from live records seconds ago — these are` +
+      ` verified figures too, and you may quote them):\n` +
+      `- Waiting right now: ${L.waitingNow ?? 0}\n` +
+      `- Being served right now: ${L.beingServedNow ?? 0}\n` +
+      `- Longest anyone has been waiting: ${L.longestWaitMins ?? 0} minutes\n` +
+      `- Checked in so far today: ${L.todayCheckedIn ?? 0}\n` +
+      `- Finished today: ${L.todayCompleted ?? 0}\n` +
+      `- Cancelled or timed out today: ${L.todayCancelled ?? 0}\n` +
+      `If asked what is happening now, today, or "at the moment", use THESE ` +
+      `numbers, not the long-run averages. Say "right now" so it is clear ` +
+      `which you mean.`
+    : "";
 
   const messages = chat
     ? [
-        { role: "system", content: `${GROUNDING}\n\n${CHAT_RULES}\n\n${context}` },
+        {
+          role: "system",
+          content: `${GROUNDING}\n\n${CHAT_RULES}\n\n` +
+            `${body.level === "detailed" ? DETAILED_RULES : SIMPLE_RULES}\n\n` +
+            `${context}${liveBlock}`,
+        },
         ...body.messages!.slice(-12).map((m) => ({
           role: m.role === "assistant" ? "assistant" : "user",
           content: String(m.content ?? "").slice(0, 4000),
