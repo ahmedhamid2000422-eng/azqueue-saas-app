@@ -52,6 +52,9 @@ Deno.serve(async (req) => {
     serviceName: b.serviceName ? String(b.serviceName) : "",
     message:     b.message     ? String(b.message)     : "",
     ticketUrl:   b.ticketUrl   ? String(b.ticketUrl)   : "",
+    holdMinutes: b.holdMinutes != null ? Number(b.holdMinutes) : null,
+    arriveBy:    b.arriveBy    ? String(b.arriveBy)    : null,
+    quietNote:   b.quietNote   ? String(b.quietNote)   : null,
   });
 
   if (!content) return json({ error: `unknown type "${type}"` }, 400);
@@ -97,6 +100,15 @@ type Ctx = {
   name: string; branchName: string; token: string;
   position: number | null; counter: string; staffName: string;
   when: string; serviceName: string; message: string; ticketUrl: string;
+  /* How many minutes a called ticket is held before it's released. Sent by
+     the caller so this function never has to know the branch's settings. */
+  holdMinutes: number | null;
+  /* "4:10 pm" — a concrete arrive-by time for a booking. */
+  arriveBy: string | null;
+  /* One sentence about the branch's quieter hours, already composed by the
+     caller from that branch's own arrivals. Null when there isn't enough
+     history to say anything true. */
+  quietNote: string | null;
 };
 
 function buildContent(type: string, c: Ctx) {
@@ -122,13 +134,26 @@ function buildContent(type: string, c: Ctx) {
         ? `Please head to ${c.counter}.`
         : `Please head to the front desk.`;
       const who = c.staffName ? ` ${c.staffName} is ready for you.` : "";
+
+      /* How long they have before the ticket is released. A called ticket
+         expires automatically so the queue can move on, and someone who
+         wasn't told that finds out by losing their place — which is the
+         worst possible moment to learn a rule. Softly worded: this is a
+         courtesy, not a threat. */
+      const grace = Number(c.holdMinutes ?? 0);
+      const hold = grace > 0
+        ? `We'll hold your place for ${grace} minutes. After that the ticket ` +
+          `is released so the queue can keep moving — just check in again if ` +
+          `you miss it.`
+        : null;
+
       return wrap({
         subject:  `It's your turn at ${c.branchName} — ticket ${c.token}`,
         heading:  `It's your turn`,
         lead:     `Hi ${c.name}, we're ready for you now.`,
         badge:    c.token,
         badgeCap: "Now serving",
-        body:     [`${where}${who}`],
+        body:     [`${where}${who}`, hold].filter(Boolean) as string[],
         cta:      null,
         branchName: c.branchName,
       });
@@ -149,13 +174,25 @@ function buildContent(type: string, c: Ctx) {
 
     case "booking": {
       const detail = [c.serviceName, c.when].filter(Boolean).join(" · ");
+
+      /* Arrive-by time. "Be there at 4:10 for a 4:15 appointment" is far
+         more actionable than "please arrive early", which everyone reads and
+         nobody acts on. */
+      const arrive = c.arriveBy
+        ? `Please arrive by ${c.arriveBy} so we can check you in and start on time.`
+        : `Please arrive a few minutes early so we can check you in.`;
+
+      /* Quietest time of day, measured from this branch's own arrivals.
+         Only included when it's genuinely useful — see quietNote below. */
+      const quiet = c.quietNote ?? null;
+
       return wrap({
         subject:  `Your appointment at ${c.branchName} is confirmed`,
         heading:  `Appointment confirmed`,
         lead:     `Hi ${c.name}, your booking at ${c.branchName} is set.`,
         badge:    c.when || c.token,
         badgeCap: "When",
-        body:     detail ? [detail] : [],
+        body:     [detail, arrive, quiet].filter(Boolean) as string[],
         cta:      c.ticketUrl ? { label: "View booking", url: c.ticketUrl } : null,
         branchName: c.branchName,
       });

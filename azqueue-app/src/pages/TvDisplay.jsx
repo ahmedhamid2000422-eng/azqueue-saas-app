@@ -432,7 +432,11 @@ export default function TvDisplay() {
         <div
           style={{
             position: "absolute", inset: 0, zIndex: 60,
-            background: "rgba(10,10,8,0.94)",
+            /* Fully opaque. At 94% the board underneath stayed faintly
+               visible, so two different tokens were readable at once — the
+               one being called and whoever was on screen before. From across
+               a room that's not atmospheric, it's ambiguous. */
+            background: "#0a0a08",
             display: "flex", flexDirection: "column",
             alignItems: "center", justifyContent: "center",
             animation: "tvBannerIn 0.25s ease-out",
@@ -441,6 +445,7 @@ export default function TvDisplay() {
           <div style={{ color: "#c9a86a", fontSize: "2vw", letterSpacing: "0.35em", textTransform: "uppercase", marginBottom: "2vh" }}>
             Now serving
           </div>
+
           <div style={{
             fontSize: "16vw", lineHeight: 1, fontWeight: 200, color: "#f0ede6",
             letterSpacing: "-0.02em",

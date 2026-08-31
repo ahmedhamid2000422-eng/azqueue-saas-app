@@ -1,3 +1,4 @@
+import { TURN_TIMEOUT_MINUTES } from "./features";
 /**
  * notifyEmail.js — queue notification emails via the `queue-email` Edge Function.
  *
@@ -50,6 +51,10 @@ async function send(payload) {
   }
 }
 
+/* Minutes before an appointment we ask people to arrive. Short enough not to
+   waste their time, long enough to absorb a check-in. */
+const ARRIVE_EARLY_MINUTES = 5;
+
 const origin = () =>
   typeof window !== "undefined" ? window.location.origin : "https://azqueue.io";
 
@@ -65,8 +70,14 @@ export function sendCheckinEmail({ email, name, token, position, branchName, tic
   });
 }
 
-export function sendCalledEmail({ email, name, token, counter, staffName, branchName }) {
-  return send({ type: "called", to: email, name, token, counter, staffName, branchName });
+export function sendCalledEmail({ email, name, token, counter, staffName, branchName, holdMinutes }) {
+  /* Tell them how long the ticket is held. A called ticket expires so the
+     queue can move on; someone who wasn't told finds out by losing their
+     place, which is the worst possible moment to learn a rule. */
+  return send({
+    type: "called", to: email, name, token, counter, staffName, branchName,
+    holdMinutes: holdMinutes ?? TURN_TIMEOUT_MINUTES,
+  });
 }
 
 export function sendWaitEmail({ email, name, position, branchName, ticketId }) {
@@ -80,7 +91,25 @@ export function sendWaitEmail({ email, name, position, branchName, ticketId }) {
   });
 }
 
-export function sendBookingEmail({ email, name, when, serviceName, branchName, bookingId }) {
+/**
+ * Booking confirmation.
+ *
+ * `at` is the appointment Date, used to compute a concrete arrive-by time —
+ * "be here by 4:10 for 4:15" gets acted on, "please arrive early" does not.
+ *
+ * `quietNote` is one sentence about the branch's quieter hours, composed by
+ * the caller from that branch's own arrivals. Pass nothing when there isn't
+ * enough history to say something true; the email simply omits it.
+ */
+export function sendBookingEmail({
+  email, name, when, at, serviceName, branchName, bookingId, quietNote,
+}) {
+  let arriveBy = null;
+  if (at instanceof Date && !Number.isNaN(+at)) {
+    const early = new Date(+at - ARRIVE_EARLY_MINUTES * 60_000);
+    arriveBy = early.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  }
+
   return send({
     type: "booking",
     to: email,
@@ -88,6 +117,8 @@ export function sendBookingEmail({ email, name, when, serviceName, branchName, b
     when,
     serviceName,
     branchName,
+    arriveBy,
+    quietNote: quietNote ?? null,
     ticketUrl: bookingId ? `${origin()}/confirm/${bookingId}` : "",
   });
 }

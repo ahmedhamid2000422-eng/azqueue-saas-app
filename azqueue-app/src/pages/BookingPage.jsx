@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { sendBookingConfirmation } from "../lib/notifications";
+import { loadHourShape, findQuietHour, quietPhrase } from "../lib/quietHours";
 import { sendBookingEmail } from "../lib/notifyEmail";
 import { SMS_ENABLED } from "../lib/features";
 import LanguagePicker from "../components/LanguagePicker";
@@ -156,17 +157,36 @@ export default function BookingPage() {
     // confirmation screen (QA bug B8 — this call was previously missing
     // entirely, so no WhatsApp message ever went out for a booking).
     if (email.trim()) {
-      sendBookingEmail({
-        email:       email.trim(),
-        name:        name.trim(),
-        when:        new Date(slot).toLocaleString("en-US", {
-                       weekday: "long", month: "long", day: "numeric",
-                       hour: "numeric", minute: "2-digit",
-                     }),
-        serviceName: services.find((s) => s.id === serviceId)?.name ?? "",
-        branchName:  branch?.name,
-        bookingId:   data.id,
-      });
+      /* One sentence about when this branch is quieter, from its own
+         arrivals. Only mentioned when the booking ISN'T already in the quiet
+         window — telling someone booked for 4:30 that it's quieter after 4pm
+         is noise. Failure here must never block the confirmation, hence the
+         catch and the fire-and-forget. */
+      const at = new Date(slot);
+      loadHourShape(supabase, branch.id)
+        .then((shape) => {
+          const q = findQuietHour(shape);
+          const alreadyQuiet = q && at.getHours() >= q.hour;
+          return q && !alreadyQuiet
+            ? `For future visits, it's usually quietest here ${quietPhrase(q)}.`
+            : null;
+        })
+        .catch(() => null)
+        .then((quietNote) => {
+          sendBookingEmail({
+            email:       email.trim(),
+            name:        name.trim(),
+            at,
+            when:        at.toLocaleString("en-US", {
+                           weekday: "long", month: "long", day: "numeric",
+                           hour: "numeric", minute: "2-digit",
+                         }),
+            serviceName: services.find((s) => s.id === serviceId)?.name ?? "",
+            branchName:  branch?.name,
+            bookingId:   data.id,
+            quietNote,
+          });
+        });
     }
     if (smsConsent) sendBookingConfirmation(data.id).catch(() => {});
 
