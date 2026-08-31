@@ -31,9 +31,6 @@ export default function SurveyPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
 
-  // No slug → friendly "ask the business for the link" landing
-  if (!slug) return <NoSlugLanding />;
-
   const [rating, setRating] = useState(0);
   const [hover, setHover]   = useState(0);
   const [feedback, setFeedback] = useState("");
@@ -43,8 +40,18 @@ export default function SurveyPage() {
   const [submitted, setSubmitted] = useState(false);
   const [formError, setFormError] = useState(null);
 
+  /* One-tap rating from the feedback email: /survey/slug?ticket=..&r=4
+     lands with the rating already chosen, so the only remaining step is an
+     optional comment. Asking someone to re-pick what they just picked is
+     how a 20% response rate becomes 2%. */
+  useEffect(() => {
+    const r = Number(params.get("r"));
+    if (r >= 1 && r <= 5) setRating(r);
+  }, [params]);
+
   // Load branch
   useEffect(() => {
+    if (!slug) { setLoading(false); return; }
     let cancelled = false;
     (async () => {
       const { data, error } = await supabase
@@ -81,6 +88,10 @@ export default function SurveyPage() {
     if (error) return setFormError(prettifyError(error.message));
     setSubmitted(true);
   }
+
+  // No slug → friendly "ask the business for the link" landing. This check
+  // must come after every hook above, never before one.
+  if (!slug) return <NoSlugLanding />;
 
   if (loading)   return <Shell><div className="text-center py-20 ovline text-ink-mute">Loading…</div></Shell>;
   if (loadError) return <Shell><div className="text-center py-12 text-ink-soft text-sm">{loadError}</div></Shell>;

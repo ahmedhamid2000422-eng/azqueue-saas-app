@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useBranch } from "../lib/BranchContext";
 import { buildFacts } from "../lib/insightsEngine";
+import { buildPeople, buildClientFacts } from "../lib/clientSegments";
 
 /**
  * AiAssistDock — the AzQueue AI Assist launcher, available on every page.
@@ -127,22 +128,39 @@ export default function AiAssistDock() {
     if (ctx) return ctx;
     const since = new Date(Date.now() - DAYS * 86_400_000).toISOString();
 
-    const [{ data: tickets }, { data: services }, { data: bookings }] = await Promise.all([
-      supabase.from("tickets")
-        .select("id, status, created_at, called_at, started_at, completed_at, service_id, source, customer_email, customer_phone")
-        .eq("branch_id", branch.id).gte("created_at", since).limit(5000),
-      supabase.from("services").select("id, name").eq("branch_id", branch.id),
-      supabase.from("bookings").select("id, status").eq("branch_id", branch.id)
-        .gte("scheduled_at", since).limit(5000),
-    ]);
+    const [{ data: tickets }, { data: services }, { data: bookings }, { data: allTickets }, { data: customers }] =
+      await Promise.all([
+        supabase.from("tickets")
+          .select("id, status, created_at, called_at, started_at, completed_at, service_id, source, customer_email, customer_phone")
+          .eq("branch_id", branch.id).gte("created_at", since).limit(5000),
+        supabase.from("services").select("id, name").eq("branch_id", branch.id),
+        supabase.from("bookings").select("id, status").eq("branch_id", branch.id)
+          .gte("scheduled_at", since).limit(5000),
+        /* The client base is a different question from queue performance, and
+           needs the WHOLE history, not the trailing window — "hasn't been back
+           in a year" is unanswerable from 90 days of data. */
+        supabase.from("tickets")
+          .select("id, customer_id, customer_name, customer_phone, created_at")
+          .eq("branch_id", branch.id).limit(50_000),
+        supabase.from("customers")
+          .select("id, display_name, phone, last_seen_at, imported_visits, first_seen_at")
+          .eq("branch_id", branch.id).limit(50_000),
+      ]);
 
     const nameMap = Object.fromEntries((services ?? []).map((s) => [s.id, s.name]));
     const built = buildFacts(tickets ?? [], nameMap, {
       bookingsTotal: bookings?.length ?? 0,
       bookingsCompleted: (bookings ?? []).filter((b) => b.status === "completed").length,
     });
-    setCtx(built);
-    return built;
+
+    /* Client-base facts, appended after the queue facts. Returns an empty
+       array below 30 people, so a new branch gets no client claims at all
+       rather than percentages computed from a handful of rows. */
+    const people = buildPeople(allTickets ?? [], customers ?? []);
+    const merged = { ...built, facts: [...built.facts, ...buildClientFacts(people)] };
+
+    setCtx(merged);
+    return merged;
   }
 
   /**

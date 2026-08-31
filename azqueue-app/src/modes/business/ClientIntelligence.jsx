@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "../../lib/supabase";
 import { useBranch } from "../../lib/BranchContext";
+import { SEGMENTS, TIER_ORDER, tierFor, segmentCounts, clientVitals } from "../../lib/clientSegments";
 
 /**
  * ClientIntelligence — your client base, built from your own records.
@@ -36,7 +37,7 @@ const TIER_META = {
   New:       { color: "#666",    bg: "rgba(102,102,102,0.08)", border: "rgba(102,102,102,0.2)", label: "New",       min: 1  },
 };
 
-const TIER_ORDER = ["VIP", "Loyal", "Regular", "Returning", "New"];
+
 const DAY_LABELS  = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 /* A weekday with almost no trading isn't a quiet day, it's a closed one.
@@ -45,10 +46,6 @@ const DAY_LABELS  = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
    rather than compared. */
 const MIN_FOR_DAY_COMPARISON = 20;
 
-function tierFor(visits) {
-  for (const name of TIER_ORDER) if (visits >= TIER_META[name].min) return name;
-  return "New";
-}
 
 export default function ClientIntelligence() {
   const { branch } = useBranch();
@@ -57,6 +54,7 @@ export default function ClientIntelligence() {
   const [error, setError]     = useState(null);
   const [search, setSearch]   = useState("");
   const [tier, setTier]       = useState("all");
+  const [segment, setSegment] = useState(null);   // one of SEGMENTS[].key
   const [page, setPage]       = useState(0);
   const PAGE_SIZE = 50;
 
@@ -71,7 +69,7 @@ export default function ClientIntelligence() {
       const [{ data: tickets, error: tErr }, { data: customers, error: cErr }, { data: summary }] =
         await Promise.all([
           supabase.from("tickets")
-            .select("id, customer_id, customer_name, customer_phone, created_at, status")
+            .select("id, customer_id, customer_name, customer_phone, created_at, started_at, called_at, completed_at, status")
             .eq("branch_id", branch.id)
             .limit(50_000),
           supabase.from("customers")
@@ -106,7 +104,19 @@ export default function ClientIntelligence() {
           if (at < cur.f) cur.f = at;
           if (at > cur.l) cur.l = at;
         } else {
-          byKey.set(key, { key, n: t.customer_name ?? "—", p: t.customer_phone ?? "", v: 1, f: at, l: at });
+          byKey.set(key, { key, n: t.customer_name ?? "—", p: t.customer_phone ?? "", v: 1, f: at, l: at, mins: [] });
+        }
+
+        /* How long the visit actually took, in minutes. Only AzQueue visits
+           have this — the start and end of a visit weren't recorded in the
+           imported history, so a client's average length is based on the
+           visits since the move, and only those. Anything over 8 hours is
+           dropped: that's a ticket someone forgot to close, not a visit. */
+        const rec = byKey.get(key);
+        const from = t.started_at ?? t.called_at;
+        if (from && t.completed_at) {
+          const m = (new Date(t.completed_at) - new Date(from)) / 60000;
+          if (m > 0 && m < 480) rec.mins.push(m);
         }
       }
 
@@ -158,7 +168,16 @@ export default function ClientIntelligence() {
         }
       }
 
-      for (const rec of byKey.values()) rec.t = tierFor(rec.v);
+      for (const rec of byKey.values()) {
+        rec.t = tierFor(rec.v);
+        /* Median, not mean: a single 3-hour appointment shouldn't redefine
+           what a normal visit with this client looks like. */
+        if (rec.mins?.length) {
+          const sorted = [...rec.mins].sort((a, b) => a - b);
+          rec.medMins = sorted[Math.floor(sorted.length / 2)];
+          rec.timedVisits = sorted.length;
+        }
+      }
 
       const people = [...byKey.values()].sort((a, b) => b.v - a.v || b.l - a.l);
 
@@ -230,15 +249,31 @@ export default function ClientIntelligence() {
     return () => { cancelled = true; };
   }, [branch?.id]);
 
+  /* Segment counts. Computed once over everyone, so the cards and the
+     filtered list can never disagree — they run the same predicate. */
+  const segments = useMemo(() => {
+    if (!data) return [];
+    const now = Date.now();
+    return segmentCounts(data.customers, now);
+  }, [data]);
+
+  const vitals = useMemo(
+    () => (data ? clientVitals(data.customers) : null),
+    [data]
+  );
+
   const filtered = useMemo(() => {
     if (!data) return [];
     const q = search.toLowerCase().trim();
+    const now = Date.now();
+    const seg = SEGMENTS.find((s) => s.key === segment);
     return data.customers.filter((c) => {
       const tierMatch = tier === "all" || c.t === tier;
+      const segMatch = !seg || seg.match(c, now);
       const searchMatch = !q || c.n.toLowerCase().includes(q) || (c.p ?? "").includes(q);
-      return tierMatch && searchMatch;
+      return tierMatch && segMatch && searchMatch;
     });
-  }, [data, search, tier]);
+  }, [data, search, tier, segment]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageData = useMemo(
@@ -295,7 +330,93 @@ export default function ClientIntelligence() {
           <span className="mx-1.5 opacity-50">·</span>
           your branch only, updated as people check in
         </p>
+        <p className="text-ink-mute text-[10.5px] mt-1 leading-relaxed">
+          Who your clients are over the years. For how the queue is running
+          right now, see Insights.
+        </p>
       </header>
+
+      {/* ── Headline client stats ────────────────────────────────────
+          Four numbers, each a division of two counted values. Deliberately
+          no retention curve: that needs every individual visit date, which
+          imported history doesn't carry. */}
+      {vitals && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-6">
+          <Vital
+            label="Return rate"
+            value={`${Math.round(vitals.returnRate * 100)}%`}
+            hint={`${vitals.returnedCount.toLocaleString()} came back at least once`}
+            accent
+          />
+          <Vital
+            label="Still active"
+            value={`${Math.round(vitals.activeRate * 100)}%`}
+            hint="visited in the last 12 months"
+          />
+          <Vital
+            label="Visits per client"
+            value={vitals.visitsPerClient.toFixed(1)}
+            hint="across their whole history"
+          />
+          <Vital
+            label="Typical visit"
+            value={vitals.medianVisitMins != null ? `${Math.round(vitals.medianVisitMins)}m` : "—"}
+            hint={vitals.timedPeople
+              ? `median, ${vitals.timedPeople.toLocaleString()} clients timed`
+              : "no timed visits yet"}
+          />
+          <Vital
+            label="Typical gap"
+            value={vitals.medianGapDays != null
+              ? vitals.medianGapDays >= 60
+                ? `${Math.round(vitals.medianGapDays / 30)} mo`
+                : `${Math.round(vitals.medianGapDays)} d`
+              : "—"}
+            hint="median, repeat clients only"
+          />
+        </div>
+      )}
+
+      {/* ── Worth acting on ──────────────────────────────────────────
+          Counts of people matching a stated rule. Clicking one filters the
+          list below to exactly those people, so the number and the names can
+          never drift apart. */}
+      <div className="mb-6">
+        <div className="ovline text-[9px] text-ink-mute mb-2.5">Worth acting on</div>
+        <div className="grid sm:grid-cols-2 gap-2.5">
+          {segments.map((s) => {
+            const active = segment === s.key;
+            return (
+              <button
+                key={s.key}
+                onClick={() => { setSegment(active ? null : s.key); setPage(0); }}
+                disabled={s.count === 0}
+                className={`text-left border p-3.5 transition disabled:opacity-40 ${
+                  active
+                    ? "border-gold-deep bg-[rgba(201,168,106,0.06)]"
+                    : "border-line hover:border-gold-deep/50"
+                }`}
+              >
+                <div className="flex items-baseline justify-between gap-3 mb-1">
+                  <span className="text-[12px] text-ink leading-snug">{s.label}</span>
+                  <span className="font-display text-lg text-gold-soft leading-none shrink-0">
+                    {s.count.toLocaleString()}
+                  </span>
+                </div>
+                <p className="text-[10.5px] text-ink-mute leading-relaxed">
+                  {s.note(s.count, data.unique)}
+                </p>
+                <p className="text-[10.5px] text-ink-soft leading-relaxed mt-1.5">{s.action}</p>
+                {s.count > 0 && (
+                  <span className="ovline text-[8px] text-gold-soft mt-2 inline-block">
+                    {active ? "Showing these ✕" : "Show these →"}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Tier counts */}
       <div className="flex flex-wrap gap-2 mb-5">
@@ -333,13 +454,13 @@ export default function ClientIntelligence() {
 
       {/* Client list */}
       <div className="border border-line mb-4">
-        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 px-4 py-2.5 border-b border-line ovline text-[8px] text-ink-mute">
-          <span>Name</span><span>Visits</span><span>First</span><span>Last</span>
+        <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 px-4 py-2.5 border-b border-line ovline text-[8px] text-ink-mute">
+          <span>Name</span><span>Visits</span><span>Time</span><span>First</span><span>Last</span>
         </div>
         {pageData.map((c) => (
           <div
             key={c.key}
-            className="grid grid-cols-[1fr_auto_auto_auto] gap-4 px-4 py-2.5 border-b border-line last:border-b-0 items-center hover:bg-[rgba(201,168,106,0.03)] transition"
+            className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 px-4 py-2.5 border-b border-line last:border-b-0 items-center hover:bg-[rgba(201,168,106,0.03)] transition"
           >
             <div className="min-w-0">
               <div className="text-xs text-ink truncate">{c.n}</div>
@@ -350,6 +471,11 @@ export default function ClientIntelligence() {
               style={{ color: TIER_META[c.t].color, borderColor: TIER_META[c.t].border, background: TIER_META[c.t].bg }}
             >
               {c.v}
+            </span>
+            {/* Blank rather than zero when a client has no timed visits —
+                an em dash says "not recorded", a 0 would say "instant". */}
+            <span className="text-[10px] text-ink-mute font-mono" title={c.timedVisits ? `median of ${c.timedVisits} timed visit${c.timedVisits === 1 ? "" : "s"}` : "no timed visits yet"}>
+              {c.medMins != null ? `${Math.round(c.medMins)}m` : "—"}
             </span>
             <span className="text-[10px] text-ink-mute font-mono">{fmtDate(c.f)}</span>
             <span className="text-[10px] text-ink-mute font-mono">{fmtDate(c.l)}</span>
@@ -422,6 +548,20 @@ function MiniBarChart({ title, labels, values, closed, accent }) {
           than quiet.
         </div>
       )}
+    </div>
+  );
+}
+
+/* One headline number. Flat and bordered like the rest of the page — these
+   are reference figures, not a dashboard demanding attention. */
+function Vital({ label, value, hint, accent }) {
+  return (
+    <div className="border border-line p-3.5">
+      <div className="ovline text-[8px] text-ink-mute mb-1.5">{label}</div>
+      <div className={`font-display text-2xl font-light leading-none ${accent ? "text-gold-soft" : "text-ink"}`}>
+        {value}
+      </div>
+      <div className="text-[10px] text-ink-mute mt-1.5 leading-relaxed">{hint}</div>
     </div>
   );
 }

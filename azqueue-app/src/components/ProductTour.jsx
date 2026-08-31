@@ -102,11 +102,32 @@ const STOPS = [
     label: "Insights",
     title: "How the business is actually doing",
     body:
-      "How long people wait, how many you serve, when your busy hours are, and how many " +
-      "give up and leave. All measured from your own branch — nothing is estimated.",
+      "How long people wait today and this week, how many you serve, when your busy " +
+      "hours are, and how many give up and leave. All measured from your own branch — " +
+      "nothing is estimated, and anything that can't be measured says so.",
     tip: "Worth a look once a week. The busy-hours chart is the one that usually changes minds about staffing.",
     ask: ["Explain this page in simple words", "Why do people leave without being seen?", "What should I fix first?"],
     why: "Most decisions about staff and hours get made on a hunch. This is the page that tells you whether the hunch is right.",
+  },
+  {
+    path: "intelligence",
+    label: "Clients",
+    title: "Who your clients are, over the years",
+    body:
+      "Everyone who has ever come in, with how many visits, how long they usually " +
+      "take, and when they were last here. Your history from before AzQueue is in " +
+      "here too, added to the new visits rather than kept separate.",
+    tip:
+      "The four boxes at the top are the ones to act on. “Regulars who stopped coming” " +
+      "is a call list — tap it and the names appear below.",
+    why:
+      "Insights tells you about today. This tells you whether people come back, which " +
+      "is the thing that decides whether the business grows.",
+    ask: [
+      "Which clients should I be calling?",
+      "How many people never came back?",
+      "Who is due back around now?",
+    ],
   },
   {
     path: "schedule",
