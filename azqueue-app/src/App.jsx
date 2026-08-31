@@ -14,6 +14,7 @@ import PersonalFlow from "./pages/PersonalFlow";
 import IslamicMode from "./pages/IslamicMode";
 import ManagerMode from "./pages/ManagerMode";
 import CustomerCheckIn from "./pages/CustomerCheckIn";
+import PickupKiosk from "./pages/PickupKiosk";
 import CustomerTicket from "./pages/CustomerTicket";
 import TvDisplay from "./pages/TvDisplay";
 import BookingPage from "./pages/BookingPage";
@@ -54,6 +55,7 @@ export default function App() {
 
       {/* Public customer-side flow — no auth */}
       <Route path="/q/:slug"           element={<CustomerCheckIn />} />
+      <Route path="/q/:slug/pickup"    element={<PickupKiosk />} />
       <Route path="/t/:ticketId"       element={<CustomerTicket />} />
       <Route path="/display/:slug"     element={<TvDisplay />} />
       <Route path="/b/:slug"           element={<BookingPage />} />

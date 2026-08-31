@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import ProductTour, { TourInvite, hasSeenTour, isSnoozed, snoozeTour } from "../../components/ProductTour";
 import ComingSoon from "../../components/ComingSoon";
+import PickupBanner from "../../components/PickupBanner";
 import { WHATSAPP_ENABLED, REVIEWS_ENABLED } from "../../lib/features";
 import Sidebar from "../../components/Sidebar";
 import IslamicBar from "../../components/IslamicBar";
@@ -93,6 +94,9 @@ export default function BusinessDashboard() {
       <main className="flex-1 flex flex-col">
         <Topbar />
         <IslamicBar enabled={islamic} />
+        {/* Someone at the unstaffed pickup desk. Above the routed content so
+            it is seen on every page, not only the Queue. */}
+        <PickupBanner />
         <div className="flex-1">
           <Routes>
             <Route index element={isGym ? <Classes /> : <Queue />} />
