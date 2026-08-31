@@ -59,6 +59,21 @@ const STOPS = [
       "person at the front, and their number appears on the TV and is read out loud.",
     tip: "If someone steps away, use Return instead of No-show — it puts them back in line.",
     ask: ["How busy are we right now?", "How long has the first person been waiting?"],
+    why: "Calling people from here is what puts their number on the TV and sends their email. Calling out names by hand skips all of it.",
+  },
+  {
+    path: "display",
+    label: "The TV",
+    title: "The screen in your waiting room",
+    body:
+      "Set up the TV from here. It shows who is being served, who is next, your opening " +
+      "hours, and it reads each name out loud when you call them. If more than seven " +
+      "people are waiting it scrolls through the whole list, so everyone sees themselves.",
+    tip: "Open it once on the TV and leave it. It reconnects on its own after a power cut or a sleep.",
+    why:
+      "People get restless when they can't tell whether they've been forgotten. A screen " +
+      "showing their number answers that without anyone having to ask your staff.",
+    ask: ["What should the TV show when we're closed?"],
   },
   {
     path: "bookings",
@@ -69,6 +84,7 @@ const STOPS = [
       "when they arrive, so you don't have to add them by hand.",
     tip: "Share your booking link and people can reserve a slot instead of waiting.",
     ask: ["How many people booked for today?", "Do people who book actually show up?"],
+    why: "Bookings spread the day out. Every person who books instead of walking in is one fewer person standing in your waiting room at 2pm.",
   },
   {
     path: "customers",
@@ -79,6 +95,7 @@ const STOPS = [
       "Useful when a returning client calls and you want their history before they arrive.",
     tip: "You can export the whole list to Excel whenever you need it.",
     ask: ["How many people come back a second time?", "How many new people came in this week?"],
+    why: "This is your client list, built by itself. No one has to type anything for it to stay current.",
   },
   {
     path: "insights",
@@ -89,6 +106,7 @@ const STOPS = [
       "give up and leave. All measured from your own branch — nothing is estimated.",
     tip: "Worth a look once a week. The busy-hours chart is the one that usually changes minds about staffing.",
     ask: ["Explain this page in simple words", "Why do people leave without being seen?", "What should I fix first?"],
+    why: "Most decisions about staff and hours get made on a hunch. This is the page that tells you whether the hunch is right.",
   },
   {
     path: "schedule",
@@ -99,6 +117,7 @@ const STOPS = [
       "offers times you're actually open, so nobody books an empty chair.",
     tip: "Prayer pauses are set here too — the queue holds itself automatically.",
     ask: ["Which day of the week is busiest?", "Do I need more staff?"],
+    why: "What you set here decides which times the booking page offers. Wrong hours here means people booking when you are closed.",
   },
   {
     path: "settings",
@@ -108,6 +127,7 @@ const STOPS = [
       "Your business name, services, how many bookings you take a day, and the link and " +
       "QR code customers scan to join the queue.",
     tip: "Print the QR code and put it at the door — most walk-ins join themselves that way.",
+    why: "The QR code is how walk-ins add themselves. Every person who scans it is a person your staff did not have to check in by hand.",
   },
   {
     path: "",
@@ -213,6 +233,17 @@ export default function ProductTour({ open, onClose }) {
           </div>
           <p className="text-[12.5px] text-ink-soft leading-relaxed">{stop.body}</p>
 
+          {/* Why it's worth caring. Stated separately from what the page does,
+              because "here is a list of your customers" and "you will never
+              have to type this list" are different sentences and the second
+              one is the reason anybody opens the page twice. */}
+          {stop.why && (
+            <p className="text-[11.5px] text-ink-soft leading-relaxed mt-2.5">
+              <span className="ovline text-[8px] text-gold-soft mr-1.5">Why it helps</span>
+              {stop.why}
+            </p>
+          )}
+
           {stop.tip && (
             <p className="text-[11px] text-ink-mute leading-relaxed mt-2 border-l border-gold-deep/50 pl-2.5">
               {stop.tip}
@@ -292,8 +323,8 @@ export function TourInvite({ onStart, onDismiss }) {
           Take a quick look around AzQueue
         </div>
         <p className="text-[12px] text-ink-soft leading-relaxed">
-          Six short stops, about three minutes. You'll see what each page is for,
-          using your own branch — and you can stop at any point.
+          A few short stops, about three minutes. You'll see what each page is for
+          and why it's worth using, on your own branch — and you can stop any time.
         </p>
         <div className="flex items-center gap-2 mt-3.5">
           <button
