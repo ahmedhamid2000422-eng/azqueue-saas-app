@@ -55,6 +55,11 @@ function ManagerInner() {
   const alerts = intel?.alerts ?? [];
   const roster = intel?.roster ?? [];
   const heatmap = intel?.heatmap ?? [];
+
+  /* How many break events the heatmap is actually built from. Zero means the
+     panel must not claim to be built from anything. */
+  const totalBreaks = heatmap.reduce(
+    (sum, r) => sum + (r.raw ?? []).reduce((a, b) => a + b, 0), 0);
   const weekly = intel?.weekly ?? [];
   const wellness = intel?.wellness ?? [];
 
@@ -152,24 +157,57 @@ function ManagerInner() {
         </Card>
       </div>
 
-      {/* Break-pattern heatmap (computed from staff_status_log) */}
-      <Card luxe className="p-6 mb-3">
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <div className="ovline text-[9px] text-gold-soft">Break-pattern map · last 14 days</div>
-            <h2 className="font-display text-xl font-light tracking-tighter mt-1">Each rhythm, learned.</h2>
+      {/* Break-pattern heatmap.
+          Counts on_break events per hour per person over 14 days, each row
+          normalised against that person's own busiest hour.
+
+          TWO HONEST LIMITS, both enforced below rather than in the caption:
+
+          1. It is a histogram, not a model. "Each rhythm, learned" implied
+             something adaptive; it is a count. Renamed accordingly.
+          2. Per-row normalisation means colours are NOT comparable between
+             people — someone with two breaks in a fortnight gets a cell as
+             dark as someone with forty. Stated, so nobody reads the grid as
+             "who takes the most breaks".
+
+          And it only renders when there is something to render. The panel
+          previously showed an empty grid under the words "Built from your
+          real status-change history", which was a claim with nothing behind
+          it: staff_status_log is written by a trigger on staff.status, and
+          nothing in the app changes that status during a normal day. */}
+      {totalBreaks > 0 ? (
+        <Card luxe className="p-6 mb-3">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <div className="ovline text-[9px] text-gold-soft">When breaks are taken · last 14 days</div>
+              <h2 className="font-display text-xl font-light tracking-tighter mt-1">
+                Break times, by person.
+              </h2>
+            </div>
+            <span className="ovline text-[9px] text-ink-mute">12am — 11pm</span>
           </div>
-          <span className="ovline text-[9px] text-ink-mute">12am — 11pm</span>
-        </div>
 
-        <BreakPatternHeatmap rows={heatmap} startHour={9} endHour={18} />
+          <BreakPatternHeatmap rows={heatmap} startHour={9} endHour={18} />
 
-        <div className="rule-ornament my-5 text-[8px]"><span>·</span></div>
-        <HeatmapLegend />
-        <div className="text-[10px] text-ink-mute text-center mt-3 tracking-wide">
-          <span className="text-gold-soft">Built from your real status-change history.</span>
+          <div className="rule-ornament my-5 text-[8px]"><span>·</span></div>
+          <HeatmapLegend />
+          <div className="text-[10px] text-ink-mute text-center mt-3 leading-relaxed">
+            Counted from {totalBreaks} recorded break{totalBreaks === 1 ? "" : "s"} over 14 days.
+            <div className="mt-1">
+              Each row is shaded against that person&apos;s own busiest hour, so
+              darkness compares hours <em className="not-italic">within</em> a row — not one person against another.
+            </div>
+          </div>
+        </Card>
+      ) : (
+        /* Nothing recorded yet. One quiet line rather than a card of empty
+           space — an unused feature shouldn't take up more room than a
+           working one. */
+        <div className="text-[10.5px] text-ink-mute leading-relaxed mb-3 px-1">
+          Break times aren't being recorded yet — they appear here once staff
+          statuses change during the day.
         </div>
-      </Card>
+      )}
 
       {/* Weekly digest + Wellness */}
       <div className="grid grid-cols-12 gap-3">

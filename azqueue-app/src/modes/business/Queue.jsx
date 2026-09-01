@@ -6,6 +6,8 @@ import { useBranch } from "../../lib/BranchContext";
 import { logServiceTime } from "../../lib/autopilot";
 import { loadServiceStats } from "../../lib/waitEstimator";
 import QueueNudge from "../../components/QueueNudge";
+import CompletePanel from "../../components/CompletePanel";
+import { assignWork } from "../../lib/backQueue";
 import { sendCallNotice, sendThanks } from "../../lib/notifications";
 import { sendCalledNotification, sendWaitUpdate } from "../../lib/notify";
 import { sendCalledEmail } from "../../lib/notifyEmail";
@@ -482,9 +484,12 @@ export default function Queue() {
         return;
       }
 
-      // Not running long (or already dismissed) → complete the current
-      // customer and move on, which is what staff expect from "Call next".
-      await directComplete(serving);
+      /* Ask how the visit ended before moving on. This is the step that was
+         missing: completion used to be silent, so the last customer of the
+         day was never closed and no outcome was ever recorded. The panel
+         calls the next customer itself once answered. */
+      setCompleting({ ticket: serving, andCallNext: true });
+      return;
     }
 
     await callNextInner();
@@ -492,13 +497,17 @@ export default function Queue() {
 
   // directComplete — completes the current ticket without opening the
   // satisfaction survey. Used by the intercept modal ("Complete" option).
-  async function directComplete(ticket) {
+  async function directComplete(ticket, outcome = null) {
     setBusy(true);
     setError(null);
     const now = new Date().toISOString();
     const { error: e } = await supabase
       .from("tickets")
-      .update({ status: "completed", completed_at: now })
+      .update({
+        status: "completed",
+        completed_at: now,
+        ...(outcome ? { outcome } : {}),
+      })
       .eq("id", ticket.id);
     if (e) { setBusy(false); return setError(e.message); }
     logServiceTime({
@@ -519,6 +528,30 @@ export default function Queue() {
         }).catch(() => {});
     }
     setBusy(false);
+  }
+
+  /* What the Complete panel does with the answer. Everything routes through
+     directComplete so the existing bookkeeping — service time, thanks email,
+     customer record — happens exactly as before. */
+  async function resolveComplete({ outcome, category }) {
+    const { ticket, andCallNext } = completing ?? {};
+    if (!ticket) return;
+    setCompleting(null);
+
+    if (outcome === "handoff" && category) {
+      /* Back queue: the customer goes home, the work continues. assignWork
+         sets handed_off_at, which is what keeps it OUT of the waiting list
+         and every wait calculation. */
+      setBusy(true);
+      await assignWork({ ticketId: ticket.id, category, takenInBy: ticket.staff_id ?? null })
+        .catch((e) => setError(e.message));
+      setBusy(false);
+    } else {
+      await directComplete(ticket, outcome);
+    }
+
+    await reload();
+    if (andCallNext) await callNextInner();
   }
 
   // ── Intercept modal resolution handlers ─────────────────────────
@@ -945,6 +978,12 @@ export default function Queue() {
      immigration file would otherwise drag the number away from what a
      normal appointment looks like.                                      */
   const [avgServiceSec, setAvgServiceSec] = useState(null);
+
+  /* The Complete panel. Holds the ticket being finished and what should
+     happen once the outcome is chosen — `andCallNext` is set when this was
+     triggered by Call next, so finishing flows straight on to the next
+     customer rather than making staff press twice. */
+  const [completing, setCompleting] = useState(null);   // { ticket, andCallNext }
 
   useEffect(() => {
     let cancelled = false;
@@ -2018,6 +2057,17 @@ export default function Queue() {
           the two never overlap. Renders nothing unless something is actually
           worth saying. */}
       <QueueNudge branch={branch} waiting={waiting} serving={serving} />
+
+      {/* One question when a visit ends. See CompletePanel for why it is four
+          options and not a form. */}
+      {completing && (
+        <CompletePanel
+          ticket={completing.ticket}
+          busy={busy}
+          onResolve={resolveComplete}
+          onCancel={() => setCompleting(null)}
+        />
+      )}
     </div>
   );
 }
