@@ -84,6 +84,10 @@ export default function Insights() {
   const [data,      setData]      = useState(null);
   const [loading,   setLoading]   = useState(true);
   const [fetchedAt, setFetchedAt] = useState(null);
+
+  /* Which day is being shown. null = today. Yesterday was previously
+     unreachable — the moment the clock rolled over, the day was gone. */
+  const [day, setDay] = useState(null);
   const timerRef = useRef(null);
 
   // Cross-platform rollup (customer_events / wa_conversations / channel_connections)
@@ -98,10 +102,13 @@ export default function Insights() {
     if (!branch?.id) return;
     // Honour stale time unless forced
     if (!force && fetchedAt && Date.now() - fetchedAt < STALE_MS) return;
+    /* A past day's numbers never change, so the 60s auto-refresh is pointless
+       there — but the fetch itself must still happen when the day changes. */
 
     setLoading(true);
     const { data: payload, error } = await supabase.rpc("get_insights_payload", {
       p_branch_id: branch.id,
+      p_day: day,
     });
 
     if (error) {
@@ -113,15 +120,17 @@ export default function Insights() {
     setData(payload ?? null);
     setFetchedAt(Date.now());
     setLoading(false);
-  }, [branch?.id, fetchedAt]);
+  }, [branch?.id, fetchedAt, day]);
 
-  // Initial fetch + 60 s interval
+  /* Fetch on branch or day change. The 60s auto-refresh only runs for today —
+     a past day's numbers are settled, so polling them is pure noise. */
   useEffect(() => {
     fetch(true);
+    if (day) return;                       // past day: no polling
     timerRef.current = setInterval(() => fetch(true), STALE_MS);
     return () => clearInterval(timerRef.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [branch?.id]);
+  }, [branch?.id, day]);
 
   // Cross-platform rollup + Google Analytics — fetched once per branch.
   useEffect(() => {
@@ -188,6 +197,7 @@ export default function Insights() {
             Live · {branch.name}
           </div>
           <h1 className="font-display text-4xl font-light tracking-tightest">Insights</h1>
+          <DayPicker day={day} setDay={setDay} tz={data?.timezone} />
           <div className="text-xs text-ink-mute mt-2">
             {loading
               ? "Fetching…"
@@ -511,4 +521,60 @@ function exportInsights(data, branch, format = "csv") {
     });
   }
   downloadCSV(exportFilename(branch?.slug, "insights"), rows, columns);
+}
+
+/* ── Day picker ───────────────────────────────────────────────────────
+   Yesterday used to be unreachable: the numbers were computed for "today"
+   only, so a day disappeared the moment the clock rolled over. A day nobody
+   can review is a day nobody can learn from. */
+function DayPicker({ day, setDay, tz }) {
+  const shift = (n) => {
+    const base = day ? new Date(`${day}T12:00:00`) : new Date();
+    base.setDate(base.getDate() + n);
+    const iso = base.toISOString().slice(0, 10);
+    const todayIso = new Date().toISOString().slice(0, 10);
+    setDay(iso >= todayIso ? null : iso);   // never go past today
+  };
+
+  const label = !day
+    ? "Today"
+    : new Date(`${day}T12:00:00`).toLocaleDateString(undefined, {
+        weekday: "short", day: "numeric", month: "short",
+      });
+
+  return (
+    <div className="flex items-center gap-1.5 mt-2">
+      <button
+        onClick={() => shift(-1)}
+        title="Previous day"
+        className="ovline text-[10px] border border-line px-2 py-1 text-ink-mute hover:text-ink transition"
+      >
+        ←
+      </button>
+      <span className="ovline text-[10px] text-gold-soft px-1 min-w-[86px] text-center">
+        {label}
+      </span>
+      <button
+        onClick={() => shift(1)}
+        disabled={!day}
+        title="Next day"
+        className="ovline text-[10px] border border-line px-2 py-1 text-ink-mute hover:text-ink transition disabled:opacity-30"
+      >
+        →
+      </button>
+      {day && (
+        <button
+          onClick={() => setDay(null)}
+          className="ovline text-[10px] border border-gold-deep px-2 py-1 text-gold-soft hover:bg-[rgba(201,168,106,0.1)] transition ml-1"
+        >
+          Back to today
+        </button>
+      )}
+      {tz && (
+        <span className="text-[9px] text-ink-mute ml-1.5">
+          {tz.split("/").pop().replace(/_/g, " ")} time
+        </span>
+      )}
+    </div>
+  );
 }
