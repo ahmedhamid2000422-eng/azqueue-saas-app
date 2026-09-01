@@ -22,15 +22,23 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+/* Every message opens with the business name and the first one a person
+   receives carries opt-out instructions. That is a carrier requirement, not a
+   style choice — and the A2P campaign's sample messages are compared against
+   real traffic, so what is written here has to be what actually sends.
+
+   STOP is on "confirm" because that is the first message of any visit. It is
+   left off "call", which arrives moments later and is the one message that
+   must be read at a glance while someone is being waved to a counter. */
 const TEMPLATES = {
   confirm: ({ token, branchName, serviceName }) =>
-    `${branchName}: You're checked in. Ticket ${token} for ${serviceName ?? "your service"}. We'll message you when you're up.`,
+    `${branchName}: You're checked in. Ticket ${token} for ${serviceName ?? "your service"}. We'll message you when you're up. Reply STOP to opt out.`,
 
   call: ({ token, branchName }) =>
     `${branchName}: You're up — please come to the counter now. Ticket ${token}.`,
 
   thanks: ({ token, branchName }) =>
-    `${branchName}: Thanks for visiting! Ticket ${token} is complete. Hope to see you again soon.`,
+    `${branchName}: Thanks for visiting! Ticket ${token} is complete. Reply STOP to opt out.`,
 
   prayer_pause: ({ token, branchName, prayerName, resumeTime }) =>
     `${branchName}: Pausing briefly for ${prayerName}. Your ticket ${token} keeps its place — service resumes at ${resumeTime}.`,
@@ -40,7 +48,7 @@ const TEMPLATES = {
   // Bookings screen. Distinct from "confirm" above, which is the check-in
   // (walk-in queue) message and talks about a ticket token, not a date/time.
   booking_confirmation: ({ branchName, serviceName, customerName, scheduledAt }) =>
-    `${branchName}: Hi ${customerName ?? "there"}! Your booking for ${serviceName ?? "your appointment"} is confirmed for ${scheduledAt}. We look forward to seeing you!`,
+    `${branchName}: Hi ${customerName ?? "there"}! Your booking for ${serviceName ?? "your appointment"} is confirmed for ${scheduledAt}. Reply STOP to opt out.`,
 };
 
 const TICKET_TEMPLATES  = new Set(["confirm", "call", "thanks", "prayer_pause"]);
