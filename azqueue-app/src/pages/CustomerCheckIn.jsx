@@ -29,7 +29,16 @@ export default function CustomerCheckIn() {
   const [params] = useSearchParams();
   const { t } = useTranslation();
 
+  /* Which device this check-in came from.
+     ?kiosk=1 already exists — it switches the page to large touch targets and
+     is on the counter iPad's bookmark — so it doubles as the device marker.
+     Reusing it rather than adding ?via= means nothing has to be re-bookmarked
+     and the split starts working the moment this deploys.
+     Anything else is someone on their own phone, whether they scanned the
+     door code or typed the address. */
+
   const isKiosk = params.get("kiosk") === "1";
+  const arrivalSource = isKiosk ? "kiosk" : "own_device";
 
   const [branch, setBranch] = useState(null);
   const [services, setServices] = useState([]);
@@ -139,11 +148,13 @@ export default function CustomerCheckIn() {
         branch_id: branch.id,
         service_id: serviceId,
         token: tokenData,
-        /* Their own phone, via the QR code on the door. The counter iPad
-           writes "kiosk". Note the token RPC above still receives "walk" —
-           that argument drives the ticket prefix, and changing it would
-           renumber tickets mid-life for no benefit. */
-        source: "qr",
+        /* "kiosk" (counter iPad) or "own_device". Both load this same route,
+           so the ?kiosk=1 flag on the iPad's bookmark is the only thing that
+           tells them apart. Tickets from before this split keep "walk" and
+           are reported as an unknown route rather than being folded into
+           either — back-dating history into a category it was never recorded
+           in would answer the question this exists to ask. */
+        source: arrivalSource,
         status: "waiting",
         customer_name: name.trim(),
         customer_phone: phone.trim(),

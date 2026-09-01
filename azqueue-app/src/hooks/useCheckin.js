@@ -162,13 +162,12 @@ export function useCheckin() {
           branch_id:            branchId,
           service_id:           serviceId,
           token:                newToken,
-          /* The iPad on the counter, as opposed to "qr" — someone scanning
-             the door code on their own phone. Both used to write "walk",
-             which made it impossible to answer whether either was being used
-             and therefore impossible to retire whichever wasn't. Tickets
-             recorded before this split keep "walk" and are labelled as such
-             rather than being folded into one of these. */
-          source:               "kiosk",
+          /* Stays "walk". This is the older /checkin/:branchId route, which
+             collects no email and is not the counter iPad — that runs
+             /q/:slug like everyone else and reports its device through a
+             ?via= parameter. Labelling this one "kiosk" would have put a
+             route nobody uses into the channel breakdown. */
+          source:               "walk",
           customer_name:        name.trim(),
           customer_phone:       phone?.trim() || null,
           status:               "waiting",

@@ -35,10 +35,10 @@ const DAYS = 30;
    statement is that those visits were walk-ins of unknown route. It empties
    itself as older tickets fall outside the window. */
 const LABELS = {
-  book:  "Booked ahead",
-  qr:    "Scanned the QR code",
-  kiosk: "Counter iPad",
-  walk:  "Walked in (route not recorded)",
+  book:       "Booked ahead",
+  kiosk:      "Counter iPad",
+  own_device: "Their own phone",
+  walk:       "Walked in (route not recorded)",
 };
 
 export default function ArrivalChannels({ branchId }) {
