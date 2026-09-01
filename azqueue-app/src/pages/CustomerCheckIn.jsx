@@ -131,7 +131,17 @@ export default function CustomerCheckIn() {
     if (SMS_ENABLED && (phone.replace(/\D/g, "").length) < 7) {
       return setFormError(t("checkin.errors.valid_phone"));
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setFormError("Please enter a valid email address — we'll send your ticket there.");
+    /* Email is only compulsory when it's the ONLY way to reach them. With SMS
+       live the phone is already required, so demanding both is friction at a
+       counter with people waiting behind. A typo'd address is still rejected —
+       an address that's wrong is worse than one that's absent, because the
+       ticket silently goes nowhere. */
+    if (!SMS_ENABLED && !email.trim()) {
+      return setFormError("Please enter an email address — we'll send your ticket there.");
+    }
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      return setFormError("That email address doesn't look right — please check it.");
+    }
 
     setSubmitting(true);
 
@@ -385,6 +395,7 @@ export default function CustomerCheckIn() {
           placeholder={t("checkin.email_placeholder")}
           type="email"
           isKiosk={isKiosk}
+          optional={SMS_ENABLED}
         />
 
         {/* SMS consent — separate optional checkbox, unchecked by default (A2P 10DLC requirement).
