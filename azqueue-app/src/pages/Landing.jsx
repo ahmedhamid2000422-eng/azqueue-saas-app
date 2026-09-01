@@ -210,10 +210,10 @@ function Hero() {
             Customers check in once and wait wherever they want. Your team sees everything live. We connect WhatsApp, set up your kiosk, and configure your notifications — no technical setup required.
           </p>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <Link to="/signup" style={{ display: "inline-flex", alignItems: "center", gap: 10, background: C.gold, color: C.void, padding: "13px 26px", borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: "none", letterSpacing: "0.01em", transition: "all 0.2s ease", boxShadow: "0 10px 30px -10px rgba(184,149,90,0.5)" }}
+            <Link to="/contact" style={{ display: "inline-flex", alignItems: "center", gap: 10, background: C.gold, color: C.void, padding: "13px 26px", borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: "none", letterSpacing: "0.01em", transition: "all 0.2s ease", boxShadow: "0 10px 30px -10px rgba(184,149,90,0.5)" }}
               onMouseEnter={e => { e.currentTarget.style.opacity = "0.92"; e.currentTarget.style.transform = "translateY(-1px)"; }}
               onMouseLeave={e => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "none"; }}>
-              Get started free <Ic.Arr />
+              Talk to us about your office <Ic.Arr />
             </Link>
             <Link to="/support" style={{ display: "inline-flex", alignItems: "center", gap: 10, background: "transparent", color: C.ink, padding: "13px 26px", borderRadius: 8, fontSize: 13, fontWeight: 500, textDecoration: "none", border: `1px solid ${C.borderL}`, letterSpacing: "0.01em", transition: "all 0.2s ease" }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = C.gold; e.currentTarget.style.color = C.goldLit; }}
@@ -222,7 +222,7 @@ function Hero() {
             </Link>
           </div>
           <div style={{ marginTop: 32, display: "flex", flexDirection: "column", gap: 9 }}>
-            {["14-day free trial · no card needed", "Live in under 15 minutes", "We handle WhatsApp setup for you"].map(t => (
+            {["We set it up with you, not for you", "Working today in a live tax office", "No card, no commitment"].map(t => (
               <div key={t} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ width: 14, height: 14, borderRadius: 3, border: `1px solid ${C.faint}`, display: "flex", alignItems: "center", justifyContent: "center", color: C.gold, flexShrink: 0 }}><Ic.Check /></div>
                 <span style={{ fontSize: 12.5, color: C.muted, letterSpacing: "-0.005em" }}>{t}</span>
@@ -1249,8 +1249,8 @@ function Pricing() {
       price: annual ? 29 : 39,
       desc: "For single-location businesses getting started.",
       features: ["1 branch", "1 kiosk terminal", "WhatsApp notifications", "Basic analytics", "Email support"],
-      cta: "Start free trial",
-      ctaTo: "/signup?tier=essential",
+      cta: "Talk to us",
+      ctaTo: "/contact?tier=essential",
       featured: false,
     },
     {
@@ -1258,8 +1258,8 @@ function Pricing() {
       price: annual ? 99 : 129,
       desc: "For multi-location businesses ready to scale.",
       features: ["Up to 10 branches", "Unlimited kiosks & staff", "WhatsApp, SMS & email", "Loyalty punch cards", "Prayer pause scheduling", "Advanced analytics & exports", "Priority chat support"],
-      cta: "Start free trial",
-      ctaTo: "/signup?tier=professional",
+      cta: "Talk to us",
+      ctaTo: "/contact?tier=professional",
       featured: true,
       tag: "Most popular",
     },
@@ -1280,7 +1280,7 @@ function Pricing() {
         <div style={{ textAlign: "center", marginBottom: mob ? 36 : 56 }}>
           <div style={{ ...T.label, marginBottom: 20 }}>Pricing</div>
           <h2 style={{ ...T.h2, fontSize: mob ? 26 : 34, color: C.ink, margin: "0 0 16px" }}>Simple, transparent pricing.</h2>
-          <p style={{ ...T.body, margin: "0 auto 32px", maxWidth: 520 }}>Start free for 14 days. No card required. Move up or down as your business changes.</p>
+          <p style={{ ...T.body, margin: "0 auto 32px", maxWidth: 520 }}>Every front desk runs differently, so we set the first one up with you. No card, no commitment.</p>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 0, border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden" }}>
             {[["Monthly", false], ["Annual", true]].map(([label, val]) => (
               <button key={label} onClick={() => setAnnual(val)} style={{ padding: "8px 20px", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 500, background: annual === val ? C.ink : "transparent", color: annual === val ? C.void : C.muted, transition: "all 0.15s", display: "flex", alignItems: "center", gap: 6 }}>
@@ -1350,7 +1350,7 @@ function FinalCTA() {
         </h2>
         <p style={{ ...T.body, margin: "0 0 36px", fontSize: 16 }}>We handle setup. You're live in 15 minutes. No hardware, no training, no API keys.</p>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-          <Link to="/signup" style={{ display: "inline-flex", alignItems: "center", gap: 10, background: C.gold, color: C.void, padding: "13px 28px", borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: "none", letterSpacing: "0.01em", transition: "all 0.2s ease", boxShadow: "0 10px 30px -10px rgba(184,149,90,0.5)" }}
+          <Link to="/contact" style={{ display: "inline-flex", alignItems: "center", gap: 10, background: C.gold, color: C.void, padding: "13px 28px", borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: "none", letterSpacing: "0.01em", transition: "all 0.2s ease", boxShadow: "0 10px 30px -10px rgba(184,149,90,0.5)" }}
             onMouseEnter={e => { e.currentTarget.style.opacity = "0.9"; e.currentTarget.style.transform = "translateY(-1px)"; }}
             onMouseLeave={e => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "none"; }}>
             Get started free <Ic.Arr />

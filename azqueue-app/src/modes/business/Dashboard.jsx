@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import ProductTour, { TourInvite, hasSeenTour, isSnoozed, snoozeTour } from "../../components/ProductTour";
 import ComingSoon from "../../components/ComingSoon";
 import PickupBanner from "../../components/PickupBanner";
+import WhatsNewBanner from "../../components/WhatsNewBanner";
 import { WHATSAPP_ENABLED, REVIEWS_ENABLED } from "../../lib/features";
 import Sidebar from "../../components/Sidebar";
 import IslamicBar from "../../components/IslamicBar";
@@ -94,6 +95,11 @@ export default function BusinessDashboard() {
       <main className="flex-1 flex flex-col">
         <Topbar />
         <IslamicBar enabled={islamic} />
+        {/* Release notice. Sits ABOVE the pickup banner deliberately —
+            "what changed this week" must never push an actual person waiting
+            at the desk further down the screen. */}
+        <WhatsNewBanner />
+
         {/* Someone at the unstaffed pickup desk. Above the routed content so
             it is seen on every page, not only the Queue. */}
         <PickupBanner />

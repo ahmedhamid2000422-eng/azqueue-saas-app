@@ -1,5 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 import Landing from "./pages/Landing";
+import Contact from "./pages/Contact";
 import ModeSelect from "./pages/ModeSelect";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -39,6 +40,7 @@ export default function App() {
     <ErrorBoundary>
     <Routes>
       <Route path="/"        element={<Landing />} />
+      <Route path="/contact" element={<Contact />} />
       <Route path="/login"   element={<Login />} />
       <Route path="/signup"  element={<Signup />} />
       <Route path="/select"  element={<ModeSelect />} />
