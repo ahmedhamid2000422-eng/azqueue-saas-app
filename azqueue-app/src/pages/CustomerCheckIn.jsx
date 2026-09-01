@@ -139,7 +139,11 @@ export default function CustomerCheckIn() {
         branch_id: branch.id,
         service_id: serviceId,
         token: tokenData,
-        source: "walk",
+        /* Their own phone, via the QR code on the door. The counter iPad
+           writes "kiosk". Note the token RPC above still receives "walk" —
+           that argument drives the ticket prefix, and changing it would
+           renumber tickets mid-life for no benefit. */
+        source: "qr",
         status: "waiting",
         customer_name: name.trim(),
         customer_phone: phone.trim(),
@@ -178,6 +182,7 @@ export default function CustomerCheckIn() {
             position:   ahead,
             branchName: branch.name,
             ticketId:   ticket.id,
+            branchSlug: branch.slug,
           });
         }
         if (smsConsent && phone.trim()) {

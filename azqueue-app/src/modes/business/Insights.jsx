@@ -4,9 +4,8 @@ import { useBranch } from "../../lib/BranchContext";
 import { downloadCSV, exportFilename } from "../../lib/export";
 import { downloadXLSX } from "../../lib/exportXlsx";
 import ExportMenu from "../../components/ExportMenu";
-import { fetchPlatformOverview, CHANNEL_LABELS } from "../../lib/platformOverview";
-import { getGAConfig, fetchGAMetrics } from "../../lib/googleAnalytics";
 import Card, { CardHeader } from "../../components/Card";
+import ArrivalChannels from "../../components/ArrivalChannels";
 import Stat from "../../components/Stat";
 import Button from "../../components/Button";
 
@@ -96,14 +95,6 @@ export default function Insights() {
   const [baseline, setBaseline] = useState(null);
   const timerRef = useRef(null);
 
-  // Cross-platform rollup (customer_events / wa_conversations / channel_connections)
-  // and Google Analytics — these don't change minute-to-minute like queue
-  // metrics do, so they're fetched once per branch rather than on the 60s timer.
-  const [platform,        setPlatform]        = useState(null);
-  const [platformLoading, setPlatformLoading] = useState(true);
-  const [gaConnected,     setGaConnected]     = useState(false);
-  const [gaMetrics,       setGaMetrics]       = useState(null);
-
   const fetch = useCallback(async (force = false) => {
     if (!branch?.id) return;
     // Honour stale time unless forced
@@ -173,29 +164,6 @@ export default function Insights() {
     return () => { off = true; };
   }, [branch?.id]);
 
-  // Cross-platform rollup + Google Analytics — fetched once per branch.
-  useEffect(() => {
-    if (!branch?.id) return;
-    let cancelled = false;
-
-    (async () => {
-      setPlatformLoading(true);
-      const [overview, gaConfig] = await Promise.all([
-        fetchPlatformOverview(branch.id, 30),
-        getGAConfig(branch.id),
-      ]);
-      const metrics = gaConfig ? await fetchGAMetrics(branch.id, 30) : null;
-
-      if (cancelled) return;
-      setPlatform(overview);
-      setGaConnected(!!gaConfig);
-      setGaMetrics(metrics);
-      setPlatformLoading(false);
-    })();
-
-    return () => { cancelled = true; };
-  }, [branch?.id]);
-
   /* ── Format helpers ─────────────────────────────────────────── */
   function fmtMin(sec) {
     if (sec == null) return "—";
@@ -234,22 +202,43 @@ export default function Insights() {
      the whole panel. */
   const alerts = buildAlerts(data, baseline);
 
+  /* Viewing a past day changes what this page can honestly say. Nothing is
+     live, "today" is the wrong word on every label, and the two "now"
+     figures describe this moment rather than the day being read. Leaving the
+     wording unchanged made a past day look like the current one — which is
+     worse than not being able to see it at all, because the numbers are
+     believable. */
+  const isPast    = !!day;
+  const dayLabel  = isPast
+    ? new Date(`${day}T12:00:00`).toLocaleDateString(undefined, {
+        weekday: "long", day: "numeric", month: "long",
+      })
+    : null;
+
   return (
     <div className="atmosphere-hero p-8 max-w-6xl">
       <header className="mb-8 flex justify-between items-start">
         <div>
-          <div className="ovline mb-2 text-gold-soft flex items-center gap-2">
-            <span className="pip breathe" />
-            Live · {branch.name}
+          <div className="ovline mb-2 flex items-center gap-2">
+            {isPast ? (
+              <span className="text-ink-mute">Past day · {branch.name}</span>
+            ) : (
+              <>
+                <span className="pip breathe" />
+                <span className="text-gold-soft">Live · {branch.name}</span>
+              </>
+            )}
           </div>
           <h1 className="font-display text-4xl font-light tracking-tightest">Insights</h1>
           <DayPicker day={day} setDay={setDay} tz={data?.timezone} />
           <div className="text-xs text-ink-mute mt-2">
             {loading
               ? "Fetching…"
-              : fetchedAt
-                ? `Updated ${Math.round((Date.now() - fetchedAt) / 1000)}s ago · refreshes every minute`
-                : "Not yet loaded"}
+              : isPast
+                ? `Showing ${dayLabel} · these numbers are final and won't change`
+                : fetchedAt
+                  ? `Updated ${Math.round((Date.now() - fetchedAt) / 1000)}s ago · refreshes every minute`
+                  : "Not yet loaded"}
           </div>
         </div>
         <div className="flex gap-2">
@@ -266,25 +255,39 @@ export default function Insights() {
 
       {/* ── Primary metrics ─────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
-        <Stat label="Served today"   value={loading ? "…" : data?.served_today ?? 0}       hint="Completed visits"     accent />
-        <Stat label="Avg wait"       value={loading ? "…" : fmtMin(data?.avg_wait_sec)}     hint="Created → called" />
-        <Stat label="Avg service"    value={loading ? "…" : fmtMin(data?.avg_service_sec)}  hint="Called → completed" />
-        <Stat label="No-show rate"   value={loading ? "…" : fmtPct(data?.no_show_rate)}     hint="of today's visits" />
+        <Stat label={isPast ? "Served" : "Served today"}
+              value={loading ? "…" : data?.served_today ?? 0}
+              hint="Completed visits" accent />
+        <Stat label="Avg wait"     value={loading ? "…" : fmtMin(data?.avg_wait_sec)}     hint="Created → called" />
+        <Stat label="Avg service"  value={loading ? "…" : fmtMin(data?.avg_service_sec)}  hint="Called → completed" />
+        <Stat label="No-show rate" value={loading ? "…" : fmtPct(data?.no_show_rate)}
+              hint={isPast ? "of that day's visits" : "of today's visits"} />
       </div>
 
-      {/* ── Secondary metrics ───────────────────────────────────── */}
+      {/* ── Secondary metrics ─────────────────────────────────────
+          "Waiting now" and "Serving now" are read from the queue at this
+          moment, not from the day being viewed. Shown beside a past day's
+          figures they read as that day's closing state, which is simply
+          false — so on a past day they're dropped rather than relabelled.
+          There is no honest version of "waiting now" for last Tuesday. */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <Stat label="Booking fill"   value={loading ? "…" : fmtPct(data?.booking_conversion)} hint="Bookings completed" />
-        <Stat label="Peak hour"      value={loading ? "…" : fmtHour(data?.peak_hour)}          hint="Most completions" />
-        <Stat label="Waiting now"    value={loading ? "…" : data?.waiting_now ?? 0}            hint="In queue" />
-        <Stat label="Serving now"    value={loading ? "…" : data?.serving_now ?? 0}            hint="At counters" />
+        <Stat label="Booking fill" value={loading ? "…" : fmtPct(data?.booking_conversion)} hint="Bookings completed" />
+        <Stat label="Peak hour"    value={loading ? "…" : fmtHour(data?.peak_hour)}         hint="Most completions" />
+        {!isPast && (
+          <>
+            <Stat label="Waiting now" value={loading ? "…" : data?.waiting_now ?? 0} hint="In queue" />
+            <Stat label="Serving now" value={loading ? "…" : data?.serving_now ?? 0} hint="At counters" />
+          </>
+        )}
       </div>
 
       {/* ── Alerts ──────────────────────────────────────────────── */}
       <Card luxe>
         <CardHeader
           title="Operational alerts"
-          subtitle="Threshold-based signals from today's data"
+          subtitle={isPast
+            ? `What would have been flagged on ${dayLabel}`
+            : "Threshold-based signals from today's data"}
           right={<span className="ovline text-[9px] text-gold-soft">{alerts.length} active</span>}
         />
         {alerts.length === 0 ? (
@@ -320,163 +323,16 @@ export default function Insights() {
         </div>
       </Card>
 
-      {/* ── Cross-platform activity ──────────────────────────────── */}
+      {/* ── How people arrive ─────────────────────────────────────
+          Replaced the cross-platform card, which reported WhatsApp
+          conversations from a number that isn't connected and Google
+          Analytics sessions from people who never came in. This counts real
+          visits by real customers of this business. */}
       <div className="mt-6">
-        <PlatformActivityCard loading={platformLoading} platform={platform} />
+        <ArrivalChannels branchId={branch?.id} />
       </div>
 
-      {/* ── Website traffic (Google Analytics) ───────────────────── */}
-      {gaConnected && (
-        <div className="mt-6">
-          <WebsiteTrafficCard loading={platformLoading} metrics={gaMetrics} />
-        </div>
-      )}
     </div>
-  );
-}
-
-/* ── Cross-platform activity card ─────────────────────────────────────
- * Rolls up everything already flowing into AzQueue from separately-built
- * features — Freshdesk/Zid/Shopify imports, WhatsApp AI conversations,
- * queue activity — into one place, plus which platforms are connected
- * right now. Pulled from customer_events / wa_conversations /
- * channel_connections via fetchPlatformOverview (src/lib/platformOverview.js).
- */
-function PlatformActivityCard({ loading, platform }) {
-  const maxCount = platform?.channelActivity?.length
-    ? Math.max(...platform.channelActivity.map((c) => c.count))
-    : 0;
-
-  return (
-    <Card luxe>
-      <CardHeader
-        title="Cross-platform activity"
-        subtitle={`Last ${platform?.days ?? 30} days · across every connected channel`}
-        right={
-          !loading && platform ? (
-            <span className="ovline text-[9px] text-gold-soft">{platform.totalEvents} events</span>
-          ) : null
-        }
-      />
-
-      {loading ? (
-        <div className="px-5 py-10 text-center text-ink-mute text-xs">Loading…</div>
-      ) : (
-        <>
-          {/* Connected platforms */}
-          <div className="px-5 py-4 border-b border-line flex flex-wrap gap-2">
-            {Object.keys(CHANNEL_LABELS).map((channel) => {
-              const conn = platform?.connectionMap?.[channel];
-              const connected = conn?.status === "connected";
-              return (
-                <span
-                  key={channel}
-                  className={`flex items-center gap-1.5 text-[10px] px-2 py-1 border ${
-                    connected
-                      ? "border-[#506b50] text-[#9bbd9b]"
-                      : "border-line text-ink-mute"
-                  }`}
-                >
-                  <span
-                    className={`w-1.5 h-1.5 rounded-full ${connected ? "bg-[#9bbd9b]" : "bg-ink-mute/40"}`}
-                  />
-                  {CHANNEL_LABELS[channel]}
-                </span>
-              );
-            })}
-          </div>
-
-          {/* Event volume per channel */}
-          {platform?.channelActivity?.length ? (
-            <div className="px-5 py-4 border-b border-line space-y-2.5">
-              {platform.channelActivity.map((c) => (
-                <div key={c.channel} className="flex items-center gap-3">
-                  <div className="w-24 text-[11px] text-ink-soft shrink-0">{c.label}</div>
-                  <div className="flex-1 h-[6px] bg-line/60 relative overflow-hidden">
-                    <div
-                      className="absolute inset-y-0 left-0 bg-gold-soft/60"
-                      style={{ width: `${maxCount ? Math.max(4, (c.count / maxCount) * 100) : 0}%` }}
-                    />
-                  </div>
-                  <div className="w-10 text-right text-[11px] text-ink font-display">{c.count}</div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="px-5 py-6 text-center text-ink-mute text-xs">
-              No cross-platform activity logged yet in this window.
-            </div>
-          )}
-
-          {/* WhatsApp AI conversations */}
-          <div className="grid grid-cols-3 gap-3 px-5 py-4">
-            <Stat label="WhatsApp chats"  value={platform?.waStats?.total ?? 0}      hint="last 30 days" />
-            <Stat label="Needs a human"   value={platform?.waStats?.needsHuman ?? 0} hint="awaiting handoff" accent />
-            <Stat label="Completed"       value={platform?.waStats?.completed ?? 0}  hint="resolved by AI" />
-          </div>
-
-          <div className="px-5 py-3 border-t border-line text-[10px] text-ink-mute italic font-display">
-            Connect more channels in Settings → Integrations to bring more activity in here.
-          </div>
-        </>
-      )}
-    </Card>
-  );
-}
-
-/* ── Website traffic card (Google Analytics) ──────────────────────────
- * Only rendered once GA4 is connected. Fetched live on each page load via
- * the ga4-metrics Edge Function (src/lib/googleAnalytics.js) — nothing
- * Google-side is cached or stored.
- */
-function WebsiteTrafficCard({ loading, metrics }) {
-  const rows = metrics?.rows ?? [];
-  const maxSessions = rows.length ? Math.max(...rows.map((r) => r.sessions)) : 0;
-
-  return (
-    <Card luxe>
-      <CardHeader
-        title="Website traffic"
-        subtitle="From Google Analytics (GA4) · last 30 days"
-        right={<span className="ovline text-[9px] text-gold-soft">live</span>}
-      />
-
-      {loading ? (
-        <div className="px-5 py-10 text-center text-ink-mute text-xs">Loading…</div>
-      ) : !metrics ? (
-        <div className="px-5 py-6 text-center text-ink-mute text-xs">
-          Couldn't load Google Analytics data right now. Check the connection in Settings → Integrations.
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-3 gap-3 px-5 py-4 border-b border-line">
-            <Stat label="Sessions"    value={metrics.totals?.sessions ?? 0}    hint="last 30 days" accent />
-            <Stat label="Users"       value={metrics.totals?.activeUsers ?? 0} hint="last 30 days" />
-            <Stat label="Conversions" value={metrics.totals?.conversions ?? 0} hint="last 30 days" />
-          </div>
-
-          {rows.length > 0 && (
-            <div className="px-5 py-4">
-              <div className="ovline text-[9px] text-ink-mute mb-3">Daily sessions</div>
-              <div className="flex items-end gap-[2px] h-16">
-                {rows.map((r) => (
-                  <div
-                    key={r.date}
-                    title={`${r.date}: ${r.sessions} sessions`}
-                    className="flex-1 bg-gold-soft/50 hover:bg-gold-soft transition"
-                    style={{ height: `${maxSessions ? Math.max(4, (r.sessions / maxSessions) * 100) : 4}%` }}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="px-5 py-3 border-t border-line text-[10px] text-ink-mute italic font-display">
-            Read-only — AzQueue never writes anything back to Google Analytics.
-          </div>
-        </>
-      )}
-    </Card>
   );
 }
 
@@ -598,29 +454,42 @@ function DayPicker({ day, setDay, tz }) {
     setDay(iso >= todayIso ? null : iso);   // never go past today
   };
 
+  /* "Yesterday" rather than a date, because that's the day people actually
+     look back at and a name is recognised faster than a number. */
+  const yesterdayIso = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().slice(0, 10);
+  })();
+
   const label = !day
     ? "Today"
-    : new Date(`${day}T12:00:00`).toLocaleDateString(undefined, {
-        weekday: "short", day: "numeric", month: "short",
-      });
+    : day === yesterdayIso
+      ? "Yesterday"
+      : new Date(`${day}T12:00:00`).toLocaleDateString(undefined, {
+          weekday: "short", day: "numeric", month: "short",
+        });
 
   return (
-    <div className="flex items-center gap-1.5 mt-2">
+    /* Sized to be found. The first version used 10px arrows that read as
+       decoration, and the owner reported he couldn't see past days at all —
+       the feature existed and was invisible, which is the same thing. */
+    <div className="flex items-center gap-2 mt-3">
       <button
         onClick={() => shift(-1)}
         title="Previous day"
-        className="ovline text-[10px] border border-line px-2 py-1 text-ink-mute hover:text-ink transition"
+        className="text-[13px] border border-line px-2.5 py-1.5 text-ink-soft hover:text-ink hover:border-gold-deep transition leading-none"
       >
         ←
       </button>
-      <span className="ovline text-[10px] text-gold-soft px-1 min-w-[86px] text-center">
+      <span className={`text-[12px] px-2 min-w-[130px] text-center ${day ? "text-gold-soft" : "text-ink"}`}>
         {label}
       </span>
       <button
         onClick={() => shift(1)}
         disabled={!day}
         title="Next day"
-        className="ovline text-[10px] border border-line px-2 py-1 text-ink-mute hover:text-ink transition disabled:opacity-30"
+        className="text-[13px] border border-line px-2.5 py-1.5 text-ink-soft hover:text-ink hover:border-gold-deep transition disabled:opacity-25 disabled:hover:border-line leading-none"
       >
         →
       </button>

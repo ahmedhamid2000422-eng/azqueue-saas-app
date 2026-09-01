@@ -58,7 +58,9 @@ const ARRIVE_EARLY_MINUTES = 5;
 const origin = () =>
   typeof window !== "undefined" ? window.location.origin : "https://azqueue.io";
 
-export function sendCheckinEmail({ email, name, token, position, branchName, ticketId }) {
+export function sendCheckinEmail({
+  email, name, token, position, branchName, ticketId, branchSlug,
+}) {
   return send({
     type: "checkin",
     to: email,
@@ -67,6 +69,15 @@ export function sendCheckinEmail({ email, name, token, position, branchName, tic
     position,
     branchName,
     ticketUrl: ticketId ? `${origin()}/t/${ticketId}` : "",
+    /* Az Tax has bookable slots every day and had taken zero bookings in 117
+       visits, because nothing anywhere pointed at the booking page. The
+       check-in email is the one message every walk-in receives, read while
+       they're sitting and waiting — which is exactly when an alternative to
+       waiting is worth reading about.
+
+       Omitted when the caller doesn't pass a slug, so a branch with no
+       bookable hours never invites someone to an empty calendar. */
+    bookingUrl: branchSlug ? `${origin()}/b/${branchSlug}` : "",
   });
 }
 

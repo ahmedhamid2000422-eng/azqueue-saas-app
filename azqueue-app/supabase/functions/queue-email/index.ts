@@ -52,6 +52,7 @@ Deno.serve(async (req) => {
     serviceName: b.serviceName ? String(b.serviceName) : "",
     message:     b.message     ? String(b.message)     : "",
     ticketUrl:   b.ticketUrl   ? String(b.ticketUrl)   : "",
+    bookingUrl:  b.bookingUrl  ? String(b.bookingUrl)  : "",
     holdMinutes: b.holdMinutes != null ? Number(b.holdMinutes) : null,
     arriveBy:    b.arriveBy    ? String(b.arriveBy)    : null,
     quietNote:   b.quietNote   ? String(b.quietNote)   : null,
@@ -102,6 +103,10 @@ type Ctx = {
   name: string; branchName: string; token: string;
   position: number | null; counter: string; staffName: string;
   when: string; serviceName: string; message: string; ticketUrl: string;
+  /* Where this branch takes bookings. Optional — omitted when the branch has
+     no bookable hours, because inviting someone to book against an empty
+     calendar is worse than saying nothing. */
+  bookingUrl: string;
   /* How many minutes a called ticket is held before it's released. Sent by
      the caller so this function never has to know the branch's settings. */
   holdMinutes: number | null;
@@ -129,7 +134,18 @@ function buildContent(type: string, c: Ctx) {
         lead:     `Hi ${c.name}, you've joined the queue at ${c.branchName}.`,
         badge:    c.token,
         badgeCap: "Your ticket",
-        body:     [pos, `We'll email you again when it's your turn.`],
+        /* The nudge to book lands here rather than after the visit, because
+           this email is read while they are sitting and waiting — the one
+           moment the alternative is obviously worth something. It is a plain
+           sentence, not a second button: two calls to action compete, and the
+           one that matters now is tracking their place. */
+        body:     [
+          pos,
+          `We'll email you again when it's your turn.`,
+          c.bookingUrl
+            ? `Next time you can book a time in advance and skip the wait: ${c.bookingUrl}`
+            : "",
+        ].filter(Boolean) as string[],
         cta:      c.ticketUrl ? { label: "Track your place in line", url: c.ticketUrl } : null,
         branchName: c.branchName,
       });

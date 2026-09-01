@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
-import { MIN_BENCHMARK_BRANCHES, BENCHMARK_CATEGORIES } from "../../lib/features";
+import {
+  MIN_BENCHMARK_BRANCHES,
+  BENCHMARK_CATEGORIES,
+  WHATSAPP_ENABLED,
+  INTEGRATIONS_ENABLED,
+} from "../../lib/features";
 import { useAuth } from "../../lib/AuthContext";
 import { useBranch } from "../../lib/BranchContext";
 import { useStaff } from "../../hooks/useStaff";
@@ -60,18 +65,27 @@ export default function Settings() {
     );
   }
 
+  /* Tabs are filtered rather than always shown. Settings is where an owner
+     goes when something is wrong and needs changing quickly — every tab that
+     can't do anything makes the one that can harder to find. Support Inbox
+     holds WhatsApp conversations that can't arrive without a connected
+     number, and Integrations offers Shopify and Zid to a tax office. Both are
+     gated on the pipe being real rather than on the code existing. */
   const tabs = [
     { id: "general",  label: "General" },
     { id: "branches", label: "Branches" },
     { id: "services", label: "Services" },
     { id: "staff",    label: "Staff" },
-    { id: "support",  label: "Support Inbox" },
+    ...(WHATSAPP_ENABLED ? [{ id: "support", label: "Support Inbox" }] : []),
     { id: "modes",    label: "Modes" },
     { id: "checklists",   label: "Checklists" },
     { id: "loyalty",      label: "Loyalty" },
-    { id: "integrations", label: "Integrations" },
+    ...(INTEGRATIONS_ENABLED ? [{ id: "integrations", label: "Integrations" }] : []),
     { id: "billing",      label: "Billing" },
   ];
+
+  /* A hidden tab must never stay selected — a blank pane reads as a crash. */
+  const activeTab = tabs.some((t) => t.id === tab) ? tab : "general";
 
   return (
     <div className="atmosphere-hero p-8 max-w-5xl">
@@ -86,7 +100,7 @@ export default function Settings() {
       {/* Tab strip */}
       <div className="flex border-b border-line mb-6">
         {tabs.map((t) => {
-          const active = tab === t.id;
+          const active = activeTab === t.id;
           return (
             <button
               key={t.id}
@@ -102,16 +116,16 @@ export default function Settings() {
         })}
       </div>
 
-      {tab === "general"  && <GeneralTab branch={branch} reload={reload} />}
-      {tab === "branches" && <BranchesTab branches={branches} currentId={branch?.id} select={select} reload={reload} userId={user?.id} />}
-      {tab === "services" && <ServicesTab branch={branch} />}
-      {tab === "staff"    && <StaffTab branch={branch} />}
-      {tab === "support"  && <SupportInboxTab branch={branch} />}
-      {tab === "modes"    && <ModesTab branch={branch} reload={reload} />}
-      {tab === "checklists"   && <ChecklistsTab branch={branch} />}
-      {tab === "loyalty"      && <LoyaltyTab branch={branch} />}
-      {tab === "integrations" && <IntegrationsTab branch={branch} />}
-      {tab === "billing"      && <BillingTab />}
+      {activeTab === "general"  && <GeneralTab branch={branch} reload={reload} />}
+      {activeTab === "branches" && <BranchesTab branches={branches} currentId={branch?.id} select={select} reload={reload} userId={user?.id} />}
+      {activeTab === "services" && <ServicesTab branch={branch} />}
+      {activeTab === "staff"    && <StaffTab branch={branch} />}
+      {activeTab === "support"  && <SupportInboxTab branch={branch} />}
+      {activeTab === "modes"    && <ModesTab branch={branch} reload={reload} />}
+      {activeTab === "checklists"   && <ChecklistsTab branch={branch} />}
+      {activeTab === "loyalty"      && <LoyaltyTab branch={branch} />}
+      {activeTab === "integrations" && <IntegrationsTab branch={branch} />}
+      {activeTab === "billing"      && <BillingTab />}
     </div>
   );
 }
@@ -510,7 +524,10 @@ function GeneralTab({ branch, reload }) {
         <BookingFaqEditor branch={branch} reload={reload} />
       )}
 
-      <WhatsAppConfig branch={branch} reload={reload} />
+      {/* Setup instructions for a Twilio WhatsApp sender that doesn't exist
+          yet. Offering configuration for something unreachable invites an
+          owner to spend an evening on it and conclude the product is broken. */}
+      {WHATSAPP_ENABLED && <WhatsAppConfig branch={branch} reload={reload} />}
     </div>
   );
 }

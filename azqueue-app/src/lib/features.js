@@ -38,6 +38,20 @@ export const WHATSAPP_ENABLED = import.meta.env.VITE_WHATSAPP_ENABLED === "true"
 export const REVIEWS_ENABLED  = import.meta.env.VITE_REVIEWS_ENABLED === "true";
 
 /**
+ * INTEGRATIONS_ENABLED — the Freshdesk / Zid / Shopify connectors.
+ *
+ * Off by default, because for the businesses this is actually being used by
+ * they are noise. A tax office has no Shopify store; showing it a panel to
+ * connect one invites the reasonable conclusion that the product wasn't built
+ * for them. Settings is where an owner goes when something needs changing,
+ * and every irrelevant tab makes the relevant one harder to find.
+ *
+ * The code is untouched behind this — set VITE_INTEGRATIONS_ENABLED=true for
+ * an account that genuinely runs one of them.
+ */
+export const INTEGRATIONS_ENABLED = import.meta.env.VITE_INTEGRATIONS_ENABLED === "true";
+
+/**
  * AUTOPILOT_ENABLED — whether the queue may call customers automatically.
  *
  * Currently OFF. Autopilot paces calls from a rolling average service time,
