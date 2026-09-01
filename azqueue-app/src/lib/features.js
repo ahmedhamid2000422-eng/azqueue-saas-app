@@ -83,3 +83,28 @@ export const PRAYER_PAUSE_MINUTES = Number(
 export const PRAYER_WARN_MINUTES = Number(
   import.meta.env.VITE_PRAYER_WARN_MINUTES ?? 5,
 );
+
+/**
+ * MIN_BENCHMARK_BRANCHES — the floor for any cross-business comparison.
+ *
+ * A "benchmark" drawn from three businesses identifies all three, especially
+ * in one city where the owner can name every competitor. Below this number
+ * the comparison must not be shown at all — not shown with a caveat, not
+ * shown greyed out. Not shown.
+ *
+ * 20 is deliberately conservative. It can come down with evidence; it should
+ * never come down because a screen looked empty.
+ */
+export const MIN_BENCHMARK_BRANCHES = 20;
+
+/** Comparison groups. Comparing a tax office to a barber is worse than no
+ *  comparison — the wait that means "struggling" in one is normal in the
+ *  other. Self-declared, because only the business knows what it is. */
+export const BENCHMARK_CATEGORIES = [
+  { key: "tax",        label: "Tax & accounting" },
+  { key: "immigration",label: "Immigration services" },
+  { key: "clinic",     label: "Clinic or medical" },
+  { key: "government", label: "Government or public office" },
+  { key: "salon",      label: "Salon or personal care" },
+  { key: "other",      label: "Something else" },
+];

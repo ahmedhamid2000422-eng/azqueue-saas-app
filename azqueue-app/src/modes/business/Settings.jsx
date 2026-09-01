@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
+import { MIN_BENCHMARK_BRANCHES, BENCHMARK_CATEGORIES } from "../../lib/features";
 import { useAuth } from "../../lib/AuthContext";
 import { useBranch } from "../../lib/BranchContext";
 import { useStaff } from "../../hooks/useStaff";
@@ -1678,11 +1679,14 @@ function ModesTab({ branch, reload }) {
 
   if (!branch) return <Empty hint="Select or create a branch first." />;
 
-  async function toggle(field, value) {
+  /* `extra` lets a toggle write companion fields in the same update — the
+     benchmark switch records WHEN the choice was made, so it can be shown
+     back to the business later. */
+  async function toggle(field, value, extra = {}) {
     setToggleErr(null);
     const { error } = await supabase
       .from("branches")
-      .update({ [field]: value })
+      .update({ [field]: value, ...extra })
       .eq("id", branch.id);
     if (error) { setToggleErr(error.message); return; }
     await reload();
@@ -1798,6 +1802,84 @@ function ModesTab({ branch, reload }) {
           on={ttsOn}
           setOn={toggleTts}
         />
+      </Card>
+
+      {/* ── Benchmarks ────────────────────────────────────────────────
+          Deliberately its own card, with the explanation above the switch
+          rather than a one-line description beside it. This is the only
+          setting in AzQueue where a business's data leaves its own walls,
+          even in aggregate, so it gets read before it gets flipped. */}
+      <Card luxe className="p-7">
+        <div className="ovline text-[9px] text-gold-soft mb-2">Comparisons</div>
+        <h3 className="font-display text-lg font-light tracking-tight mb-2">
+          Compare yourself to similar businesses
+        </h3>
+        <p className="text-[12px] text-ink-soft leading-relaxed mb-3">
+          Turn this on and your queue figures — waits, busy hours, how many
+          people are served — are pooled anonymously with other businesses of
+          the same kind. In return you can see how you compare: whether a
+          40-minute wait is normal for a practice like yours, or unusual.
+        </p>
+
+        <div className="border-l border-gold-deep/50 pl-3 mb-4 space-y-1.5">
+          <p className="text-[11px] text-ink-mute leading-relaxed">
+            Only totals are ever shared. Never customer names, never anything
+            that identifies your business, and never a figure that could be
+            traced back to any single one.
+          </p>
+          <p className="text-[11px] text-ink-mute leading-relaxed">
+            A comparison is only shown when at least {MIN_BENCHMARK_BRANCHES}{" "}
+            businesses are in the group. Below that it isn't shown at all —
+            a benchmark drawn from three offices identifies all three.
+          </p>
+          <p className="text-[11px] text-ink-mute leading-relaxed">
+            You can turn this off whenever you like. It's off unless you
+            choose otherwise.
+          </p>
+        </div>
+
+        <Toggle
+          label="Take part in benchmarks"
+          desc="Share anonymous totals, and see how you compare"
+          on={!!branch.benchmark_opt_in}
+          setOn={(v) => toggle("benchmark_opt_in", v, { benchmark_opt_in_at: v ? new Date().toISOString() : null })}
+          green
+        />
+
+        {branch.benchmark_opt_in && (
+          <div className="mt-4">
+            <div className="ovline text-[8px] text-ink-mute mb-2">
+              Compare me with
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {BENCHMARK_CATEGORIES.map((c) => (
+                <button
+                  key={c.key}
+                  onClick={() => toggle("benchmark_category", c.key)}
+                  className={`text-[11px] border px-2.5 py-1.5 transition ${
+                    branch.benchmark_category === c.key
+                      ? "border-gold-deep text-gold-soft bg-[rgba(201,168,106,0.08)]"
+                      : "border-line text-ink-mute hover:text-ink"
+                  }`}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10.5px] text-ink-mute leading-relaxed mt-2.5">
+              Comparing a tax office to a barber is worse than no comparison —
+              the wait that means &ldquo;struggling&rdquo; in one is a normal
+              day in the other.
+            </p>
+          </div>
+        )}
+
+        <p className="text-[10.5px] text-ink-mute leading-relaxed mt-4 italic font-display">
+          Nothing is being compared yet — AzQueue needs many more businesses
+          before any group reaches {MIN_BENCHMARK_BRANCHES}. This setting
+          records your choice in advance, so nothing is ever pooled without
+          you having decided first.
+        </p>
       </Card>
     </div>
   );
