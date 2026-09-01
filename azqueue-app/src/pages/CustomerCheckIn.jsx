@@ -419,10 +419,16 @@ export default function CustomerCheckIn() {
               className={`mt-0.5 shrink-0 accent-[#c9a86a] ${isKiosk ? "w-5 h-5" : ""}`}
             />
             <span className={`text-ink-mute leading-relaxed ${isKiosk ? "text-[15px]" : "text-[11px]"}`}>
-              I agree to receive SMS text messages from AzQueue about my queue status and appointment updates.
+              {/* The BUSINESS's name, not ours. The customer is standing in
+                  their office and the texts arrive from their number, so
+                  "AzQueue" named a company they've never heard of. It also
+                  broke the A2P campaign: carriers require the consent text,
+                  the sample messages, the website and the registered brand to
+                  all name the same entity. */}
+              I agree to receive SMS text messages from {branch?.name ?? "this business"} about my queue status and appointment updates.
               Message frequency varies (typically 1–5 per visit). Msg &amp; data rates may apply.
               Reply <strong>STOP</strong> to cancel, <strong>HELP</strong> for help.{" "}
-              <a href="/sms/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-ink">Privacy Policy</a>
+              <a href={`/b/${slug}/privacy`} target="_blank" rel="noopener noreferrer" className="underline hover:text-ink">Privacy Policy</a>
               {" · "}
               <a href="/sms/terms" target="_blank" rel="noopener noreferrer" className="underline hover:text-ink">Terms</a>
             </span>

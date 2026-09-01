@@ -49,6 +49,11 @@ const COLS = [
     ["Careers",        "/company"],
     ["Terms",          "/legal/terms"],
     ["Privacy",        "/legal/privacy"],
+    /* Reachable from the homepage on purpose. A carrier reviewing the A2P
+       campaign is given azqueue.io and nothing else — if the SMS disclosure
+       can only be found at a branch's check-in URL, they record that the
+       site has no opt-in and reject it. */
+    ["SMS terms",      "/sms"],
     ["Refunds",        "/legal/refund"],
   ]},
 ];

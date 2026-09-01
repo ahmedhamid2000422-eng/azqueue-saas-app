@@ -16,6 +16,8 @@ import IslamicMode from "./pages/IslamicMode";
 import ManagerMode from "./pages/ManagerMode";
 import CustomerCheckIn from "./pages/CustomerCheckIn";
 import PickupKiosk from "./pages/PickupKiosk";
+import SmsPolicy from "./pages/SmsPolicy";
+import BusinessHome, { businessForHost } from "./pages/BusinessHome";
 import CustomerTicket from "./pages/CustomerTicket";
 import TvDisplay from "./pages/TvDisplay";
 import BookingPage from "./pages/BookingPage";
@@ -36,10 +38,20 @@ import NotFound from "./pages/NotFound";
 import ErrorBoundary from "./components/ErrorBoundary";
 
 export default function App() {
+  /* Read once per render from the address bar. A customer domain points at
+     the same Vercel deployment, so the hostname is the only thing that
+     distinguishes them. */
+  const hostSite = businessForHost(
+    typeof window !== "undefined" ? window.location.hostname : ""
+  );
+
   return (
     <ErrorBoundary>
     <Routes>
-      <Route path="/"        element={<Landing />} />
+      {/* On a customer's own domain the root is THEIR page, not AzQueue's.
+          Everything else — /q/:slug, /b/:slug/privacy, /t/:id — resolves
+          identically on both hosts, so links keep working either way. */}
+      <Route path="/"        element={hostSite ? <BusinessHome site={hostSite} /> : <Landing />} />
       <Route path="/contact" element={<Contact />} />
       <Route path="/login"   element={<Login />} />
       <Route path="/signup"  element={<Signup />} />
@@ -70,6 +82,12 @@ export default function App() {
       <Route path="/reset-password"    element={<ResetPassword />} />
       <Route path="/checkin/:branchId" element={<Checkin />} />
       <Route path="/display-tv/:branchId" element={<Display />} />
+      {/* Both paths render the same page. /sms/privacy is what the consent
+          checkbox has always linked to — it was never a route, so a carrier
+          reviewer following it found nothing. /sms is the shorter address to
+          hand to a reviewer. */}
+      <Route path="/sms"               element={<SmsPolicy />} />
+      <Route path="/sms/privacy"       element={<SmsPolicy />} />
       <Route path="/legal/:doc"        element={<Legal />} />
       <Route path="/legal"             element={<Legal />} />
 
