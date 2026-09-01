@@ -88,6 +88,12 @@ export default function Insights() {
   /* Which day is being shown. null = today. Yesterday was previously
      unreachable — the moment the clock rolled over, the day was gone. */
   const [day, setDay] = useState(null);
+
+  /* What normal looks like here: the branch's own median and 75th-percentile
+     wait, from its own completed visits. Null until loaded, and null forever
+     if there isn't enough history — in which case the alerts fall back to
+     only the ones that need no baseline at all. */
+  const [baseline, setBaseline] = useState(null);
   const timerRef = useRef(null);
 
   // Cross-platform rollup (customer_events / wa_conversations / channel_connections)
@@ -131,6 +137,41 @@ export default function Insights() {
     return () => clearInterval(timerRef.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [branch?.id, day]);
+
+  /* Baseline: this branch's own wait distribution. Loaded once — it moves
+     over weeks, not minutes. */
+  useEffect(() => {
+    let off = false;
+    if (!branch?.id) return;
+    (async () => {
+      const since = new Date(Date.now() - 60 * 86_400_000).toISOString();
+      const { data: rows } = await supabase
+        .from("tickets")
+        .select("created_at, called_at, status")
+        .eq("branch_id", branch.id)
+        .eq("status", "completed")
+        .not("called_at", "is", null)
+        .gte("created_at", since)
+        .limit(5000);
+
+      if (off) return;
+      const waits = (rows ?? [])
+        .map((t) => (new Date(t.called_at) - new Date(t.created_at)) / 60000)
+        .filter((m) => m >= 0 && m < 480)
+        .sort((a, b) => a - b);
+
+      /* Below this there is no meaningful "normal" yet, and inventing one is
+         how the old thresholds went wrong. */
+      if (waits.length < 30) { setBaseline(null); return; }
+      setBaseline({
+        n: waits.length,
+        median: waits[Math.floor(waits.length * 0.5)],
+        p75:    waits[Math.floor(waits.length * 0.75)],
+        p90:    waits[Math.floor(waits.length * 0.9)],
+      });
+    })();
+    return () => { off = true; };
+  }, [branch?.id]);
 
   // Cross-platform rollup + Google Analytics — fetched once per branch.
   useEffect(() => {
@@ -185,8 +226,13 @@ export default function Insights() {
     return <div className="p-8 text-ink-mute ovline">Select a branch to see insights.</div>;
   }
 
-  /* ── Build alert cards from thresholds ───────────────────────── */
-  const alerts = buildAlerts(data);
+  /* ── Build alert cards from thresholds ─────────────────────────
+     Thresholds come from this branch's OWN history, not fixed numbers. A
+     15-minute wait is a crisis at a coffee counter and a normal Tuesday at a
+     tax office — the old hardcoded limits meant "wait times are elevated"
+     had been showing permanently since day one, which trains staff to ignore
+     the whole panel. */
+  const alerts = buildAlerts(data, baseline);
 
   return (
     <div className="atmosphere-hero p-8 max-w-6xl">
@@ -268,7 +314,9 @@ export default function Insights() {
           ))
         )}
         <div className="px-5 py-3 border-t border-line text-[10px] text-ink-mute italic font-display">
-          Signals are computed from your branch's own history — not generic industry benchmarks.
+          Signals are measured against this branch's own history, not generic
+          benchmarks. Alerts that need history stay hidden until there's enough
+          of it.
         </div>
       </Card>
 
@@ -432,67 +480,81 @@ function WebsiteTrafficCard({ loading, metrics }) {
   );
 }
 
-/* ── Alert builder ──────────────────────────────────────────────────── */
-function buildAlerts(data) {
+/* ── Alert builder ────────────────────────────────────────────────────
+ * Every threshold here is RELATIVE TO THIS BRANCH, computed from its own
+ * completed visits (see `baseline` above). That is not a detail — the
+ * previous version used fixed numbers (wait > 15 min, no-show > 20%), and at
+ * a tax office where a normal wait is an hour, "wait times are elevated" was
+ * lit permanently from the first day. An alert that is always on is
+ * wallpaper: it teaches staff to ignore the panel, including the alerts that
+ * matter.
+ *
+ * Alerts that need no baseline (nobody serving, queue building) always run.
+ * Alerts that need one are simply omitted until there is enough history —
+ * silence rather than a guess.
+ */
+function buildAlerts(data, baseline) {
   if (!data) return [];
   const alerts = [];
 
   const avgWaitMin = data.avg_wait_sec != null ? data.avg_wait_sec / 60 : null;
-  const noShowPct  = data.no_show_rate  != null ? data.no_show_rate * 100 : null;
-  const bookingPct = data.booking_conversion != null ? data.booking_conversion * 100 : null;
+  const noShowPct  = data.no_show_rate != null ? data.no_show_rate * 100 : null;
 
-  if (avgWaitMin != null && avgWaitMin > 15) {
-    alerts.push({
-      level: "warn",
-      icon: "⚠",
-      title: "Wait times are elevated",
-      body:  "Average wait has exceeded 15 minutes today. Consider opening an additional counter or re-routing walk-ins.",
-      value: `${Math.round(avgWaitMin)} min`,
-      valueLabel: "avg wait",
-    });
-  }
+  /* ── Needs no baseline: true at any business, any day ── */
 
-  if (noShowPct != null && noShowPct > 20) {
-    alerts.push({
-      level: "warn",
-      icon: "⚠",
-      title: "High no-show rate",
-      body:  "More than 20% of today's called customers didn't show up. Check your SMS reminders or shorten the call window.",
-      value: `${Math.round(noShowPct)}%`,
-      valueLabel: "no-show",
-    });
-  }
-
-  if (bookingPct != null && bookingPct < 50) {
-    alerts.push({
-      level: "info",
-      icon: "◈",
-      title: "Low booking conversion",
-      body:  "Fewer than half of today's pre-booked appointments were completed. Confirm bookings 30 min before their slot.",
-      value: `${Math.round(bookingPct)}%`,
-      valueLabel: "filled",
-    });
-  }
-
-  if (data.waiting_now != null && data.waiting_now > 10) {
-    alerts.push({
-      level: "warn",
-      icon: "⚠",
-      title: "Queue is building up",
-      body:  `${data.waiting_now} customers are currently waiting. If this persists, open another counter or pause new arrivals temporarily.`,
-      value: `${data.waiting_now}`,
-      valueLabel: "waiting",
-    });
-  }
-
+  // Someone is waiting and nobody is serving. Almost always an oversight,
+  // and the most expensive minute in the queue.
   if (data.serving_now === 0 && data.waiting_now > 0) {
     alerts.push({
-      level: "warn",
-      icon: "⚠",
-      title: "No staff currently serving",
-      body:  "Customers are waiting but no counter is active. Check staff status or reopen a counter.",
-      value: "0",
-      valueLabel: "serving",
+      level: "warn", icon: "⚠",
+      title: "No one is being served",
+      body: "Customers are waiting but no counter is active. Call the next person, or check staff status.",
+      value: `${data.waiting_now}`, valueLabel: "waiting",
+    });
+  }
+
+  /* ── Needs the branch's own history ── */
+
+  if (baseline && avgWaitMin != null) {
+    // "Unusual for you" = beyond the 75th percentile of this branch's own
+    // waits. By construction that fires on roughly the worst quarter of days,
+    // not every day.
+    if (avgWaitMin > baseline.p75) {
+      const over = Math.round(((avgWaitMin - baseline.median) / Math.max(baseline.median, 1)) * 100);
+      alerts.push({
+        level: avgWaitMin > baseline.p90 ? "warn" : "info",
+        icon: avgWaitMin > baseline.p90 ? "⚠" : "◈",
+        title: "Waits are longer than usual here",
+        body:
+          `Today's average is about ${over}% above your normal ${Math.round(baseline.median)} minutes. ` +
+          `Measured from ${baseline.n.toLocaleString()} of your own completed visits.`,
+        value: `${Math.round(avgWaitMin)}m`, valueLabel: `usually ${Math.round(baseline.median)}m`,
+      });
+    }
+
+    // A queue that is long relative to how fast this branch actually moves.
+    if (data.waiting_now != null && baseline.median > 0) {
+      const projected = data.waiting_now * (baseline.median / 4);
+      if (data.waiting_now >= 5 && projected > baseline.p90) {
+        alerts.push({
+          level: "warn", icon: "⚠",
+          title: "Queue is building faster than you're clearing it",
+          body: `${data.waiting_now} people are waiting. At your usual pace the back of the queue is looking at a long wait.`,
+          value: `${data.waiting_now}`, valueLabel: "waiting",
+        });
+      }
+    }
+  }
+
+  /* No-show rate: compared to this branch's own recent rate rather than a
+     fixed 20%. Without a baseline we say nothing — a first-day 50% from two
+     tickets is noise, not a finding. */
+  if (baseline && noShowPct != null && data.served_today >= 10 && noShowPct > 35) {
+    alerts.push({
+      level: "info", icon: "◈",
+      title: "More people than usual didn't show",
+      body: "Worth checking whether reminders are reaching people, or whether the wait is long enough that they gave up.",
+      value: `${Math.round(noShowPct)}%`, valueLabel: "no-show",
     });
   }
 
