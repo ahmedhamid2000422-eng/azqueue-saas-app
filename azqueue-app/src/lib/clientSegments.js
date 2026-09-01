@@ -14,6 +14,57 @@
 
 const DAY = 86_400_000;
 
+/**
+ * "Overdue" measured against the person's OWN rhythm, not one global year.
+ *
+ * A flat 365 days treats an annual tax client and a monthly one as the same
+ * kind of absence, and they aren't. Someone whose pattern is six months and
+ * who has been gone fourteen has visibly broken it. Someone who has always
+ * come once a year and is at thirteen months is barely late — and calling
+ * them lapsed puts a name on a list that shouldn't be there, which is how a
+ * call list stops being trusted.
+ *
+ * Everyone gets their own threshold, derived from the gaps they've actually
+ * kept. The numbers below are the guard rails around that.
+ */
+const OVERDUE_MULTIPLE      = 1.5;  // past 1.5x their own gap = properly late
+const MIN_OVERDUE_DAYS      = 120;  // never flag anyone sooner than this
+const MIN_CADENCE_DAYS      = 30;   // below this, visits are one case, not a rhythm
+const FALLBACK_OVERDUE_DAYS = 365;  // when no rhythm can be measured
+
+/**
+ * A person's own typical gap between visits, in days.
+ *
+ * Needs at least two visits, because one visit is not a gap. Imported history
+ * carries a total and a first/last date, so this is an AVERAGE across their
+ * visits rather than the most recent interval — the individual dates don't
+ * exist to do better, and pretending otherwise would be invention.
+ */
+export function ownGapDays(p) {
+  if (!p || p.v < 2) return null;
+  const g = (p.l - p.f) / (p.v - 1) / DAY;
+  return Number.isFinite(g) && g > 0 ? g : null;
+}
+
+/**
+ * How late this person is by their own standard, or null if they aren't.
+ * Returns the working so the UI can show why someone is on the list.
+ */
+export function overdueBy(p, now = Date.now()) {
+  if (!p || p.v < 2) return null;
+  const since = (now - p.l) / DAY;
+  const gap   = ownGapDays(p);
+
+  /* A rhythm we can trust, or the flat year when we can't. Several visits
+     packed into a few weeks is one piece of work, not a cadence — averaging
+     it gives a threshold of days, which would flag half the client base. */
+  const due = gap != null && gap >= MIN_CADENCE_DAYS
+    ? Math.max(gap * OVERDUE_MULTIPLE, MIN_OVERDUE_DAYS)
+    : FALLBACK_OVERDUE_DAYS;
+
+  return since > due ? { sinceDays: since, dueDays: due, gapDays: gap } : null;
+}
+
 export const TIER_MIN = { VIP: 10, Loyal: 5, Regular: 3, Returning: 2, New: 1 };
 export const TIER_ORDER = ["VIP", "Loyal", "Regular", "Returning", "New"];
 
@@ -25,11 +76,15 @@ export function tierFor(visits) {
 export const SEGMENTS = [
   {
     key: "lapsed_regulars",
-    label: "Regulars who stopped coming",
-    rule: "3 or more visits, nothing in over a year",
-    note: (n) => `${n.toLocaleString()} people visited 3 or more times but haven't been back in over a year.`,
-    action: "These are the clearest names to call — they already chose you repeatedly, so something changed rather than never having started.",
-    match: (p, now) => p.v >= 3 && now - p.l > 365 * DAY,
+    label: "Overdue by their own pattern",
+    rule: "has returned before, now well past their own usual gap",
+    note: (n) => `${n.toLocaleString()} people are well past the gap they normally keep between visits.`,
+    action: "These are the clearest names to call — they came back before, on a rhythm you can see, and that rhythm has broken. Someone who simply hasn't reached their usual year yet is not on this list.",
+    /* Two visits, not three. That isn't a loyalty bar — it's the arithmetic
+       minimum for a gap to exist at all. One visit gives nothing to be late
+       against, and someone who came once two years ago may simply have had
+       their work finished. */
+    match: (p, now) => p.v >= 2 && !!overdueBy(p, now),
   },
   {
     key: "due_back",
