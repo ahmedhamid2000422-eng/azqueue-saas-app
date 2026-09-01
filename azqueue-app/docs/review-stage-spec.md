@@ -537,3 +537,61 @@ Service averages join the same rotation later. Each entry should be
 independently switchable off, and anything derived from data must disappear
 on its own when the sample is too small — the same rule the rest of the app
 follows.
+
+---
+
+# Later: "still at your desk?" — availability, not monitoring
+
+**The problem it solves.** The queue routes work to staff who may not be at
+their desk. Nobody marks themselves away, so the queue keeps assigning to an
+empty chair and the customer waits for someone who isn't there. That is a
+routing failure, not a discipline problem.
+
+**The design.** After ~45 minutes with no activity from that staff member
+during opening hours, show a box ON THEIR OWN SCREEN:
+
+> **Still at your desk?**
+> [ Yes, I'm here ]   [ I'm away ]
+
+No answer within a few minutes → mark them away and stop routing to them.
+Coming back is one tap.
+
+## Why this is acceptable and inference is not
+
+The distinction is consent, and it is not a technicality:
+
+- **Asking** — the person answers for themselves, knows the question was
+  asked, and controls the answer. The system holds one bit: available or not.
+- **Inferring** from activity — the system decides something about a person
+  from behaviour they didn't know was being watched. Staff work this out
+  quickly, and when they do, every other number in the product becomes
+  suspect to them.
+
+So: never infer away-ness silently. Ask, and act on the answer.
+
+## Rules if this is built
+
+1. **The prompt appears only on that person's own screen.** Nobody else sees
+   "Sara hasn't responded".
+2. **Store availability, not history.** available / away and nothing more.
+   Do NOT accumulate a log of how long each person was away — that turns a
+   routing tool into a timesheet nobody agreed to.
+3. **No alerting the owner** when someone goes away. The queue reroutes; that
+   is the entire outcome.
+4. **Tell staff plainly, in the app**, what it does and what it records —
+   ideally in the tour: "this only stops the queue sending customers to an
+   empty desk."
+5. **The threshold is generous.** 45 minutes, not 5. A short absence is
+   normal and prompting constantly is its own kind of pressure.
+
+## What it unlocks
+
+Once availability is real rather than assumed, several things stop being
+guesses: how many people are genuinely serving at a given moment (which the
+wait estimator divides by), and whether the queue is slow because of demand
+or because half the staff are away from their desks.
+
+Note this is the OPPOSITE direction from the break-pattern heatmap, which
+tried to learn a rhythm from status data nobody was producing. This produces
+the data as a side effect of a thing staff actually want — not being sent
+customers when they've stepped out.
