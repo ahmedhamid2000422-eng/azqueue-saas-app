@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import { sendCheckinConfirmation } from "../lib/notify";
+import { sendConfirmationSms } from "../lib/notifications";
 import { sendCheckinEmail } from "../lib/notifyEmail";
 import { SMS_ENABLED } from "../lib/features";
 import { estimateWaitFor, formatWait } from "../lib/waitEstimator";
@@ -206,8 +206,18 @@ export default function CustomerCheckIn() {
             branchSlug: branch.slug,
           });
         }
+        /* Routed through the send-notification edge function, not Twilio
+           directly. The old path called api.twilio.com from the browser,
+           which the browser blocks outright — Twilio sends no CORS headers —
+           so no text has ever left this page. It also required the Twilio
+           auth token to be in the frontend bundle.
+
+           The function takes a ticket id and picks the number and wording
+           itself. That matters because this page is unauthenticated: an
+           endpoint that accepted a destination and a body from here would be
+           an open SMS relay billed to the business. */
         if (smsConsent && phone.trim()) {
-          sendCheckinConfirmation(phone.trim(), name.trim(), tokenData, ahead, branch.name, etaText);
+          sendConfirmationSms(ticket.id);
         }
       };
 

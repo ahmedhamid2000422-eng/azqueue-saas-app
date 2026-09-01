@@ -9,7 +9,8 @@ import QueueNudge from "../../components/QueueNudge";
 import CompletePanel from "../../components/CompletePanel";
 import { assignWork } from "../../lib/backQueue";
 import { sendCallNotice, sendThanks } from "../../lib/notifications";
-import { sendCalledNotification, sendWaitUpdate } from "../../lib/notify";
+import { sendCallNoticeSms } from "../../lib/notifications";
+import { sendWaitUpdate } from "../../lib/notify";
 import { sendCalledEmail } from "../../lib/notifyEmail";
 import { postBranchAlert, broadcastToQueue, loadActiveAlert, clearBranchAlert } from "../../lib/alerts";
 import { SMS_ENABLED, TURN_TIMEOUT_MINUTES, NEAR_FRONT_POSITION, INTERCEPT_AFTER_MINUTES } from "../../lib/features";
@@ -448,15 +449,10 @@ export default function Queue() {
           branchName: branch?.name,
         });
       }
+      /* Via the edge function — the direct-to-Twilio call this replaced was
+         blocked by the browser and never sent anything. */
       if (next.customer_phone) {
-        sendCalledNotification(
-          next.customer_phone,
-          next.customer_name ?? "Customer",
-          next.token,
-          counterLabel ?? "Counter 1",
-          staffName || "Our team",
-          branch?.name,
-        );
+        sendCallNoticeSms(next.id);
       }
     }
     await reload();
@@ -816,14 +812,7 @@ export default function Queue() {
       }
 
       if (SMS_ENABLED && ticket.customer_phone) {
-        jobs.push(sendCalledNotification(
-          ticket.customer_phone,
-          ticket.customer_name ?? "Customer",
-          ticket.token,
-          windowLabel,
-          staffName,
-          branch?.name ?? "AzQueue",
-        ));
+        jobs.push(sendCallNoticeSms(ticket.id));
       }
 
       await Promise.all(jobs);
