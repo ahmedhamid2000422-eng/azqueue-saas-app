@@ -9,6 +9,7 @@ import QueueNudge from "../../components/QueueNudge";
 import CompletePanel from "../../components/CompletePanel";
 import QueueHygiene from "../../components/QueueHygiene";
 import InReviewList from "../../components/InReviewList";
+import CompleteReminder from "../../components/CompleteReminder";
 import { assignWork } from "../../lib/backQueue";
 import { sendCallNotice, sendThanks } from "../../lib/notifications";
 import { sendCallNoticeSms } from "../../lib/notifications";
@@ -1391,7 +1392,13 @@ export default function Queue() {
             </div>
           )}
 
-          {/* The second line. Renders nothing when empty, so it costs no
+          {/* Fires once each time a NEW person is called, then removes itself
+          after 40 calls. Scaffolding, not an alert — a permanent prompt would
+          be ignored within a week, and the one message that has to land is
+          this one. */}
+      <CompleteReminder serving={serving} />
+
+      {/* The second line. Renders nothing when empty, so it costs no
               space on a day with no drop-offs — and appears the moment there
               is something to chase, which is the only time it is useful. */}
           <div className="mt-6">
