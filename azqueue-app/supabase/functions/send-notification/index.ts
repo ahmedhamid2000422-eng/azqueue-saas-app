@@ -30,18 +30,22 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
    STOP is on "confirm" because that is the first message of any visit. It is
    left off "call", which arrives moments later and is the one message that
    must be read at a glance while someone is being waved to a counter. */
+/* ASCII only, deliberately. An em dash or curly apostrophe is outside GSM-7,
+   and a single one forces the whole message into UCS-2 — which cuts a segment
+   from 160 characters to 70, so an ordinary message quietly becomes three
+   segments at three times the cost. Keep hyphens and straight quotes here. */
 const TEMPLATES = {
   confirm: ({ token, branchName, serviceName }) =>
     `${branchName}: You're checked in. Ticket ${token} for ${serviceName ?? "your service"}. We'll message you when you're up. Reply STOP to opt out.`,
 
   call: ({ token, branchName }) =>
-    `${branchName}: You're up — please come to the counter now. Ticket ${token}.`,
+    `${branchName}: You're up - please come to the counter now. Ticket ${token}.`,
 
   thanks: ({ token, branchName }) =>
     `${branchName}: Thanks for visiting! Ticket ${token} is complete. Reply STOP to opt out.`,
 
   prayer_pause: ({ token, branchName, prayerName, resumeTime }) =>
-    `${branchName}: Pausing briefly for ${prayerName}. Your ticket ${token} keeps its place — service resumes at ${resumeTime}.`,
+    `${branchName}: Pausing briefly for ${prayerName}. Your ticket ${token} keeps its place - service resumes at ${resumeTime}.`,
 
   // Booking-flow confirmation (QA bug B8) — sent once when a customer books
   // an appointment, either via the public /b/:slug page or the in-app
