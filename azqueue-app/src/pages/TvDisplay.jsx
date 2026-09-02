@@ -989,12 +989,36 @@ function TvUpNext({ waiting, services, branded, branchSlug }) {
         )}
       </div>
 
-      {/* Footer */}
-      {branded && (
-        <div style={{ marginTop: "auto", paddingTop: "2vh", borderTop: "1px solid rgba(255,255,255,0.04)", color: "#2a2820", fontSize: "0.75vw", letterSpacing: "0.2em", textTransform: "uppercase" }}>
-          azqueue.io
+      {/* CHECK IN WHEN YOU ARRIVE
+          The screen only knows about people who checked in. Anyone sitting
+          down without doing it is invisible — no place in the line, no turn
+          notice, and they watch other names go past wondering why.
+
+          Worded as the reason rather than a promise. "Check in to guarantee a
+          better experience" claims something we cannot control; "so we know
+          you are here" is simply true, and true instructions get followed
+          because they make sense rather than because they were insisted on. */}
+      <div style={{
+        marginTop: "auto",
+        paddingTop: "2vh",
+        borderTop: "1px solid rgba(255,255,255,0.06)",
+      }}>
+        <div style={{ color: "#c9a86a", fontSize: "1.05vw", letterSpacing: "0.04em", lineHeight: 1.5 }}>
+          Please check in when you arrive
         </div>
-      )}
+        <div style={{ color: "#6b6a64", fontSize: "0.85vw", letterSpacing: "0.05em", marginTop: "0.4vh", lineHeight: 1.5 }}>
+          Use the tablet at the desk or scan the code — we can only call names that are on this list.
+        </div>
+        <div style={{ color: "#4a4840", fontSize: "0.8vw", letterSpacing: "0.05em", marginTop: "0.6vh", lineHeight: 1.5 }}>
+          We'll email you when it's your turn. Text message updates coming soon.
+        </div>
+
+        {branded && (
+          <div style={{ marginTop: "1.4vh", color: "#2a2820", fontSize: "0.75vw", letterSpacing: "0.2em", textTransform: "uppercase" }}>
+            azqueue.io
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -21,6 +21,24 @@
  */
 export const SMS_ENABLED = import.meta.env.VITE_SMS_ENABLED === "true";
 
+/**
+ * SMS_PENDING — the in-between state the original flag had no room for.
+ *
+ * The A2P 10DLC campaign is registered but not yet approved, so the number
+ * cannot deliver. Turning SMS_ENABLED off would be the honest-looking move,
+ * except it also hides the consent checkbox — and that checkbox IS the
+ * call-to-action a carrier reviewer is sent to inspect. Hiding it fails the
+ * campaign that would let texting work at all.
+ *
+ * So the form keeps the phone field and the consent box, and says plainly
+ * that texts start once approved. The customer is told the truth, the
+ * reviewer sees a real opt-in, and nobody is left waiting for a message that
+ * cannot arrive.
+ *
+ * Set VITE_SMS_PENDING=false the day the campaign is approved.
+ */
+export const SMS_PENDING = import.meta.env.VITE_SMS_PENDING !== "false";
+
 /* The check-in page's "it's busy, quieter after 4" panel.
    Defaults ON, but set VITE_CHECKIN_NUDGE=false in Vercel and redeploy to
    silence it instantly — no code change, no waiting on a developer. Worth
