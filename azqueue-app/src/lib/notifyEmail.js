@@ -155,3 +155,31 @@ export function sendChecklistEmail({ email, serviceName, items, reminder, branch
 export function sendAlertEmail({ email, name, message, branchName }) {
   return send({ type: "alert", to: email, name, message, branchName });
 }
+
+/**
+ * "Your documents are ready to collect."
+ *
+ * The last step of the drop-off flow, and the one that makes the rest of it
+ * worth doing. Without it we take someone's paperwork, save them a wait, and
+ * then leave them guessing when to come back — which is a worse experience
+ * than the queue they avoided.
+ *
+ * Deliberately no ticket number and no queue position: they are not in a
+ * queue. They need to know it's done, where to go, and that the collection
+ * desk will recognise them.
+ */
+export function sendReadyEmail({ email, name, branchName, serviceName, branchSlug }) {
+  if (!email) return Promise.resolve({ skipped: "no email" });
+  return send({
+    type: "ready",
+    to: email,
+    name,
+    branchName,
+    serviceName,
+    /* The kiosk lookup matches on the email we already hold, so telling them
+       to enter it is accurate and needs no ticket number they've long lost. */
+    message: branchSlug
+      ? "Come to the collection desk and enter your email on the screen — we'll know you're here."
+      : "Come to the collection desk and let us know you've arrived.",
+  });
+}

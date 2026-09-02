@@ -8,6 +8,7 @@ import { loadServiceStats } from "../../lib/waitEstimator";
 import QueueNudge from "../../components/QueueNudge";
 import CompletePanel from "../../components/CompletePanel";
 import QueueHygiene from "../../components/QueueHygiene";
+import InReviewList from "../../components/InReviewList";
 import { assignWork } from "../../lib/backQueue";
 import { sendCallNotice, sendThanks } from "../../lib/notifications";
 import { sendCallNoticeSms } from "../../lib/notifications";
@@ -1390,15 +1391,54 @@ export default function Queue() {
             </div>
           )}
 
+          {/* The second line. Renders nothing when empty, so it costs no
+              space on a day with no drop-offs — and appears the moment there
+              is something to chase, which is the only time it is useful. */}
+          <div className="mt-6">
+            <InReviewList
+              branchId={branch?.id}
+              branchName={branch?.name}
+              branchSlug={branch?.slug}
+              onChange={reload}
+            />
+          </div>
+
           <div className="rule-ornament my-7 text-[9px]"><span>✦</span></div>
 
+          {/* WHICH BUTTON IS BIG DEPENDS ON WHAT IS HAPPENING.
+              Complete used to be a ghost button sitting between Skip and
+              Return, while "Call next customer" was large and primary. So the
+              action required on every single visit looked optional, and the
+              one that leaves the previous visit unrecorded looked like the
+              main thing to press.
+
+              That is not a training problem, it is the screen giving the
+              wrong instruction — and it is the most likely cause of days
+              where every ticket was closed in one burst at 5pm.
+
+              With someone at the counter, finishing them is the next action
+              and Complete is the large button. With nobody being served,
+              calling the next person is, and it takes the emphasis back. */}
           <div className="flex flex-wrap gap-3 items-center">
-            <Button onClick={callNext} disabled={busy || waiting.length === 0} size="lg">
-              Call next customer →
-            </Button>
-            <Button variant="ghost" onClick={complete} disabled={busy || !serving}>
-              Complete
-            </Button>
+            {serving ? (
+              <>
+                <Button onClick={complete} disabled={busy} size="lg">
+                  Complete {serving.customer_name ? serving.customer_name.split(" ")[0] : serving.token} ✓
+                </Button>
+                <Button variant="ghost" onClick={callNext} disabled={busy || waiting.length === 0}>
+                  Call next customer →
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button onClick={callNext} disabled={busy || waiting.length === 0} size="lg">
+                  Call next customer →
+                </Button>
+                <Button variant="ghost" onClick={complete} disabled>
+                  Complete
+                </Button>
+              </>
+            )}
             <Button variant="ghost" onClick={skipServing} disabled={busy || !serving}>
               Skip
             </Button>

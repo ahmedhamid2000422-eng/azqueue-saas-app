@@ -220,6 +220,28 @@ function buildContent(type: string, c: Ctx) {
       });
     }
 
+    case "ready": {
+      /* The work is finished and the customer has no idea. Without this the
+         drop-off flow is only half a service: we took their documents, saved
+         them a wait, and then left them guessing when to return.
+
+         No ticket number and no queue position — they are not in a queue.
+         What they need is: it is done, where to go, and when you are open. */
+      const where = c.message
+        ? c.message
+        : "Come to the collection desk and enter your email on the screen — we'll know you're here.";
+      return wrap({
+        subject:  `Ready to collect at ${c.branchName}`,
+        heading:  `Your documents are ready`,
+        lead:     `Hi ${c.name}, we've finished your ${c.serviceName || "paperwork"}.`,
+        badge:    "",
+        badgeCap: "",
+        body:     [where, c.quietNote].filter(Boolean) as string[],
+        cta:      null,
+        branchName: c.branchName,
+      });
+    }
+
     case "checklist": {
       /* Sent when someone at the door realises they're missing a document.
          The whole value is that they can act on it — so the list is the

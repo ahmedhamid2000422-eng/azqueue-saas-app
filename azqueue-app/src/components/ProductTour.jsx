@@ -66,6 +66,21 @@ const STOPS = [
     why: "Calling people from here is what puts their number on the TV and sends their email. Calling out names by hand skips all of it.",
   },
   {
+    path: "",
+    label: "Finishing someone",
+    title: "Press Complete as they leave, not at closing time",
+    body:
+      "When someone is done, press Complete and choose how it went — finished, " +
+      "needs documents, or dropped off. One tap, then it calls the next person for you.",
+    tip:
+      "If you are not sure how a visit ended, choose Done. Closing it is what matters.",
+    why:
+      "This is the one habit everything else depends on. Tidying the screen at the end " +
+      "of the day makes it look like every customer waited three hours, and then none of " +
+      "the wait times, busy hours or advice are worth reading. Pressed as it happens, " +
+      "they are real.",
+  },
+  {
     path: "display",
     label: "The TV",
     title: "The screen in your waiting room",
@@ -229,48 +244,48 @@ export default function ProductTour({ open, onClose }) {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none px-4 pb-5">
-      <div className="pointer-events-auto w-full max-w-[560px] border border-gold-deep/60 bg-bg shadow-2xl">
+      <div className="pointer-events-auto w-full max-w-[560px] rounded-xl border border-gold-deep/45 bg-bg shadow-2xl overflow-hidden">
         {/* Progress */}
-        <div className="flex gap-1 px-5 pt-4">
+        <div className="flex gap-1.5 px-6 pt-5">
           {STOPS.map((s, n) => (
             <div
               key={s.label + n}
-              className={`h-[2px] flex-1 transition ${n <= i ? "bg-gold" : "bg-line"}`}
+              className={`h-[3px] rounded-full flex-1 transition ${n <= i ? "bg-gold" : "bg-line"}`}
             />
           ))}
         </div>
 
-        <div className="px-5 py-4">
+        <div className="px-6 py-5">
           <div className="flex items-center justify-between gap-3 mb-2">
-            <span className="ovline text-[9px] text-gold-soft">
-              {stop.label} · {i + 1} of {STOPS.length}
+            <span className="text-[11.5px] text-gold-soft">
+              {stop.label} · step {i + 1} of {STOPS.length}
             </span>
             <button
               onClick={() => finish(false)}
-              className="ovline text-[9px] text-ink-mute hover:text-ink transition"
+              className="text-[11.5px] text-ink-mute hover:text-ink transition"
             >
-              Skip ✕
+              Close
             </button>
           </div>
 
-          <div className="font-display text-lg text-ink tracking-tight leading-snug mb-1.5">
+          <div className="font-display text-xl text-ink tracking-tight leading-snug mb-2">
             {stop.title}
           </div>
-          <p className="text-[12.5px] text-ink-soft leading-relaxed">{stop.body}</p>
+          <p className="text-[13.5px] text-ink-soft leading-relaxed">{stop.body}</p>
 
           {/* Why it's worth caring. Stated separately from what the page does,
               because "here is a list of your customers" and "you will never
               have to type this list" are different sentences and the second
               one is the reason anybody opens the page twice. */}
           {stop.why && (
-            <p className="text-[11.5px] text-ink-soft leading-relaxed mt-2.5">
-              <span className="ovline text-[8px] text-gold-soft mr-1.5">Why it helps</span>
+            <p className="text-[12.5px] text-ink-soft leading-relaxed mt-3">
+              <span className="text-[11.5px] text-gold-soft mr-1.5">Why it helps —</span>
               {stop.why}
             </p>
           )}
 
           {stop.tip && (
-            <p className="text-[11px] text-ink-mute leading-relaxed mt-2 border-l border-gold-deep/50 pl-2.5">
+            <p className="text-[12px] text-ink-mute leading-relaxed mt-2.5 border-l-2 border-gold-deep/40 pl-3">
               {stop.tip}
             </p>
           )}
@@ -279,14 +294,14 @@ export default function ProductTour({ open, onClose }) {
               beat any amount of explaining what an assistant "can do". */}
           {stop.ask?.length > 0 && (
             <div className="mt-3">
-              <div className="ovline text-[8px] text-ink-mute mb-1.5">
-                Try asking AI Assist
+              <div className="text-[11.5px] text-ink-mute mb-2">
+                You could ask:
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {stop.ask.map((q) => (
                   <span
                     key={q}
-                    className="text-[10px] border border-line px-2 py-1 text-ink-soft"
+                    className="text-[11px] rounded-full border border-line px-2.5 py-1 text-ink-soft"
                   >
                     “{q}”
                   </span>
@@ -305,14 +320,14 @@ export default function ProductTour({ open, onClose }) {
             {!first && (
               <button
                 onClick={() => setI((n) => n - 1)}
-                className="ovline text-[9px] border border-line px-3 py-2 text-ink-mute hover:text-ink transition"
+                className="text-[12.5px] rounded-lg border border-line px-4 py-2.5 text-ink-mute hover:text-ink transition"
               >
                 Back
               </button>
             )}
             <button
               onClick={() => (stop.last ? finish(true) : setI((n) => n + 1))}
-              className="ovline text-[9px] border border-gold-deep px-4 py-2 text-gold-soft hover:bg-[rgba(201,168,106,0.1)] transition flex-1"
+              className="text-[12.5px] rounded-lg border border-gold-deep px-4 py-2.5 text-gold-soft hover:bg-[rgba(201,168,106,0.1)] transition flex-1"
             >
               {stop.last ? "Finish" : "Next"}
             </button>
@@ -332,10 +347,10 @@ export default function ProductTour({ open, onClose }) {
  */
 export function TourInvite({ onStart, onDismiss }) {
   return (
-    <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 w-[min(460px,calc(100vw-2.5rem))] border border-gold-deep/60 bg-bg shadow-2xl">
-      <div className="px-5 py-4">
+    <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 w-[min(460px,calc(100vw-2.5rem))] rounded-xl border border-gold-deep/45 bg-bg shadow-2xl overflow-hidden">
+      <div className="px-6 py-5">
         <div className="flex items-start justify-between gap-3 mb-2">
-          <span className="ovline text-[9px] text-gold-soft">New here?</span>
+          <span className="text-[12px] text-gold-soft">New here?</span>
           <button
             onClick={onDismiss}
             title="Close"
@@ -344,23 +359,23 @@ export function TourInvite({ onStart, onDismiss }) {
             ✕
           </button>
         </div>
-        <div className="font-display text-base text-ink tracking-tight mb-1">
+        <div className="font-display text-lg text-ink tracking-tight mb-1.5">
           Take a quick look around AzQueue
         </div>
-        <p className="text-[12px] text-ink-soft leading-relaxed">
+        <p className="text-[13px] text-ink-soft leading-relaxed">
           A few short stops, about three minutes. You'll see what each page is for
           and why it's worth using, on your own branch — and you can stop any time.
         </p>
         <div className="flex items-center gap-2 mt-3.5">
           <button
             onClick={onStart}
-            className="ovline text-[9px] border border-gold-deep px-4 py-2 text-gold-soft hover:bg-[rgba(201,168,106,0.1)] transition flex-1"
+            className="text-[12.5px] rounded-lg border border-gold-deep px-4 py-2.5 text-gold-soft hover:bg-[rgba(201,168,106,0.1)] transition flex-1"
           >
             Show me around
           </button>
           <button
             onClick={onDismiss}
-            className="ovline text-[9px] border border-line px-3 py-2 text-ink-mute hover:text-ink transition"
+            className="text-[12.5px] rounded-lg border border-line px-4 py-2.5 text-ink-mute hover:text-ink transition"
           >
             Not now
           </button>
