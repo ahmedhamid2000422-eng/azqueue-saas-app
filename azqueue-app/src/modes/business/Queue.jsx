@@ -7,6 +7,7 @@ import { logServiceTime } from "../../lib/autopilot";
 import { loadServiceStats } from "../../lib/waitEstimator";
 import QueueNudge from "../../components/QueueNudge";
 import CompletePanel from "../../components/CompletePanel";
+import QueueHygiene from "../../components/QueueHygiene";
 import { assignWork } from "../../lib/backQueue";
 import { sendCallNotice, sendThanks } from "../../lib/notifications";
 import { sendCallNoticeSms } from "../../lib/notifications";
@@ -950,9 +951,14 @@ export default function Queue() {
   async function clearQueue() {
     setBusy(true);
     setError(null);
+    /* Writes expired_at, NOT completed_at. Clearing the screen is
+       housekeeping — nobody was served and nobody necessarily walked out.
+       Recording it as a completion inflated service times; recording it as an
+       ordinary cancellation inflated the abandonment rate, which is the one
+       number this business most needs to be true. */
     const { error: e } = await supabase
       .from("tickets")
-      .update({ status: "cancelled", completed_at: new Date().toISOString() })
+      .update({ status: "cancelled", expired_at: new Date().toISOString() })
       .eq("branch_id", branch.id)
       .in("status", ["waiting", "serving"]);
     setClearConfirm(false);
@@ -1200,6 +1206,14 @@ export default function Queue() {
         reward={loyaltyReward}
         onClose={() => setLoyaltyReward(null)}
       />
+      {/* Above the header, because it is about the screen being wrong — and a
+          correction that appears below the numbers it corrects gets read
+          second, if at all. `waiting.length` as the refresh key means it
+          re-checks whenever the queue actually changes. */}
+      <div className="mb-5">
+        <QueueHygiene branchId={branch?.id} refreshKey={waiting.length + (serving ? 1 : 0)} />
+      </div>
+
       <header className="flex justify-between items-start mb-8 gap-4">
         <div>
           <div className="ovline mb-2 text-gold-soft">Live · combined queue</div>

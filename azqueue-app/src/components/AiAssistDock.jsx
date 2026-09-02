@@ -264,13 +264,16 @@ export default function AiAssistDock() {
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          title="AzQueue AI Assist"
-          className="fixed bottom-5 right-5 z-40 flex items-center gap-2.5 border border-gold-deep bg-bg pl-2.5 pr-4 py-2.5 shadow-xl hover:bg-[rgba(201,168,106,0.08)] transition"
+          title="Ask a question about your queue"
+          className="fixed bottom-5 right-5 z-40 flex items-center gap-2.5 rounded-full border border-gold-deep bg-bg pl-2.5 pr-5 py-2.5 shadow-xl hover:bg-[rgba(201,168,106,0.08)] transition"
         >
-          <span className="w-7 h-7 bg-gold flex items-center justify-center shrink-0">
-            <span className="text-[#141410] font-display text-[10px] font-semibold">AQ</span>
+          <span className="w-7 h-7 rounded-full bg-gold flex items-center justify-center shrink-0">
+            <span className="text-[#141410] font-display text-[11px] font-semibold">AQ</span>
           </span>
-          <span className="ovline text-[9px] text-gold-soft">AI Assist</span>
+          {/* Sentence case, ordinary words, and the size of a thing meant to
+              be read rather than decoded. "AI Assist" in tracked capitals
+              looked like a feature name; this looks like an offer of help. */}
+          <span className="text-[12.5px] text-gold-soft">Ask a question</span>
           {/* "New" until they've seen the tutorial — a quiet nudge to open it once. */}
           {neverOpened && (
             <span className="ovline text-[7px] border border-gold-deep/60 text-gold-soft px-1 py-0.5">
@@ -286,15 +289,12 @@ export default function AiAssistDock() {
         <div className="fixed bottom-5 right-5 z-40 w-[380px] max-w-[calc(100vw-2.5rem)] border border-gold-deep/50 bg-bg shadow-2xl flex flex-col max-h-[min(620px,calc(100vh-3rem))]">
           <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-gold-deep/25 shrink-0">
             <div className="flex items-center gap-2.5">
-              <span className="w-7 h-7 bg-gold flex items-center justify-center shrink-0">
-                <span className="text-[#141410] font-display text-[10px] font-semibold">AQ</span>
+              <span className="w-7 h-7 rounded-full bg-gold flex items-center justify-center shrink-0">
+                <span className="text-[#141410] font-display text-[11px] font-semibold">AQ</span>
               </span>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-display text-sm text-ink tracking-tight">AzQueue</span>
-                  <span className="ovline text-[7px] border border-gold-deep/50 text-gold-soft px-1 py-0.5">
-                    AI Assist
-                  </span>
+                  <span className="font-display text-sm text-ink tracking-tight">Ask AzQueue</span>
                 </div>
                 <div className="text-[9px] text-ink-mute">{branch.name}</div>
               </div>
@@ -352,8 +352,8 @@ export default function AiAssistDock() {
                 can't be scrolled past or missed. */}
             {tour && (
               <div className="mb-1">
-                <div className="ovline text-[9px] text-gold-soft mb-3">
-                  Your new assistant
+                <div className="text-[13px] text-ink mb-3">
+                  Hello — here is what I can do
                 </div>
 
                 {TOUR.map((t) => (
@@ -378,13 +378,32 @@ export default function AiAssistDock() {
             )}
 
             {!tour && messages.length === 0 && (
-              <div className="text-[12px] text-ink-soft leading-relaxed">
-                <p className="mb-1">
-                  Ask me about your queue — wait times, how busy you really are, why people
-                  leave, whether you need more cover.
+              <div className="text-[12.5px] text-ink-soft leading-relaxed">
+                <p className="mb-3">
+                  Hello — ask me anything about how the office is running. I only
+                  use your own records, so everything I say is about this branch.
                 </p>
+                {/* Starter questions, tappable. Somebody who has never used a
+                    chat box does not know what it will understand, and a blank
+                    field with a cursor is an exam question. These remove that
+                    entirely: press one and see what an answer looks like. */}
+                <div className="flex flex-col gap-1.5 mb-3">
+                  {[
+                    "How busy were we yesterday?",
+                    "How long do people usually wait?",
+                    "What time of day is busiest?",
+                  ].map((q) => (
+                    <button
+                      key={q}
+                      onClick={() => send(q)}
+                      className="text-left text-[12px] border border-line hover:border-gold-deep px-3 py-2 text-ink-soft hover:text-ink transition"
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
                 <p className="text-[11px] text-ink-mute">
-                  Every figure I quote is calculated from your own data over the last {DAYS} days.
+                  You can also just type in your own words below.
                 </p>
               </div>
             )}
@@ -442,16 +461,16 @@ export default function AiAssistDock() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-              placeholder="Ask anything…"
+              placeholder="Type your question here…"
               disabled={busy}
               className="flex-1 bg-bg-elev border border-line focus:border-gold-deep outline-none px-3 py-2 text-[12px] text-ink placeholder:text-ink-mute disabled:opacity-50"
             />
             <button
               onClick={() => send()}
               disabled={busy || !input.trim()}
-              className="ovline text-[9px] border border-gold-deep px-3 text-gold-soft hover:bg-[rgba(201,168,106,0.1)] transition disabled:opacity-30"
+              className="text-[12px] border border-gold-deep px-4 text-gold-soft hover:bg-[rgba(201,168,106,0.1)] transition disabled:opacity-30"
             >
-              Ask
+              Send
             </button>
           </div>
         </div>

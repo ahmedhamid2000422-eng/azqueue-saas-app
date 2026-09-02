@@ -56,6 +56,7 @@ export default function ArrivalChannels({ branchId }) {
         .from("tickets")
         .select("source")
         .eq("branch_id", branchId)
+        .eq("is_test", false)
         .gte("created_at", since);
 
       if (off) return;

@@ -14,7 +14,7 @@ immigration, ~9,300 clients, 17,752 recorded visits). Nothing is illustrative.
 90-minute waits.**
 
 - queue pressure ρ = 0.38 — arrivals ÷ capacity across the full day
-- average wait 94.6 minutes, median 61.8
+- average wait 94.6 minutes, median 61.8 — **provenance unresolved, see below**
 - ~40% of people left without being seen
 - 62% of all visits arrive between 10am and 3pm; 6% after 5pm
 - busiest hour 11am; by 4pm it drops to 61% of peak
@@ -27,6 +27,13 @@ was to move arrivals, not add people.
 
 That is the difference between analytics and an answer, and it's a positioning
 line nobody can copy without doing the same work.
+
+**Caveat added 2 September.** The wait figures above sit uneasily with the
+section below stating the Qminder export contained no per-visit records. If
+there were no wait times in the export, these cannot have come from it. Trace
+the source before using either number publicly — the arrival-shape findings
+(62% between 10am and 3pm, ρ = 0.38) are computed from arrival counts and are
+unaffected either way.
 
 ## What was actually wrong with the software (ours)
 
@@ -106,6 +113,33 @@ The usable line, specific and checkable rather than "their analytics are bad":
 > We imported 17,752 visits from Qminder. The export had visit counts and
 > dates — no wait times, no service durations. Two years of history that
 > couldn't answer how long anyone waited.
+
+**Do not claim a wait-time improvement yet.** It is tempting, and it would be
+unsupported. As of 2 September none of the levers that could shorten a queue
+are running: nobody has ever used the booking page, the quiet-hour nudge has
+never had a slot to offer, and drop-off began recording the day before. There
+is no mechanism by which a wait could have fallen, so any figure showing one
+would be measurement noise or an artefact — and this is exactly the claim a
+prospect would ask us to explain.
+
+See `baseline-2026-09.md` for what is measured today. The comparison becomes
+available roughly a month after one lever goes live, and it will be worth far
+more then because it will survive being questioned.
+
+**The claim that IS true today**, and is stronger than a queue-length number
+because it is about the product rather than one customer:
+
+> In a single week of looking properly we found five figures that had been
+> wrong since launch: daily counts computed in the wrong timezone, alerts
+> firing on fixed thresholds that were permanently lit, a booking rate
+> filtering on a value the app never writes, service times inflated by a
+> nightly cron job, and an abandonment rate that counted our own housekeeping
+> as customers walking out. Every one is fixed, and every fix is in a
+> migration you can read.
+
+Most queue software has the same class of error and no way to notice. That is
+a defensible difference, and unlike a wait-time claim it cannot be contested —
+the migrations are the evidence.
 
 ## Price is a segment boundary, not a discount
 

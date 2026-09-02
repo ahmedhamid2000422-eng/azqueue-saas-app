@@ -6,73 +6,47 @@ import { downloadXLSX } from "../../lib/exportXlsx";
 import ExportMenu from "../../components/ExportMenu";
 import Card, { CardHeader } from "../../components/Card";
 import ArrivalChannels from "../../components/ArrivalChannels";
+import RecentDays from "../../components/RecentDays";
 import Stat from "../../components/Stat";
 import Button from "../../components/Button";
 
 /**
- * Insights — branch-level metrics pulled from the get_insights_payload RPC.
+ * Insights — branch-level metrics from the get_insights_payload RPC.
  *
- * Data contract (JSONB returned by the RPC):
- *   {
- *     served_today:        int,      -- completed tickets today
- *     avg_wait_sec:        float,    -- created_at → called_at (completed tickets)
- *     avg_service_sec:     float,    -- called_at → completed_at (completed tickets)
- *     no_show_rate:        float,    -- cancelled / (completed + cancelled), 0–1
- *     booking_conversion:  float,    -- tickets with source='booking' completed / total bookings today
- *     peak_hour:           int,      -- 0–23, hour with most completions today (null if none)
- *     waiting_now:         int,      -- tickets currently in waiting status
- *     serving_now:         int,      -- tickets currently in serving status
- *   }
+ * The RPC's definitive source is supabase/migrations/0057_insights_payload_clean.sql.
+ * The full SQL used to be pasted here and drifted out of date twice, at which
+ * point a comment describing the wrong behaviour is worse than no comment —
+ * it was still documenting a UTC "today" and a booking filter that never
+ * matched anything, long after both were fixed.
  *
- * Stale time: 60 s.  A manual "Refresh" button forces an immediate re-fetch.
+ * Keys returned:
+ *   day, is_today, timezone
+ *   served_today        completed visits on that day
+ *   avg_wait_sec        created_at → called_at
+ *   avg_service_sec     called_at → completed_at
+ *   no_show_rate        share who gave up, 0–1
+ *   booking_conversion  booked visits completed ÷ booked visits
+ *   peak_hour           0–23, most completions (null if none)
+ *   waiting_now         live count, null when viewing a past day
+ *   serving_now         live count, null when viewing a past day
  *
- * SQL to deploy in Supabase SQL editor (B5):
- * ─────────────────────────────────────────────────────────────────────────
- * CREATE OR REPLACE FUNCTION get_insights_payload(p_branch_id uuid)
- * RETURNS jsonb
- * LANGUAGE plpgsql
- * SECURITY DEFINER
- * AS $$
- * DECLARE
- *   v_today_start timestamptz := date_trunc('day', now() AT TIME ZONE 'UTC');
- *   v_result      jsonb;
- * BEGIN
- *   SELECT jsonb_build_object(
- *     'served_today',
- *       COUNT(*) FILTER (WHERE status = 'completed' AND created_at >= v_today_start),
- *     'avg_wait_sec',
- *       AVG(EXTRACT(EPOCH FROM (called_at - created_at)))
- *         FILTER (WHERE status = 'completed' AND called_at IS NOT NULL AND created_at >= v_today_start),
- *     'avg_service_sec',
- *       AVG(EXTRACT(EPOCH FROM (completed_at - called_at)))
- *         FILTER (WHERE status = 'completed' AND called_at IS NOT NULL AND completed_at IS NOT NULL AND created_at >= v_today_start),
- *     'no_show_rate',
- *       CASE WHEN COUNT(*) FILTER (WHERE status IN ('completed','cancelled') AND created_at >= v_today_start) = 0 THEN NULL
- *            ELSE COUNT(*) FILTER (WHERE status = 'cancelled' AND created_at >= v_today_start)::float
- *               / COUNT(*) FILTER (WHERE status IN ('completed','cancelled') AND created_at >= v_today_start)
- *       END,
- *     'booking_conversion',
- *       CASE WHEN COUNT(*) FILTER (WHERE source = 'booking' AND created_at >= v_today_start) = 0 THEN NULL
- *            ELSE COUNT(*) FILTER (WHERE source = 'booking' AND status = 'completed' AND created_at >= v_today_start)::float
- *               / COUNT(*) FILTER (WHERE source = 'booking' AND created_at >= v_today_start)
- *       END,
- *     'peak_hour',
- *       (SELECT EXTRACT(HOUR FROM completed_at AT TIME ZONE 'UTC')::int
- *        FROM tickets
- *        WHERE branch_id = p_branch_id AND status = 'completed' AND created_at >= v_today_start
- *        GROUP BY 1 ORDER BY COUNT(*) DESC LIMIT 1),
- *     'waiting_now',
- *       COUNT(*) FILTER (WHERE status = 'waiting'),
- *     'serving_now',
- *       COUNT(*) FILTER (WHERE status = 'serving')
- *   ) INTO v_result
- *   FROM tickets
- *   WHERE branch_id = p_branch_id;
+ * THREE THINGS THAT SURPRISE PEOPLE READING THE NUMBERS
  *
- *   RETURN v_result;
- * END;
- * $$;
- * ─────────────────────────────────────────────────────────────────────────
+ * 1. The day is the BRANCH's day, not UTC. Computed in the branch timezone,
+ *    because "today" beginning at 6pm the previous evening made every daily
+ *    figure wrong for a Colorado business since launch.
+ *
+ * 2. Test check-ins are excluded (is_test). The owner checks himself in
+ *    daily; those rows once produced a confident and completely wrong reading
+ *    of a day's trading.
+ *
+ * 3. no_show_rate counts only people who actually gave up. Tickets closed by
+ *    the nightly sweep or by Clear queue carry expired_at and are left out —
+ *    otherwise the office's own housekeeping is reported as customers walking
+ *    away, which is the one number this business most needs to be true.
+ *
+ * Stale time 60 s, and only for today: a past day's numbers are settled, so
+ * polling them is noise.
  */
 
 const STALE_MS = 60_000; // 60 s
@@ -140,6 +114,7 @@ export default function Insights() {
         .from("tickets")
         .select("created_at, called_at, status")
         .eq("branch_id", branch.id)
+        .eq("is_test", false)
         .eq("status", "completed")
         .not("called_at", "is", null)
         .gte("created_at", since)
@@ -328,6 +303,12 @@ export default function Insights() {
           conversations from a number that isn't connected and Google
           Analytics sessions from people who never came in. This counts real
           visits by real customers of this business. */}
+      {/* Above the arrival mix: this is the panel the owner will actually
+          read, and the one that shows him what his own days look like. */}
+      <div className="mt-6">
+        <RecentDays branchId={branch?.id} timezone={data?.timezone} />
+      </div>
+
       <div className="mt-6">
         <ArrivalChannels branchId={branch?.id} />
       </div>

@@ -40,6 +40,12 @@ export default function CustomerCheckIn() {
   const isKiosk = params.get("kiosk") === "1";
   const arrivalSource = isKiosk ? "kiosk" : "own_device";
 
+  /* ?test=1 marks the ticket so it never reaches a statistic. The owner tests
+     this page daily, sometimes with realistic names and numbers, and those
+     rows are otherwise indistinguishable from customers — they have already
+     produced one wrong conclusion about a day's trading. */
+  const isTest = params.get("test") === "1";
+
   const [branch, setBranch] = useState(null);
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -165,6 +171,7 @@ export default function CustomerCheckIn() {
            either — back-dating history into a category it was never recorded
            in would answer the question this exists to ask. */
         source: arrivalSource,
+        is_test: isTest,
         status: "waiting",
         customer_name: name.trim(),
         customer_phone: phone.trim(),

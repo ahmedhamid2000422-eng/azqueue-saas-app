@@ -299,6 +299,33 @@ export default function CustomerTicket() {
         {ticket.status === "cancelled" && <Cancelled branch={branch} />}
       </div>
 
+      {/* BOOK NEXT TIME
+          Shown only while waiting, and deliberately here rather than in a
+          banner: this is the screen someone stares at during the wait, which
+          is the one moment an alternative to waiting is obviously worth
+          something. The office has bookable slots every day and had taken
+          zero bookings in 126 visits, because nothing anywhere pointed at the
+          page — not a demand problem, a signposting one.
+
+          Quiet styling on purpose. Someone already in the queue does not need
+          persuading now; they need to remember it exists next February. */}
+      {ticket.status === "waiting" && branch?.slug && (
+        <div className="mt-6 border border-line px-4 py-3">
+          <div className="text-[12px] text-ink leading-relaxed">
+            Next time, you can book a time in advance.
+          </div>
+          <div className="text-[11px] text-ink-mute leading-relaxed mt-1">
+            Pick a slot and come straight in — no waiting.
+          </div>
+          <a
+            href={`/b/${branch.slug}`}
+            className="inline-block mt-2.5 text-[11px] border border-gold-deep px-3 py-1.5 text-gold-soft hover:bg-[rgba(201,168,106,0.1)] transition"
+          >
+            See available times
+          </a>
+        </div>
+      )}
+
       {/* Arrival tracking — only while waiting + branch has coords */}
       {ticket.status === "waiting" && branch?.lat != null && branch?.lng != null && (
         <ArrivalCard
