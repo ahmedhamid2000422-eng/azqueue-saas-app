@@ -62,12 +62,22 @@ export default function SmsPolicy() {
               separate from every other field and <strong>unchecked by
               default</strong>, reading:
             </p>
+            {/* Must match the live form word for word. A reviewer compares
+                this against the real check-in page, and wording that differs
+                reads as a policy written separately from the product. The
+                form fills in the name of the business the customer is
+                standing in, which is why it appears in brackets here. */}
             <blockquote className="border-l-2 border-gold-deep pl-4 my-4 text-ink-soft text-[12.5px] leading-relaxed">
-              I agree to receive SMS text messages from AzQueue about my queue
-              status and appointment updates. Message frequency varies
-              (typically 1–5 per visit). Msg &amp; data rates may apply. Reply
+              I agree to receive SMS text messages from [business name] about
+              my queue status and appointment updates. Message frequency varies
+              (typically 1-5 per visit). Msg &amp; data rates may apply. Reply
               STOP to cancel, HELP for help.
             </blockquote>
+            <p className="text-ink-mute">
+              The business name shown is whichever business the customer is
+              visiting — messages are sent by AzQueue on their behalf and
+              always name them, so the recipient knows who is texting.
+            </p>
             <p>
               A phone number is never added to messaging by anyone other than
               the person it belongs to, and consent is never a condition of

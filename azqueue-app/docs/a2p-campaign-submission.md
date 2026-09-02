@@ -1,18 +1,20 @@
 # A2P 10DLC campaign — AzQueue
 
-**The registered website on the customer profile is `https://www.azqueue.io`**
-(profile `BUe4d225bb8ccab6cd78e703db008d9716`, "Aztax", Twilio Approved).
+**Every URL here is on `azqueue.io`.**
 
-Both brands — "Aztax" and "AZQUEUE" — sit on that one profile, so this is the
-registered website whichever brand the campaign is filed under. Match it
-exactly, including the `www.` and the `https://`. A URL that differs only by
-the subdomain is what "does not match the Brand and Campaign registered"
-means.
+The customer profile (`BUe4d225bb8ccab6cd78e703db008d9716`, "Aztax", Twilio
+Approved) records the website as `https://www.azqueue.io`. The www form
+redirects to the apex, so both reach the same site — these use the apex
+because that is where a reviewer's browser actually lands.
 
-An earlier version of this file put the campaign on aztaxservices.io. That was
-wrong and is what "the provided website URL does not match the Brand and
-Campaign registered" means: the brand on record is AzQueue, so a campaign
-pointing at a domain owned by a customer of AzQueue does not match it.
+Both brands — "Aztax" and "AZQUEUE" — sit on that single profile, so this is
+the registered website whichever brand the campaign is filed under. That is
+also why switching brands would not have helped.
+
+An earlier version of this file put the campaign on aztaxservices.io. That is
+what "the provided website URL does not match the Brand and Campaign
+registered" was reporting: the profile on record points at azqueue.io, so a
+campaign pointing at a customer's own domain could not match it.
 
 AzQueue is a software vendor sending on behalf of the businesses that use it.
 That is a normal and permitted arrangement, but the campaign has to state it
@@ -20,7 +22,7 @@ plainly, because otherwise the reviewer sees messages signed "Az Tax Services"
 under a brand called AzQueue and reads it as an inconsistency. The description
 below does that in its first two sentences.
 
-**Before submitting:** open `https://www.azqueue.io/sms` and confirm it loads. It
+**Before submitting:** open `https://azqueue.io/sms` and confirm it loads. It
 is the page a reviewer checks for the call to action, and it is linked from
 the footer of azqueue.io under Company.
 
@@ -72,13 +74,13 @@ nothing age-gated.
 ## Privacy policy URL
 
 ```
-https://www.azqueue.io/sms
+https://azqueue.io/sms
 ```
 
 ## Terms of service URL
 
 ```
-https://www.azqueue.io/legal/terms
+https://azqueue.io/legal/terms
 ```
 
 ## How do end-users consent to receive messages?
@@ -100,10 +102,10 @@ queue and is called in person or notified by email. Numbers are never added to
 messaging on a customer's behalf, and never purchased or imported.
 
 A live example of the check-in form is at
-https://www.azqueue.io/q/az-tax-services
+https://azqueue.io/q/az-tax-services
 
-The programme is described in full at https://www.azqueue.io/sms, which is linked
-from the footer of every page on www.azqueue.io.
+The programme is described in full at https://azqueue.io/sms, which is linked
+from the footer of every page on azqueue.io.
 ```
 
 ## Opt-in keywords
