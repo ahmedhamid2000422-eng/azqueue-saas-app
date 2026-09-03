@@ -24,7 +24,7 @@ export async function loadStations(branchId) {
   const [{ data: stationRows }, { data: activeTickets }] = await Promise.all([
     supabase
       .from("stations")
-      .select("id, name, status, pause_reason, created_at, branch_id")
+      .select("id, name, status, pause_reason, created_at, branch_id, staff_id")
       .eq("branch_id", branchId)
       .order("created_at", { ascending: true }),
 
@@ -67,7 +67,7 @@ export async function createStation(branchId, name) {
   const { data, error } = await supabase
     .from("stations")
     .insert({ branch_id: branchId, name: name.trim() })
-    .select("id, name, status, pause_reason, created_at, branch_id")
+    .select("id, name, status, pause_reason, created_at, branch_id, staff_id")
     .single();
   if (error) throw error;
   return { ...data, load: 0 };
@@ -171,4 +171,21 @@ export async function reassignTicket(ticketId, stationId) {
 export function isCoverageLow(stations, minActive = 1) {
   const activeCount = stations.filter((s) => s.status === "active").length;
   return activeCount - 1 < minActive;
+}
+
+/**
+ * Who is normally at this counter.
+ *
+ * A label and a default, not a record of work. What actually gets written to
+ * a ticket is chosen per device on the Queue page — if this wrote to tickets
+ * as well, the two could disagree and attribution would quietly go wrong
+ * again. Pass null to clear.
+ */
+export async function setStationStaff(stationId, staffId) {
+  const { error } = await supabase
+    .from("stations")
+    .update({ staff_id: staffId || null })
+    .eq("id", stationId);
+  if (error) { console.error("[stations] assign staff failed", error); return { ok: false, error: error.message }; }
+  return { ok: true };
 }

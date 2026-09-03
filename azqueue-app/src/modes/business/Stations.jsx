@@ -8,6 +8,7 @@ import Button from "../../components/Button";
 import Card from "../../components/Card";
 import {
   loadStations,
+  setStationStaff,
   createStation,
   renameStation,
   setStationStatus,
@@ -87,6 +88,19 @@ function StationsInner() {
   const [busy,        setBusy]        = useState(false);
   const [error,       setError]       = useState(null);
   const [coverageLow, setCoverageLow] = useState(false);
+
+  /* Staff names, so a counter can say who is usually at it. Purely a label:
+     what gets recorded against a visit is chosen per device on the Queue
+     page, and two places writing the same fact is how attribution breaks. */
+  const [staff, setStaff] = useState([]);
+  useEffect(() => {
+    if (!branch?.id) return;
+    let off = false;
+    supabase.from("staff").select("id, display_name, full_name, name, email")
+      .eq("branch_id", branch.id)
+      .then(({ data }) => { if (!off) setStaff(data ?? []); });
+    return () => { off = true; };
+  }, [branch?.id]);
 
   // New-station form state
   const [creating,   setCreating]   = useState(false);
@@ -575,6 +589,8 @@ function StationsInner() {
               renamingId={renamingId}
               renameVal={renameVal}
               pausingId={pausingId}
+              staffList={staff}
+              onAssignStaff={async (id, staffId) => { await setStationStaff(id, staffId); reload(); }}
               onStartRename={() => { setRenamingId(station.id); setRenameVal(station.name); }}
               onRename={() => handleRename(station.id)}
               onRenameChange={setRenameVal}
@@ -629,6 +645,7 @@ function StationCard({
   pausingId,
   onStartRename, onRename, onRenameChange, onCancelRename,
   onStartPause, onCancelPause, onSetStatus, onDelete,
+  staffList = [], onAssignStaff,
 }) {
   const isRenaming = renamingId === station.id;
   const isPausing  = pausingId  === station.id;
@@ -678,6 +695,26 @@ function StationCard({
         >
           {station.name}
         </button>
+      )}
+
+      {/* Usually staffed by. Only shown when there is more than one person to
+          choose between — with one member of staff it states the obvious. */}
+      {staffList?.length > 1 && (
+        <div className="mt-2 flex items-center gap-2">
+          <span className="text-[10.5px] text-ink-mute shrink-0">Usually:</span>
+          <select
+            value={station.staff_id || ""}
+            onChange={(e) => onAssignStaff?.(station.id, e.target.value)}
+            className="bg-bg-elev border border-line focus:border-gold-deep outline-none px-2 py-1 text-[11px] text-ink-soft"
+          >
+            <option value="">Nobody set</option>
+            {staffList.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.display_name || p.full_name || p.name || p.email || "Staff"}
+              </option>
+            ))}
+          </select>
+        </div>
       )}
 
       {/* Load — task count, never a person score */}
