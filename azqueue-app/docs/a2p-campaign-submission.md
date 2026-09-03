@@ -262,6 +262,22 @@ linked from the site footer. This error did not recur.
 campaign pointed at aztaxservices.io while the registered brand is AzQueue.
 Everything is back on azqueue.io.
 
+## Submission log
+
+**3 September 2026** — resubmitted with the values in `a2p-answers.md`.
+`/sms` and `/sms/privacy` confirmed loading beforehand. Changes from the
+rejected campaign: opt-in keywords left blank, sample 5 replaced with the
+prayer-pause notice, description states the ISV arrangement in its opening
+sentences.
+
+If this one is rejected too, get the TCR code from support before changing
+anything — three of the four theories in this file were wrong, and the only
+one that held came from asking.
+
+**Approval does not turn SMS on.** Two things are still outstanding: the
+Twilio secrets in Supabase Edge Function config, and `VITE_SMS_PENDING=false`
+in Vercel. Until both are done an approved campaign sends nothing.
+
 ## What aztaxservices.io is still for
 
 Not wasted. Az Tax Services had no web presence, and the domain now gives
