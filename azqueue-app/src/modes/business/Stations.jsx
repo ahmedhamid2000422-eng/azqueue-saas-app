@@ -3,6 +3,7 @@ import { useBranch } from "../../lib/BranchContext";
 import { useAuth } from "../../lib/AuthContext";
 import { supabase } from "../../lib/supabase";
 import { getLimits } from "../../lib/tier";
+import { SLA_ENABLED } from "../../lib/features";
 import TierGate from "../../components/TierGate";
 import Button from "../../components/Button";
 import Card from "../../components/Card";
@@ -81,7 +82,11 @@ function StationsInner() {
   const { branch, dbReady } = useBranch();
   const { user } = useAuth();
   const limits = getLimits(user);
-  const slaEnabled = limits.opsSla;
+  /* Gated on the flag as well as the tier. The panel is a call-centre control
+     on a page a two-person office uses to name its counters; see the comment
+     on SLA_ENABLED in lib/features.js. Everything behind it is intact — the
+     sweep simply never starts, which costs nothing. */
+  const slaEnabled = limits.opsSla && SLA_ENABLED;
 
   const [stations,    setStations]    = useState([]);
   const [loading,     setLoading]     = useState(true);

@@ -81,8 +81,13 @@ Field-by-field values ready to paste are in `a2p-answers.md`.
 
 ## If asking support again
 
-A rejected campaign cannot be edited; Twilio requires a new one. Before paying
-for another attempt, ask support for the underlying TCR rejection reason — the
+**Correction (3 Sept):** this file previously stated that a rejected campaign
+cannot be edited and that Twilio requires a new one. The owner resubmitted
+`CM48e9d650b7c6d5923c6f103962247b1c` in place, so that claim was wrong — the
+same campaign SID can carry a resubmission. Anything below that assumed a new
+registration fee per attempt should be read with that in mind.
+
+Before paying for another attempt, ask support for the underlying TCR rejection reason — the
 console only ever shows Twilio's paraphrase, and after three rejections the
 exact code is worth more than another guess.
 

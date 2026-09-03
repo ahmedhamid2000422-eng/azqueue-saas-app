@@ -70,6 +70,32 @@ export const REVIEWS_ENABLED  = import.meta.env.VITE_REVIEWS_ENABLED === "true";
 export const INTEGRATIONS_ENABLED = import.meta.env.VITE_INTEGRATIONS_ENABLED === "true";
 
 /**
+ * SLA_ENABLED — the breach and bounce thresholds panel.
+ *
+ * Off by default, and the reason is worth recording. This is a call-centre
+ * control: it asks an owner to set, in minutes, how long a task may run
+ * before the system flags it, and how many times a customer may be parked
+ * back into the queue before that counts as a failure. It belongs on a floor
+ * with a dozen counters and a supervisor watching a wallboard.
+ *
+ * It sits on the Stations page, which is where a two-person office goes to
+ * name its counters. The owner of the one live account read it and could not
+ * tell what "bounce thresholds" meant — and he wrote it. If the person who
+ * built it cannot parse the label, the person using the screen has no chance,
+ * and an unparseable control on a working page is worse than no control: it
+ * makes the whole screen feel like it belongs to someone else.
+ *
+ * Nothing behind this is deleted. sla.js, the sweep, and migrations 0009 and
+ * 0013 are untouched, and the sweep costs nothing while the policy is
+ * disabled — it returns before issuing a query. Set VITE_SLA_ENABLED=true for
+ * an account that genuinely runs shift supervision.
+ *
+ * If it comes back, it probably belongs next to the queue rather than here,
+ * and it needs plain words: "flag a visit still open after N minutes".
+ */
+export const SLA_ENABLED = import.meta.env.VITE_SLA_ENABLED === "true";
+
+/**
  * AUTOPILOT_ENABLED — whether the queue may call customers automatically.
  *
  * Currently OFF. Autopilot paces calls from a rolling average service time,
