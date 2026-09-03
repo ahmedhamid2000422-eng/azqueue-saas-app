@@ -9,7 +9,7 @@ import { useAuth } from "../lib/AuthContext";
  * Returns:
  *   staff   — row from public.staff (id, branch_id, user_id, display_name, role, status)
  *   branch  — row from public.branches (id, owner_id, name, city, timezone, islamic_mode, autopilot)
- *   station — row from public.stations where preparer_id = staff.id, or null if none assigned
+ *   station — row from public.stations where staff_id = staff.id, or null if none assigned
  *   loading — true until first fetch completes
  *   error   — actionable string if fetch failed, null otherwise
  */
@@ -83,8 +83,8 @@ export function useStaff() {
           .maybeSingle(),
         supabase
           .from("stations")
-          .select("id, branch_id, window_number, name, preparer_id, status")
-          .eq("preparer_id", staffRow.id)
+          .select("id, branch_id, window_number, name, staff_id, status")
+          .eq("staff_id", staffRow.id)
           .maybeSingle(),
       ]);
 

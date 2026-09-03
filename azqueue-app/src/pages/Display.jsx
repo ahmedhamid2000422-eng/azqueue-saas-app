@@ -85,7 +85,7 @@ export default function Display() {
   const stationCards = WINDOW_LABELS.map((winNum) => {
     const station = stations.find((s) => s.window_number === winNum) ?? null;
     const ticket  = station ? servingByStation[station.id] ?? null : null;
-    const staffMember = station?.preparer_id ? staffById[station.preparer_id] ?? null : null;
+    const staffMember = station?.staff_id ? staffById[station.staff_id] ?? null : null;
 
     // Also check if any serving ticket is assigned to a staff at this window
     // (fallback for when assigned_station_id isn't set)

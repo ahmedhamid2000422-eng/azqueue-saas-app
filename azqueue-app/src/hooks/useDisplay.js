@@ -84,7 +84,7 @@ export function useDisplay() {
           .order("display_name"),
         supabase
           .from("stations")
-          .select("id, window_number, name, preparer_id, status")
+          .select("id, window_number, name, staff_id, status")
           .eq("branch_id", branchId)
           .order("window_number"),
       ]);

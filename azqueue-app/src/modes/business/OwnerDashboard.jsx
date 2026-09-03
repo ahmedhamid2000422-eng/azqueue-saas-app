@@ -60,7 +60,7 @@ export default function OwnerDashboard() {
       // All stations
       supabase
         .from("stations")
-        .select("id, name, window_number, status, preparer_id")
+        .select("id, name, window_number, status, staff_id")
         .eq("branch_id", branch.id)
         .order("window_number"),
 
@@ -111,7 +111,7 @@ export default function OwnerDashboard() {
     setStations(
       (stationRows ?? []).map((st) => ({
         ...st,
-        staffMember:    st.preparer_id ? staffById[st.preparer_id] ?? null : null,
+        staffMember:    st.staff_id ? staffById[st.staff_id] ?? null : null,
         currentTicket:  servingByStation[st.id] ?? null,
       }))
     );
@@ -279,7 +279,7 @@ export default function OwnerDashboard() {
                     )}
                     <AssignStaffSelect
                       stationId={st.id}
-                      currentPreparerId={st.preparer_id}
+                      currentStaffId={st.staff_id}
                       roster={roster}
                       onAssigned={reload}
                     />
@@ -365,14 +365,14 @@ export default function OwnerDashboard() {
 }
 
 /* ── Assign staff to a station ──────────────────────────────────────── */
-function AssignStaffSelect({ stationId, currentPreparerId, roster, onAssigned }) {
+function AssignStaffSelect({ stationId, currentStaffId, roster, onAssigned }) {
   const [busy, setBusy] = useState(false);
 
   async function assign(staffId) {
     setBusy(true);
     await supabase
       .from("stations")
-      .update({ preparer_id: staffId || null })
+      .update({ staff_id: staffId || null })
       .eq("id", stationId);
     setBusy(false);
     onAssigned();
@@ -380,7 +380,7 @@ function AssignStaffSelect({ stationId, currentPreparerId, roster, onAssigned })
 
   return (
     <select
-      value={currentPreparerId ?? ""}
+      value={currentStaffId ?? ""}
       onChange={(e) => assign(e.target.value)}
       disabled={busy}
       className="w-full text-[9px] ovline bg-transparent border border-line text-ink-mute px-2 py-1 hover:border-gold-deep/50 focus:outline-none focus:border-gold-deep transition disabled:opacity-40"

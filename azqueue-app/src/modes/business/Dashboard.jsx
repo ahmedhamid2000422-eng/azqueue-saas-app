@@ -4,7 +4,7 @@ import ProductTour, { TourInvite, hasSeenTour, isSnoozed, snoozeTour } from "../
 import ComingSoon from "../../components/ComingSoon";
 import PickupBanner from "../../components/PickupBanner";
 import WhatsNewBanner from "../../components/WhatsNewBanner";
-import { WHATSAPP_ENABLED, REVIEWS_ENABLED } from "../../lib/features";
+import { WHATSAPP_ENABLED, REVIEWS_ENABLED, MANAGER_ENABLED } from "../../lib/features";
 import Sidebar from "../../components/Sidebar";
 import IslamicBar from "../../components/IslamicBar";
 import AiAssistDock from "../../components/AiAssistDock";
@@ -88,7 +88,9 @@ export default function BusinessDashboard() {
     <div className="flex min-h-screen">
       <Sidebar
         mode="business"
-        items={isGym ? GYM_NAV : QUEUE_NAV}
+        items={(isGym ? GYM_NAV : QUEUE_NAV).filter(
+          (item) => item.path !== "/manager" || MANAGER_ENABLED
+        )}
         footerName="Owner"
         footerRole={isGym ? "Gym mode" : "Business mode"}
       />
@@ -145,7 +147,10 @@ export default function BusinessDashboard() {
               )}
             />
             <Route path="intelligence" element={<ClientIntelligence />} />
-            <Route path="manager"      element={<Manager />} />
+            <Route
+              path="manager"
+              element={MANAGER_ENABLED ? <Manager /> : <Navigate to="../overview" replace />}
+            />
             <Route path="display"    element={<DisplaySetup />} />
             <Route path="onboarding" element={<Onboarding />} />
             <Route path="staff/:id"  element={<StaffProfile />} />

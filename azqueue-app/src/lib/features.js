@@ -96,6 +96,31 @@ export const INTEGRATIONS_ENABLED = import.meta.env.VITE_INTEGRATIONS_ENABLED ==
 export const SLA_ENABLED = import.meta.env.VITE_SLA_ENABLED === "true";
 
 /**
+ * MANAGER_ENABLED — the break-pattern heatmap, anomaly alerts, wellness
+ * signals and weekly digests.
+ *
+ * Off by default. Not because the idea is wrong, but because it is being
+ * asked to find patterns in a dataset that doesn't have any yet — one branch,
+ * roughly 50 real visits ever recorded. On 3 September it told the owner
+ * Benyamin needed a break, computed from hours-since-status-changed because
+ * no actual break event had ever been logged for him. That is not a break
+ * pattern, it is a fallback formula wearing one, and it is exactly the kind
+ * of finding this project has had to retract before — the p90 alert, the
+ * "3pm cliff" — a number that reads as evidence and is really an artefact of
+ * too little data.
+ *
+ * It was visible at all only because the paywall was switched off (see
+ * PAYWALL_ENABLED) for reasons that had nothing to do with this page —
+ * tier-gating is a no-op site-wide while that's off, so Manager rode along
+ * unintentionally rather than by a decision that it was ready.
+ *
+ * Nothing behind this is deleted. Bring it back once there is real history —
+ * weeks of it, not days — for the heatmap to mean something. Set
+ * VITE_MANAGER_ENABLED=true when that's true.
+ */
+export const MANAGER_ENABLED = import.meta.env.VITE_MANAGER_ENABLED === "true";
+
+/**
  * AUTOPILOT_ENABLED — whether the queue may call customers automatically.
  *
  * Currently OFF. Autopilot paces calls from a rolling average service time,
