@@ -12,40 +12,42 @@ someone who cannot help them, which is worse than no rule at all.
 
 | Name | Role | Notes |
 |------|------|-------|
-| | Senior advisor | |
-| | Associate advisor | |
-| | | |
+| Mohamed | Senior advisor / owner | Does everything Binyamin does, plus the specialised list below. Time is the constraint, not skill. |
+| Binyamin | Associate advisor | General taxes, general immigration, consultancy (figuring out what a customer actually needs). |
+| Nuredin | Staff | Capability not yet described — ask when there's a moment. |
 
-Two roles is enough to start. More can be added once these are working.
+Captured from Ahmed on 3 September, secondhand — not yet confirmed with
+Mohamed directly. Worth a quick check next time they're both in the office,
+since a wrong rule here sends a customer to someone who can't help them.
 
 ## 2. What each service needs
 
-List every service you offer. For each one, say whether it needs the senior
-advisor specifically, or anyone can do it.
-
 | Service | Who can do it | Hard requirement? |
 |---------|---------------|-------------------|
-| Notarisation | Senior only | Yes — legal |
-| Tax preparation | | |
-| Immigration case | | |
-| Document drop-off | | |
-| Collection / pickup | | |
-| | | |
+| Notarisation | Mohamed only | Yes — legal |
+| Divorce cases | Mohamed only | Not stated — treat as a preference until confirmed |
+| Specialised tax advisory | Mohamed only | Not stated — treat as a preference until confirmed |
+| "Understanding a process" (complex/ambiguous cases) | Mohamed only | Not stated |
+| General taxes | Either | No |
+| General immigration | Either | No |
+| Consultancy / triage — figuring out what a customer needs | Either | No |
+| Document drop-off | Not stated | |
+| Collection / pickup | Not stated | |
 
-**"Hard requirement"** matters more than it looks. A legal or licensing
-constraint (notarisation) must never be routed around. A preference ("Dad is
-better at complex immigration") should bend when he is busy and someone has
-been waiting an hour — so the two need marking differently.
+Only notarisation is confirmed as a hard, legal requirement. Everything else
+Mohamed-only is a skill or licensing gap Ahmed described, not yet marked as
+legally hard or just "nobody else has learned this yet" — worth asking
+directly, because the two should route differently: a licensing gap never
+bends, a skill gap should bend when Mohamed is at capacity and someone has
+been waiting an hour.
 
 ## 3. What the associate should not be offered
 
-Not permissions — there is one shared login, so nothing can be truly blocked
-yet. This is about what the screen shows, so time is not wasted finding out
-mid-visit that someone cannot help.
-
-- [ ] Notarisation
-- [ ] ...
-- [ ] ...
+- [x] Notarisation
+- [x] Divorce cases
+- [x] Specialised tax advisory
+- [ ] Anything general (taxes, immigration, consultancy) — Binyamin handles
+      these directly, no routing needed
 
 ## 4. Two questions worth answering while you are both there
 

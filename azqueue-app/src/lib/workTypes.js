@@ -54,12 +54,17 @@ export function suggestionsFor(category) {
  *
  * PLACEHOLDER, same as above — the real list comes from the office.
  */
+/**
+ * Four buttons, not a form. Set from what Ahmed described his father actually
+ * needs: a fast, unambiguous handoff, because Mohamed is the one reading
+ * these and has no patience for a dropdown of legal categories mid-visit.
+ * Binyamin picks one, Mohamed sees a name and a reason, nothing else.
+ */
 export const ESCALATION_REASONS = [
-  "Needs notarisation",
-  "Legal question I can't answer",
-  "Customer is unhappy and wants the manager",
-  "Refund or fee decision",
-  "Something else",
+  "Notarize",
+  "Complex case",
+  "Question",
+  "Unknown",
 ];
 
 /**
