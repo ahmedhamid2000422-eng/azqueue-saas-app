@@ -26,6 +26,58 @@ below does that in its first two sentences.
 is the page a reviewer checks for the call to action, and it is linked from
 the footer of azqueue.io under Company.
 
+## Use case — keep Low Volume Mixed
+
+**Low Volume Mixed is correct.** The AZQUEUE brand is registered as Low Volume
+Standard, and Low Volume Mixed is the campaign type that pairs with it: lower
+throughput, lower monthly fee, multiple message types permitted. It is the
+intended option for this brand, not a catch-all chosen by accident, and it is
+likely the only one the form offers.
+
+(An earlier draft of this file said to switch to Customer Care. That was
+wrong — noted here so nobody acts on it later.)
+
+## Messaging Service — use the existing one
+
+Select **existing**: `MGfb9cd2b29f93447d101a28464e7cd8aa`.
+
+The number +14302136585 is already attached to it. Creating a new service
+means re-attaching the number and repointing anything that references it, for
+no benefit — the rejected campaign is what needs replacing, not the service.
+
+## Cross-checked against Twilio's rejection codes
+
+From help.twilio.com article 15778026827291. Every code that could apply, and
+where this submission stands:
+
+| Code | Reason | Status |
+|------|--------|--------|
+| 30886 | Description does not explain purpose, or ISV offering not indicated | Description names AzQueue as software sending for its customers |
+| 30893 | Samples unclear, no brackets, or missing business name | **Was failing — samples now bracketed and sample 5 names AzQueue** |
+| 30892 | Public URL shorteners in samples | No links in any message |
+| 30891 | Website not functioning | /sms and /sms/privacy must be deployed BEFORE submitting |
+| 30896 | Opt-in insufficient, or website lacks privacy policy and terms | Both now exist as separate documents, opt-in URL given |
+| 30887 | Opt-out workflow unclear or missing keywords | Keywords and message supplied below |
+| 30890 | HELP reply lacks brand name, phone or email | Help message carries AzQueue and hello@azqueue.io |
+
+Note: from 15 September 2026 Twilio moves to a unified content policy with
+more specific rejection codes, so a resubmission after that date may report a
+different code for the same underlying problem.
+
+## Before submitting a fourth time — ask support first
+
+A rejected campaign cannot be edited; Twilio requires a new one. Before paying
+for another attempt, ask support for the underlying TCR rejection reason — the
+console only ever shows Twilio's paraphrase, and after three rejections the
+exact code is worth more than another guess.
+
+Quote:
+- Brand: `BN31115d42c205fa6eec2795f773bdaee0` (AZQUEUE, approved)
+- Failed campaign: `CM48e9d650b7c6d5923c6f103962247b1c`
+- Question: "What was the TCR rejection reason for this campaign?"
+
+The brand stays approved either way, so only the campaign is being redone.
+
 ---
 
 ## Campaign description
@@ -51,20 +103,31 @@ imported.
 
 ## Sample messages
 
-The business name at the start of each message is filled in from whichever
-business the customer visited. "Az Tax Services" below is a live example.
+Rewritten against Twilio error code **30893**, which fails a campaign when
+samples do not "indicate templated fields with brackets" and when none of them
+"include your business name".
+
+The earlier version broke both rules: it used literal values (Ticket A24,
+Maria) with no brackets, and every sample named Az Tax Services — a customer of
+AzQueue, not the registered brand. Sample 5 is the opt-in confirmation, which
+carries the AzQueue name.
 
 ```
-1. Az Tax Services: You're checked in. Ticket A24 for Tax Preparation. We'll message you when you're up. Reply STOP to opt out.
+1. [Business Name]: You're checked in. Ticket [A24] for [Tax Preparation]. We'll message you when you're up. Reply STOP to opt out.
 
-2. Az Tax Services: You're up - please come to the counter now. Ticket A24.
+2. [Business Name]: You're up - please come to the counter now. Ticket [A24].
 
-3. Az Tax Services: Thanks for visiting! Ticket A24 is complete. Reply STOP to opt out.
+3. [Business Name]: Thanks for visiting! Ticket [A24] is complete. Reply STOP to opt out.
 
-4. Az Tax Services: Hi Maria! Your booking for Tax Preparation is confirmed for Tue, Feb 3 at 4:15 PM. Reply STOP to opt out.
+4. [Business Name]: Hi [First Name]! Your booking for [Service] is confirmed for [Day, Date at Time]. Reply STOP to opt out.
 
-5. Az Tax Services: Pausing briefly for Dhuhr. Your ticket A24 keeps its place - service resumes at 1:15 PM.
+5. AzQueue: You are subscribed to queue notifications. Message frequency varies, typically 1-5 per visit. Msg & data rates may apply. Reply STOP to opt out, HELP for help.
 ```
+
+`[Business Name]` is the business the customer is visiting — AzQueue sends on
+their behalf and names them so the recipient knows who is texting. The campaign
+description explains this, which error code **30886** specifically asks an ISV
+to do.
 
 ## Content your messages may contain
 
@@ -74,14 +137,29 @@ nothing age-gated.
 ## Privacy policy URL
 
 ```
-https://azqueue.io/sms
+https://azqueue.io/sms/privacy
 ```
 
 ## Terms of service URL
 
 ```
-https://azqueue.io/legal/terms
+https://azqueue.io/sms
 ```
+
+Two different documents, because the two fields are checked for different
+things.
+
+**Terms** (/sms) carries the literal checklist Twilio asks for: programme name,
+description, message and data rates, message frequency, support contact, and
+opt-out instructions with HELP and STOP in bold. The general /legal/terms page
+contains none of that, which is why it is not used here.
+
+**Privacy** (/sms/privacy) leads on what is collected, what it is used for, and
+the clause the privacy field is really checked for: that mobile opt-in data is
+never sold, rented or shared with third parties for marketing. Its absence is
+among the most common rejection reasons.
+
+Both describe the opt-in, so a reviewer landing on either finds it.
 
 ## How do end-users consent to receive messages?
 

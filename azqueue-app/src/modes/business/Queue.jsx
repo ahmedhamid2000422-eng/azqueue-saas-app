@@ -182,6 +182,7 @@ export default function Queue() {
       const svcNameMap = Object.fromEntries((svcs ?? []).map((s) => [s.id, s.name]));
 
       setTickets(active ?? []);
+      setQueueLoaded(true);
       setCompletedToday(count ?? 0);
       setStaffList(stf ?? []);
       setStationMap(Object.fromEntries((stn ?? []).map((s) => [s.id, s.name])));
@@ -342,7 +343,38 @@ export default function Queue() {
   }, [tickets, smartSortOn, serviceNameMap, durationStats]);
 
   // Staff list — used by the "Reassign to" menu on each ticket (loaded in reload())
+  /* Has the queue been fetched even once?
+     `tickets` starts as [] and the page rendered "Queue is empty" while the
+     first request was still in flight — so staff could be looking at an empty
+     screen with people in the room, and the list appeared to fill itself in at
+     random when the fetch landed. An empty state and an unknown state are not
+     the same thing, and only one of them should say the queue is empty. */
+  const [queueLoaded, setQueueLoaded] = useState(false);
+
   const [staffList, setStaffList] = useState([]);
+
+  /* WHO IS SERVING FROM THIS DEVICE
+     Every visit was being recorded with no staff at all — callNextInner never
+     wrote staff_id, so `with_staff` was 0 across the whole history. That makes
+     any later question about who handles what, or whether case length differs
+     by person, permanently unanswerable for this period.
+
+     Identifying staff by the logged-in user cannot work here: the owner and
+     his staff share one account, so `user_id` names the account rather than
+     the person. The device is the better proxy — the counter iPad is one
+     person, the back desk another — so this is chosen once per browser and
+     remembered. */
+  const STAFF_KEY = `azq.servingStaff.${branch?.id ?? "none"}`;
+  const [servingStaffId, setServingStaffId] = useState("");
+  useEffect(() => {
+    if (!branch?.id) return;
+    try { setServingStaffId(localStorage.getItem(STAFF_KEY) || ""); } catch { /* private mode */ }
+  }, [branch?.id, STAFF_KEY]);
+  function chooseServingStaff(id) {
+    setServingStaffId(id);
+    try { id ? localStorage.setItem(STAFF_KEY, id) : localStorage.removeItem(STAFF_KEY); }
+    catch { /* private mode */ }
+  }
 
   // Queue analysis — runs whenever waiting list changes
   const queueAnalysis = useMemo(
@@ -423,7 +455,13 @@ export default function Queue() {
     const turnExpiresAt = new Date(Date.now() + TURN_TIMEOUT_MINUTES * 60_000).toISOString();
     const { error: e } = await supabase
       .from("tickets")
-      .update({ status: "serving", called_at: now, started_at: now, turn_expires_at: turnExpiresAt })
+      .update({
+        status: "serving", called_at: now, started_at: now,
+        turn_expires_at: turnExpiresAt,
+        /* Who took this one. Null when nobody has been chosen on this device —
+           better an honest gap than every visit credited to one person. */
+        ...(servingStaffId ? { staff_id: servingStaffId } : {}),
+      })
       .eq("id", next.id);
     if (e) { setBusy(false); return setError(e.message); }
     sendCallNotice(next.id);
@@ -1426,6 +1464,32 @@ export default function Queue() {
               With someone at the counter, finishing them is the next action
               and Complete is the large button. With nobody being served,
               calling the next person is, and it takes the emphasis back. */}
+          {/* Who is at this counter. Sits with the buttons because it is part
+              of the same action, and it only appears when there is more than
+              one person to choose between. */}
+          {staffList.length > 1 && (
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-[11.5px] text-ink-mute">Serving from this device:</span>
+              <select
+                value={servingStaffId}
+                onChange={(e) => chooseServingStaff(e.target.value)}
+                className="bg-bg-elev border border-line focus:border-gold-deep outline-none px-2.5 py-1.5 text-[12px] text-ink"
+              >
+                <option value="">Not set</option>
+                {staffList.map((st) => (
+                  <option key={st.id} value={st.id}>
+                    {st.display_name || st.full_name || st.name || st.email || "Staff"}
+                  </option>
+                ))}
+              </select>
+              {!servingStaffId && (
+                <span className="text-[11px] text-ink-mute">
+                  — pick a name so visits are recorded against the right person
+                </span>
+              )}
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-3 items-center">
             {serving ? (
               <>
@@ -1508,7 +1572,11 @@ export default function Queue() {
             </div>
           )}
 
-          {waiting.length === 0 ? (
+          {!queueLoaded ? (
+            <div className="px-5 py-10 text-center text-ink-mute text-xs">
+              Loading the queue…
+            </div>
+          ) : waiting.length === 0 ? (
             <div className="px-5 py-10 text-center text-ink-mute text-xs">
               Queue is empty.
               <div className="mt-2 text-[10px]">Share <span className="text-gold-soft">/q/{branch.slug}</span> with customers.</div>

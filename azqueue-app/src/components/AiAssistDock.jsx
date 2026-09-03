@@ -128,8 +128,13 @@ export default function AiAssistDock() {
     if (ctx) return ctx;
     const since = new Date(Date.now() - DAYS * 86_400_000).toISOString();
 
-    const [{ data: tickets }, { data: services }, { data: bookings }, { data: allTickets }, { data: customers }] =
-      await Promise.all([
+    /* allSettled, not all. These five queries answer different questions, and
+       one failing is no reason to silence the other four — the previous
+       version told the owner there were no tickets in 90 days when what had
+       actually happened was that a single query errored. Reporting absence
+       when the truth is "could not load" is the worst possible failure for
+       something that answers questions about data. */
+    const settled = await Promise.allSettled([
         supabase.from("tickets")
           .select("id, status, created_at, called_at, started_at, completed_at, service_id, source, customer_email, customer_phone")
           .eq("branch_id", branch.id).gte("created_at", since).limit(5000),
@@ -146,6 +151,22 @@ export default function AiAssistDock() {
           .select("id, display_name, phone, last_seen_at, imported_visits, first_seen_at")
           .eq("branch_id", branch.id).limit(50_000),
       ]);
+
+    /* Unpack, logging any that failed. A rejected query yields undefined and
+       the rest carry on — the assistant then answers what it can and its
+       grounding rules make it say what it doesn't know. */
+    const pick = (i, label) => {
+      const r = settled[i];
+      if (r.status === "fulfilled" && !r.value?.error) return r.value?.data;
+      console.error(`[AiAssist] context query failed: ${label}`,
+        r.status === "rejected" ? r.reason : r.value?.error);
+      return undefined;
+    };
+    const tickets    = pick(0, "tickets (90d)");
+    const services   = pick(1, "services");
+    const bookings   = pick(2, "bookings");
+    const allTickets = pick(3, "tickets (all)");
+    const customers  = pick(4, "customers");
 
     const nameMap = Object.fromEntries((services ?? []).map((s) => [s.id, s.name]));
     const built = buildFacts(tickets ?? [], nameMap, {

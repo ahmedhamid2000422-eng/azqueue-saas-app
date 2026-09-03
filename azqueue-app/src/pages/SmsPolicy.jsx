@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import SiteNav from "../components/SiteNav";
 import SiteFooter from "../components/SiteFooter";
 
@@ -25,6 +25,18 @@ import SiteFooter from "../components/SiteFooter";
  * the reviewer can tick it off without interpreting anything.
  */
 export default function SmsPolicy() {
+  /* Two documents, one component. Twilio asks for a Privacy URL and a Terms
+     URL and checks them for different things — pointing both at one page
+     invites the reasonable question of which document is which, and after
+     three rejections that is a question worth not raising.
+
+       /sms          → messaging terms (programme, frequency, rates, STOP/HELP)
+       /sms/privacy  → what happens to a phone number
+
+     The shared sections appear on both because a reviewer landing on either
+     should find the opt-in described. Only the emphasis and the title change. */
+  const isPrivacy = useLocation().pathname.startsWith("/sms/privacy");
+
   return (
     <div className="min-h-screen bg-bg flex flex-col">
       <SiteNav />
@@ -33,11 +45,15 @@ export default function SmsPolicy() {
         <div className="max-w-2xl w-full">
           <div className="ovline text-[10px] text-gold-soft mb-3">Messaging</div>
           <h1 className="font-display text-3xl font-light tracking-tightest mb-3">
-            SMS terms and privacy
+            {isPrivacy ? "SMS privacy policy" : "SMS terms of service"}
           </h1>
+          <div className="text-[12px] text-ink-mute mb-1">
+            AzQueue Queue Notifications
+          </div>
           <p className="text-[13px] text-ink-mute leading-relaxed mb-10">
-            How text messaging works in AzQueue, and what happens to a phone
-            number given to us.
+            {isPrivacy
+              ? "What we collect when you ask for text updates, what we use it for, and who it is never given to."
+              : "What the messaging programme sends, how often, what it costs, and how to stop it."}
           </p>
 
           <Section title="What we send">
@@ -93,18 +109,34 @@ export default function SmsPolicy() {
             </p>
           </Section>
 
-          <Section title="Message frequency and cost">
-            <p>
-              Typically 1–5 messages per visit. Frequency varies with how long
-              someone waits. AzQueue does not charge for messages; standard
-              message and data rates from the recipient's carrier may apply.
-            </p>
+          {!isPrivacy && (
+          <>
+          {/* Carriers check this section against a literal list: programme
+              name, description, message frequency, message and data rates,
+              support contact, and HELP/STOP in bold. Each item below exists to
+              satisfy one of those, which is why it reads as a checklist rather
+              than prose. */}
+          <Section title="Programme details">
+            <div className="space-y-2">
+              <p><strong className="text-ink">Programme name:</strong> AzQueue Queue Notifications</p>
+              <p><strong className="text-ink">What it sends:</strong> Your place in the queue, notice when it is your turn, and appointment confirmations for the business you are visiting.</p>
+              <p><strong className="text-ink">Message frequency:</strong> Varies — typically 1–5 messages per visit.</p>
+              <p><strong className="text-ink">Cost:</strong> AzQueue does not charge for messages. Message and data rates may apply from your carrier.</p>
+              <p><strong className="text-ink">Support:</strong> hello@azqueue.io</p>
+              <p>
+                <strong className="text-ink">To stop:</strong> reply{" "}
+                <strong className="text-ink">STOP</strong> to any message.{" "}
+                <strong className="text-ink">To get help:</strong> reply{" "}
+                <strong className="text-ink">HELP</strong>.
+              </p>
+            </div>
           </Section>
 
           <Section title="Stopping messages">
             <p>
-              Reply <strong>STOP</strong> to any message to stop all further
-              texts immediately. Reply <strong>HELP</strong> for help, or email{" "}
+              Reply <strong className="text-ink">STOP</strong> to any message to
+              stop all further texts immediately. Reply{" "}
+              <strong className="text-ink">HELP</strong> for help, or email{" "}
               <span className="text-gold-soft">hello@azqueue.io</span>.
             </p>
             <p>
@@ -114,8 +146,13 @@ export default function SmsPolicy() {
             </p>
           </Section>
 
+          </>
+          )}
+
           {/* The clause carriers look for by name. Its absence is one of the
-              most common reasons a campaign is rejected. */}
+              most common reasons a campaign is rejected. Shown on both
+              documents — a privacy reviewer needs it, and a terms reviewer
+              seeing it does no harm. */}
           <Section title="What happens to a phone number">
             <p>
               A phone number given for queue notifications is used only to send
