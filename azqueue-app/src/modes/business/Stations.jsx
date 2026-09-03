@@ -101,9 +101,12 @@ function StationsInner() {
   useEffect(() => {
     if (!branch?.id) return;
     let off = false;
-    supabase.from("staff").select("id, display_name, full_name, name, email")
+    supabase.from("staff").select("id, display_name")
       .eq("branch_id", branch.id)
-      .then(({ data }) => { if (!off) setStaff(data ?? []); });
+      .then(({ data, error }) => {
+        if (error) console.error("[Stations] staff fetch failed", error);
+        if (!off) setStaff(data ?? []);
+      });
     return () => { off = true; };
   }, [branch?.id]);
 
@@ -595,7 +598,20 @@ function StationsInner() {
               renameVal={renameVal}
               pausingId={pausingId}
               staffList={staff}
-              onAssignStaff={async (id, staffId) => { await setStationStaff(id, staffId); reload(); }}
+              onAssignStaff={async (id, staffId) => {
+                setError(null);
+                const res = await setStationStaff(id, staffId);
+                if (!res.ok) {
+                  /* A stale option in the dropdown — usually someone else's
+                     browser still showing a staff member who was since
+                     removed. Say so instead of pretending it saved: the
+                     select would otherwise show the picked name while the
+                     database quietly kept the old value. */
+                  setError("Couldn't set that — try refreshing the page.");
+                  console.error("[Stations] assign staff failed", res.error);
+                }
+                reload();
+              }}
               onStartRename={() => { setRenamingId(station.id); setRenameVal(station.name); }}
               onRename={() => handleRename(station.id)}
               onRenameChange={setRenameVal}
