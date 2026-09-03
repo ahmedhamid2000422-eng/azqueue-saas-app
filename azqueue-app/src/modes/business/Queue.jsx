@@ -10,6 +10,8 @@ import CompletePanel from "../../components/CompletePanel";
 import QueueHygiene from "../../components/QueueHygiene";
 import InReviewList from "../../components/InReviewList";
 import CompleteReminder from "../../components/CompleteReminder";
+import InProgressPanel from "../../components/InProgressPanel";
+import QueuePauseControl from "../../components/QueuePauseControl";
 import { assignWork } from "../../lib/backQueue";
 import { sendCallNotice, sendThanks } from "../../lib/notifications";
 import { sendCallNoticeSms } from "../../lib/notifications";
@@ -1430,7 +1432,13 @@ export default function Queue() {
             </div>
           )}
 
-          {/* Fires once each time a NEW person is called, then removes itself
+          {/* A paused queue is the single most important fact on this screen, so
+          it goes above the hygiene nudge and the header. */}
+      <div className="mb-5">
+        <QueuePauseControl branch={branch} onChange={reloadBranches} />
+      </div>
+
+      {/* Fires once each time a NEW person is called, then removes itself
           after 40 calls. Scaffolding, not an alert — a permanent prompt would
           be ignored within a week, and the one message that has to land is
           this one. */}

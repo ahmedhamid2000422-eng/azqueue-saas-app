@@ -9,6 +9,7 @@ import { estimateWaitFor, formatWait } from "../lib/waitEstimator";
 import QuietSlotNudge from "../components/QuietSlotNudge";
 import ServiceChecklist from "../components/ServiceChecklist";
 import { loadHourShape, findQuietHour, quietPhrase } from "../lib/quietHours";
+import { isOpenNow, minutesUntilClose, hoursForToday } from "../lib/openingHours";
 import { findOrCreateCustomer, logQueueEvent, generatePersona } from "../lib/customers";
 import { getCustomerCard, punchDots, hasUnclaimedReward } from "../lib/loyalty";
 import { getEffectiveChecklist, buildChecklistMessage } from "../lib/checklists";
@@ -98,7 +99,7 @@ export default function CustomerCheckIn() {
       setLoadError(null);
       const { data: branchRow, error: bErr } = await supabase
         .from("branches")
-        .select("id, slug, name, city, timezone, islamic_mode")
+        .select("id, slug, name, city, timezone, islamic_mode, hours, queue_paused_at")
         .eq("slug", slug)
         .single();
 
@@ -130,6 +131,19 @@ export default function CustomerCheckIn() {
   async function handleSubmit(e) {
     e.preventDefault();
     setFormError(null);
+
+    /* Closed means closed. Someone joining a queue at 5:40pm will not be
+       seen today, and letting them take a ticket is a worse experience than
+       telling them at the door — they wait, nobody comes, and the office gets
+       the blame for a screen that said yes. */
+    if (branch?.hours && !isOpenNow(branch.hours)) {
+      const today = hoursForToday(branch.hours);
+      return setFormError(
+        today?.closed
+          ? "We're closed today. Please come back during opening hours."
+          : `We've stopped taking new check-ins for today. We're open again ${today?.openPretty ?? "tomorrow"}.`
+      );
+    }
 
     if (!serviceId)        return setFormError(t("checkin.errors.pick_service"));
     if (!name.trim())      return setFormError(t("checkin.errors.enter_name"));
