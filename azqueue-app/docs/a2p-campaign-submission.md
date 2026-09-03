@@ -53,18 +53,33 @@ where this submission stands:
 | Code | Reason | Status |
 |------|--------|--------|
 | 30886 | Description does not explain purpose, or ISV offering not indicated | Description names AzQueue as software sending for its customers |
-| 30893 | Samples unclear, no brackets, or missing business name | **Was failing — samples now bracketed and sample 5 names AzQueue** |
+| 30893 | Samples unclear, no brackets, or missing business name | Samples bracketed; sample 1 carries "via AzQueue" |
 | 30892 | Public URL shorteners in samples | No links in any message |
 | 30891 | Website not functioning | /sms and /sms/privacy must be deployed BEFORE submitting |
 | 30896 | Opt-in insufficient, or website lacks privacy policy and terms | Both now exist as separate documents, opt-in URL given |
-| 30887 | Opt-out workflow unclear or missing keywords | Keywords and message supplied below |
+| 30887 | Opt-out workflow unclear or missing keywords | Opt-out keywords and message supplied; opt-IN keywords now blank |
 | 30890 | HELP reply lacks brand name, phone or email | Help message carries AzQueue and hello@azqueue.io |
+| **30909** | **Call to Action could not be verified** | **Confirmed by Twilio support as the actual reason. Caused by declaring opt-in keywords START/UNSTOP and a subscription-confirmation sample while consent is a web checkbox — a text-to-join path that does not exist. Both now blank.** |
 
 Note: from 15 September 2026 Twilio moves to a unified content policy with
 more specific rejection codes, so a resubmission after that date may report a
 different code for the same underlying problem.
 
-## Before submitting a fourth time — ask support first
+## The confirmed reason
+
+Twilio support (ticket 29333462, 2 September) gave the code for
+`CM48e9d650b7c6d5923c6f103962247b1c`: **30909 — Call to Action.** Not the
+website mismatch, which had already stopped being reported.
+
+That is worth stating plainly: the domain work, the apex-versus-www question
+and the second domain purchase were all fixing an error that was no longer
+the one failing. The reviewer could not verify the opt-in, and the reason is
+almost certainly that the form declared a keyword opt-in alongside the web
+checkbox.
+
+Field-by-field values ready to paste are in `a2p-answers.md`.
+
+## If asking support again
 
 A rejected campaign cannot be edited; Twilio requires a new one. Before paying
 for another attempt, ask support for the underlying TCR rejection reason — the
@@ -103,17 +118,12 @@ imported.
 
 ## Sample messages
 
-Rewritten against Twilio error code **30893**, which fails a campaign when
-samples do not "indicate templated fields with brackets" and when none of them
-"include your business name".
-
-The earlier version broke both rules: it used literal values (Ticket A24,
-Maria) with no brackets, and every sample named Az Tax Services — a customer of
-AzQueue, not the registered brand. Sample 5 is the opt-in confirmation, which
-carries the AzQueue name.
+All five are messages the system actually sends. Bracketed fields are filled in
+per visit, which error code **30893** requires; the first carries the
+registered brand name, which the same code also requires.
 
 ```
-1. [Business Name]: You're checked in. Ticket [A24] for [Tax Preparation]. We'll message you when you're up. Reply STOP to opt out.
+1. [Business Name] via AzQueue: You're checked in. Ticket [A24] for [Tax Preparation]. We'll message you when you're up. Reply STOP to opt out.
 
 2. [Business Name]: You're up - please come to the counter now. Ticket [A24].
 
@@ -121,13 +131,26 @@ carries the AzQueue name.
 
 4. [Business Name]: Hi [First Name]! Your booking for [Service] is confirmed for [Day, Date at Time]. Reply STOP to opt out.
 
-5. AzQueue: You are subscribed to queue notifications. Message frequency varies, typically 1-5 per visit. Msg & data rates may apply. Reply STOP to opt out, HELP for help.
+5. [Business Name]: Pausing briefly for [Prayer]. Your ticket [A24] keeps its place - service resumes at [1:15 PM].
 ```
 
-`[Business Name]` is the business the customer is visiting — AzQueue sends on
-their behalf and names them so the recipient knows who is texting. The campaign
-description explains this, which error code **30886** specifically asks an ISV
-to do.
+**What changed, and why it matters more than it looks.**
+
+An earlier draft used a subscription confirmation as sample 5: *"AzQueue: You
+are subscribed to queue notifications…"* That message only exists if a person
+can text a keyword to join. Paired with opt-in keywords START and UNSTOP, the
+campaign was declaring a **text-to-join flow that does not exist** — consent
+is a checkbox on a web form.
+
+A reviewer verifying the Call to Action would look for that text-to-join path,
+fail to find it, and reject on **30909** — which is precisely the code Twilio
+support confirmed for `CM48e9d650b7c6d5923c6f103962247b1c`. We were declaring
+an opt-in method we do not have, and then being marked down for not having it.
+
+Sample 5 is now the prayer-pause notice, which is a real message. `[Business
+Name]` is the business the customer is visiting; "via AzQueue" appears on the
+first message of a visit so the recipient knows which platform is texting from
+an unfamiliar number.
 
 ## Content your messages may contain
 
@@ -188,18 +211,18 @@ from the footer of every page on azqueue.io.
 
 ## Opt-in keywords
 
-No spaces. Twilio validates each keyword as alphanumeric and a space after the
-comma fails. If the field still objects, enter them one at a time.
+**Leave blank.** The form says so explicitly: *"If you do not support opt-in
+via text, please leave this blank."*
 
-```
-START,UNSTOP
-```
+Consent is a checkbox on a web form. Nobody texts a keyword to join, so
+declaring START and UNSTOP claimed a flow that does not exist — and a reviewer
+who cannot verify a declared opt-in path rejects the campaign. That is the most
+likely cause of error 30909.
 
 ## Opt-in message
 
-```
-AzQueue: You are subscribed to queue notifications. Message frequency varies, typically 1-5 per visit. Msg & data rates may apply. Reply STOP to opt out, HELP for help.
-```
+**Leave blank**, for the same reason. There is no keyword opt-in, so there is
+no auto-reply confirming one.
 
 ## Opt-out keywords
 

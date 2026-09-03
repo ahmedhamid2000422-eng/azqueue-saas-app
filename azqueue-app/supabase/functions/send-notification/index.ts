@@ -35,8 +35,14 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
    from 160 characters to 70, so an ordinary message quietly becomes three
    segments at three times the cost. Keep hyphens and straight quotes here. */
 const TEMPLATES = {
+  /* "via AzQueue" appears on the FIRST message of a visit and nowhere else.
+     Two reasons. The recipient consented at a tax office and is now getting a
+     text from an unfamiliar number, so naming the platform once answers the
+     question they are actually asking. And A2P error 30893 requires at least
+     one sample message to carry the registered brand name — every other
+     message names the business, which is the customer of that brand. */
   confirm: ({ token, branchName, serviceName }) =>
-    `${branchName}: You're checked in. Ticket ${token} for ${serviceName ?? "your service"}. We'll message you when you're up. Reply STOP to opt out.`,
+    `${branchName} via AzQueue: You're checked in. Ticket ${token} for ${serviceName ?? "your service"}. We'll message you when you're up. Reply STOP to opt out.`,
 
   call: ({ token, branchName }) =>
     `${branchName}: You're up - please come to the counter now. Ticket ${token}.`,
