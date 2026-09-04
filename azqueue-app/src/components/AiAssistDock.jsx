@@ -82,6 +82,10 @@ export default function AiAssistDock() {
   const [unread, setUnread]     = useState(false);
   const [level, setLevel]       = useState(loadLevel);
   const [tour, setTour]         = useState(false);
+  /* Which timeframe the person tapped on the opening screen, or null before
+     they have. Deliberately not persisted — every new conversation starts
+     from the same one short question. */
+  const [askTopic, setAskTopic] = useState(null);
   const [neverOpened, setNeverOpened] = useState(() => {
     try { return !localStorage.getItem(TOUR_KEY); } catch { return false; }
   });
@@ -398,34 +402,80 @@ export default function AiAssistDock() {
               </div>
             )}
 
+            {/* ONE QUESTION AT A TIME, NOT A MENU.
+                This used to open with a paragraph, a stack of three full
+                sentences, and another paragraph — everything the assistant
+                could do, all at once, before the person had asked anything.
+                That reads as homework.
+
+                Now it asks one short question and offers three taps. Choose a
+                timeframe, then choose what about it. The harder capabilities
+                are still there and still answer, they are just not advertised
+                on the first screen: someone who discovers later that it will
+                explain WHY a day was slow is pleased. Someone shown eight
+                options on arrival is tired. */}
             {!tour && messages.length === 0 && (
               <div className="text-[12.5px] text-ink-soft leading-relaxed">
-                <p className="mb-3">
-                  Hello — ask me anything about how the office is running. I only
-                  use your own records, so everything I say is about this branch.
-                </p>
-                {/* Starter questions, tappable. Somebody who has never used a
-                    chat box does not know what it will understand, and a blank
-                    field with a cursor is an exam question. These remove that
-                    entirely: press one and see what an answer looks like. */}
-                <div className="flex flex-col gap-1.5 mb-3">
-                  {[
-                    "How busy were we yesterday?",
-                    "How long do people usually wait?",
-                    "What time of day is busiest?",
-                  ].map((q) => (
+                {!askTopic ? (
+                  <>
+                    <p className="mb-3">
+                      Hello. What would you like to look at?
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { key: "now",  label: "Right now" },
+                        { key: "day",  label: "Today" },
+                        { key: "week", label: "This week" },
+                      ].map((o) => (
+                        <button
+                          key={o.key}
+                          onClick={() => setAskTopic(o.key)}
+                          className="text-[12.5px] border border-gold-deep rounded-full px-4 py-1.5 text-gold-soft hover:bg-[rgba(201,168,106,0.1)] transition"
+                        >
+                          {o.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="mb-3">
+                      {askTopic === "now"  && "What about right now?"}
+                      {askTopic === "day"  && "What about today?"}
+                      {askTopic === "week" && "What about this week?"}
+                    </p>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {{
+                        now: [
+                          "How busy are we right now?",
+                          "Is anyone waiting too long?",
+                        ],
+                        day: [
+                          "How busy were we today?",
+                          "How long did people wait?",
+                        ],
+                        week: [
+                          "How many people came in this week?",
+                          "What time of day is busiest?",
+                        ],
+                      }[askTopic].map((q) => (
+                        <button
+                          key={q}
+                          onClick={() => send(q)}
+                          className="text-[12.5px] border border-gold-deep rounded-full px-4 py-1.5 text-gold-soft hover:bg-[rgba(201,168,106,0.1)] transition"
+                        >
+                          {q}
+                        </button>
+                      ))}
+                    </div>
                     <button
-                      key={q}
-                      onClick={() => send(q)}
-                      className="text-left text-[12px] border border-line hover:border-gold-deep px-3 py-2 text-ink-soft hover:text-ink transition"
+                      onClick={() => setAskTopic(null)}
+                      className="text-[11px] text-ink-mute hover:text-ink transition"
                     >
-                      {q}
+                      ‹ Back
                     </button>
-                  ))}
-                </div>
-                <p className="text-[11px] text-ink-mute">
-                  You can also just type in your own words below.
-                </p>
+                  </>
+                )}
               </div>
             )}
 
