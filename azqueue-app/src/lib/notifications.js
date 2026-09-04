@@ -48,6 +48,15 @@ export const sendCallNotice      = (ticketId, channel = "whatsapp") => notify({ 
 export const sendThanks          = (ticketId, channel = "whatsapp") => notify({ ticketId, template: "thanks",       channel });
 export const sendPrayerPause     = (ticketId, extras, channel = "whatsapp") => notify({ ticketId, template: "prayer_pause", channel, extras });
 
+/**
+ * The same message, named for what it actually is. A break is a break —
+ * prayer, lunch, cleaning, shift change — and only the label changes.
+ * Pass `breakName` in extras; it falls back to "a short break" if omitted.
+ *
+ * Prefer this in new code. sendPrayerPause stays for existing callers.
+ */
+export const sendBreakPause      = (ticketId, extras, channel = "whatsapp") => notify({ ticketId, template: "break_pause", channel, extras });
+
 // QA bug B8 — booking confirmation. Same dry-run-safe pattern as the
 // ticket helpers above: safe to call unconditionally right after a
 // booking insert, even before Twilio secrets are configured.

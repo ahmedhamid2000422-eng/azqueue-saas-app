@@ -50,8 +50,23 @@ const TEMPLATES = {
   thanks: ({ token, branchName }) =>
     `${branchName}: Thanks for visiting! Ticket ${token} is complete. Reply STOP to opt out.`,
 
-  prayer_pause: ({ token, branchName, prayerName, resumeTime }) =>
-    `${branchName}: Pausing briefly for ${prayerName}. Your ticket ${token} keeps its place - service resumes at ${resumeTime}.`,
+  /* A BREAK IS A BREAK, WHATEVER THE BUSINESS CALLS IT.
+     This was written for prayer times, which is right for a tax office in
+     Aurora and meaningless to a barber in Denver or a clinic anywhere. The
+     mechanism is identical for all of them — the queue holds, everyone keeps
+     their place, service resumes at a stated time. Only the label differs,
+     and a label is data, not code.
+
+     So the name is a value the business supplies: "Dhuhr", "Lunch",
+     "Cleaning", "Shift change". `prayerName` is still accepted because
+     callers across 40-odd files still pass it, and breaking them to rename a
+     parameter would be a poor trade.
+
+     A2P note: the approved campaign's sample 5 reads "Pausing briefly for
+     [Prayer]" — a bracketed variable, so a different value in that slot is
+     the same declared message shape, not new traffic. */
+  prayer_pause: ({ token, branchName, prayerName, breakName, resumeTime }) =>
+    `${branchName}: Pausing briefly for ${breakName ?? prayerName ?? "a short break"}. Your ticket ${token} keeps its place - service resumes at ${resumeTime}.`,
 
   // Booking-flow confirmation (QA bug B8) — sent once when a customer books
   // an appointment, either via the public /b/:slug page or the in-app
@@ -61,7 +76,13 @@ const TEMPLATES = {
     `${branchName}: Hi ${customerName ?? "there"}! Your booking for ${serviceName ?? "your appointment"} is confirmed for ${scheduledAt}. Reply STOP to opt out.`,
 };
 
-const TICKET_TEMPLATES  = new Set(["confirm", "call", "thanks", "prayer_pause"]);
+/* `break_pause` is the name this should have had. Both keys point at the same
+   template, so new code can use the generic name while the forty-odd existing
+   callers keep working unchanged. Retire "prayer_pause" when those callers
+   are eventually renamed — not before. */
+TEMPLATES.break_pause = TEMPLATES.prayer_pause;
+
+const TICKET_TEMPLATES  = new Set(["confirm", "call", "thanks", "prayer_pause", "break_pause"]);
 const BOOKING_TEMPLATES = new Set(["booking_confirmation"]);
 
 /**
