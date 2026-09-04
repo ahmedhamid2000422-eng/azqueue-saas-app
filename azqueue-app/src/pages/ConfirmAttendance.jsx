@@ -28,11 +28,12 @@ export default function ConfirmAttendance() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data: b, error: bErr } = await supabase
-        .from("bookings")
-        .select("id, branch_id, service_id, customer_name, scheduled_at, status, confirmed_at")
-        .eq("id", bookingId)
-        .maybeSingle();
+      /* get_booking_public, not a direct table select — see migration 0060.
+         The old anon SELECT policy on bookings had no id restriction at
+         all; the RPC enforces "only this booking" at the database level. */
+      const { data: rows, error: bErr } = await supabase
+        .rpc("get_booking_public", { p_id: bookingId });
+      const b = rows?.[0] ?? null;
 
       if (bErr || !b) {
         if (!cancelled) { setError("We couldn't find that booking — please check the link and try again."); setLoading(false); }

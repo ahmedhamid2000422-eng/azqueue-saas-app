@@ -48,11 +48,13 @@ export default function CustomerTicket() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data: t, error: tErr } = await supabase
-        .from("tickets")
-        .select("*")
-        .eq("id", ticketId)
-        .single();
+      /* get_ticket_public, not a direct table select — the anon SELECT
+         policy that used to allow this was unscoped (see migration 0060)
+         and let anyone read every ticket, not just this one. The RPC
+         enforces "only this id" at the database level. */
+      const { data: rows, error: tErr } = await supabase
+        .rpc("get_ticket_public", { p_id: ticketId });
+      const t = rows?.[0] ?? null;
 
       if (tErr || !t) {
         if (!cancelled) {
