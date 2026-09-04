@@ -310,9 +310,9 @@ export default function CustomerCheckIn() {
 
   return (
     <Shell isKiosk={isKiosk}>
-      <div className="atmosphere-hero -mx-6 px-6 -mt-8 pt-8 pb-2 text-center">
+      <div className={`atmosphere-hero -mx-6 px-6 text-center ${isKiosk ? "-mt-4 pt-4 pb-1" : "-mt-8 pt-8 pb-2"}`}>
         <div className="ovline text-gold-soft mb-2">{t("checkin.title")}</div>
-        <h1 className={`font-display font-light tracking-tightest leading-tight ${isKiosk ? "text-6xl" : "text-3xl"}`}>
+        <h1 className={`font-display font-light tracking-tightest leading-tight ${isKiosk ? "text-4xl" : "text-3xl"}`}>
           {branch.name}
         </h1>
         {branch.city && <div className="text-[10px] text-ink-mute mt-2 tracking-wide">{branch.city}</div>}
@@ -369,7 +369,7 @@ export default function CustomerCheckIn() {
         }
       />
 
-      <form onSubmit={handleSubmit} className={`mt-6 ${isKiosk ? "space-y-8" : "space-y-6"}`}>
+      <form onSubmit={handleSubmit} className={`mt-4 ${isKiosk ? "space-y-4" : "space-y-6"}`}>
         {/* Service picker */}
         <div>
           <div className={`ovline mb-3 ${isKiosk ? "text-[15px]" : ""}`}>{t("checkin.service_label")}</div>
@@ -388,13 +388,13 @@ export default function CustomerCheckIn() {
                   onClick={() => setServiceId(active ? null : svc.id)}
                   className={`w-full text-left transition flex items-center justify-between ${
                     active ? "bg-[rgba(201,168,106,0.08)]" : "bg-bg-elev hover:bg-[rgba(201,168,106,0.04)]"
-                  } ${isKiosk ? "px-7 py-6" : "px-4 py-3"}`}
+                  } ${isKiosk ? "px-5 py-3.5" : "px-4 py-3"}`}
                 >
                   <span className="flex items-center gap-3">
-                    <span className={`border ${active ? "border-gold bg-gold" : "border-line-2"} rounded-full ${isKiosk ? "w-7 h-7" : "w-3 h-3"}`} />
-                    <span className={`${active ? "text-ink" : "text-ink-soft"} ${isKiosk ? "text-2xl" : "text-sm"}`}>{svc.name}</span>
+                    <span className={`border ${active ? "border-gold bg-gold" : "border-line-2"} rounded-full ${isKiosk ? "w-5 h-5" : "w-3 h-3"}`} />
+                    <span className={`${active ? "text-ink" : "text-ink-soft"} ${isKiosk ? "text-lg" : "text-sm"}`}>{svc.name}</span>
                   </span>
-                  <span className={`text-ink-mute font-mono ${isKiosk ? "text-lg" : "text-[10px]"}`}>~{svc.duration_min}m</span>
+                  <span className={`text-ink-mute font-mono ${isKiosk ? "text-sm" : "text-[10px]"}`}>~{svc.duration_min}m</span>
                 </button>
               );
             })}
@@ -456,7 +456,7 @@ export default function CustomerCheckIn() {
               onChange={e => setSmsConsent(e.target.checked)}
               className={`mt-0.5 shrink-0 accent-[#c9a86a] ${isKiosk ? "w-5 h-5" : ""}`}
             />
-            <span className={`text-ink-mute leading-relaxed ${isKiosk ? "text-[15px]" : "text-[11px]"}`}>
+            <span className={`text-ink-mute leading-relaxed ${isKiosk ? "text-[13px]" : "text-[11px]"}`}>
               {/* The BUSINESS's name, not ours. The customer is standing in
                   their office and the texts arrive from their number, so
                   "AzQueue" named a company they've never heard of. It also
@@ -517,7 +517,7 @@ function Field({ label, value, onChange, placeholder, type = "text", autoFocus, 
         placeholder={placeholder}
         autoFocus={autoFocus}
         className={`w-full bg-bg-elev border border-line focus:border-gold-deep outline-none transition text-ink placeholder:text-ink-mute ${
-          isKiosk ? "text-2xl px-6 py-5" : "text-sm px-4 py-3"
+          isKiosk ? "text-xl px-6 py-4" : "text-sm px-4 py-3"
         }`}
       />
     </div>
@@ -538,24 +538,24 @@ function Shell({ children, isKiosk }) {
             "radial-gradient(60% 80% at 50% 0%, rgba(184,149,90,0.07), transparent 70%)",
         }}
       />
-      <header className="relative px-6 py-4 border-b border-line/70 flex items-center justify-between backdrop-blur-sm bg-bg/60">
+      <header className="relative px-6 py-2.5 border-b border-line/70 flex items-center justify-between backdrop-blur-sm bg-bg/60">
         <div className="flex items-center gap-2.5">
           <div className={`bg-gold rounded-sm flex items-center justify-center font-display text-[#141410] shadow-[0_0_24px_rgba(201,168,106,0.3)] ${
-            isKiosk ? "w-14 h-14 text-lg" : "w-7 h-7 text-[10px]"}`}>
+            isKiosk ? "w-10 h-10 text-sm" : "w-7 h-7 text-[10px]"}`}>
             AQ
           </div>
-          <span className={"font-display tracking-tightest text-ink " + (isKiosk ? "text-3xl" : "text-sm")}>
+          <span className={"font-display tracking-tightest text-ink " + (isKiosk ? "text-xl" : "text-sm")}>
             AzQueue
           </span>
         </div>
         <LanguagePicker />
       </header>
       <main className="relative flex-1 overflow-y-auto">
-        <div className={"mx-auto px-6 py-8 " + (isKiosk ? "max-w-3xl" : "max-w-md")}>
+        <div className={"mx-auto px-6 " + (isKiosk ? "py-4 max-w-2xl" : "py-8 max-w-md")}>
           {children}
         </div>
       </main>
-      <footer className="relative px-6 py-4 border-t border-line/70 text-[9px] text-ink-mute tracking-[0.2em] uppercase text-center bg-bg/60">
+      <footer className="relative px-6 py-2 border-t border-line/70 text-[9px] text-ink-mute tracking-[0.2em] uppercase text-center bg-bg/60">
         {t("common.powered_by", { defaultValue: "Powered by" })} · azqueue.io · secured by 256-bit encryption
       </footer>
     </div>

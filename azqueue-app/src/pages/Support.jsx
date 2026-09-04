@@ -55,7 +55,7 @@ const FAQ = [
   { q: "Do you support multiple languages?",
     a: "The customer-facing flow ships in English, Bahasa Malaysia and Arabic. Staff dashboard adds French and Urdu. Custom translations available on Enterprise." },
   { q: "What SLA do you offer?",
-    a: "99.9% production uptime is written into the Enterprise contract, with a 24/7 incident response channel. Starter and Growth tiers run on the same infrastructure but without a contractual guarantee." },
+    a: "No formal SLA is offered today. AzQueue runs on Supabase and Vercel, and support is by email at hello@azqueue.io. A contractual uptime guarantee is something we will offer when there is a team to stand behind it." },
 ];
 
 const CHANNELS = [

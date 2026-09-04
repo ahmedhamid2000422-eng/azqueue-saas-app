@@ -47,42 +47,36 @@ const INDUSTRIES = [
     tagline: "Designed for high-volume patient flow.",
     body: "Manage general, specialist, lab, and pharmacy queues from one dashboard. Prayer pause keeps the flow respectful and compliant.",
     features: ["Multi-service queues", "Prayer pause scheduling", "Patient WhatsApp updates", "Wait time estimation"],
-    stat: { value: "40%", label: "avg. reduction in perceived wait time" },
   },
   {
     name: "Government offices",
     tagline: "Built for public-sector scale.",
     body: "From passport offices to municipal services, AzQueue handles high foot traffic without chaos. Supports Arabic, English, and 4 more languages.",
     features: ["Multilingual interface", "High-volume throughput", "Multi-counter routing", "Real-time occupancy tracking"],
-    stat: { value: "6", label: "languages supported out of the box" },
   },
   {
     name: "Banks & finance",
     tagline: "A better experience for your members.",
     body: "Replace the numbered ticket machine with a modern kiosk. Customers check in on their phone and wait comfortably — notified the moment they're next.",
     features: ["Mobile check-in option", "Priority queuing", "Service type routing", "Loyalty punch cards"],
-    stat: { value: "92%", label: "customer satisfaction score" },
   },
   {
     name: "Pharmacies",
     tagline: "Keep prescriptions flowing.",
     body: "Separate queues for collection, consultation, and over-the-counter. Staff see the full picture and can manage capacity in real time.",
     features: ["Service-type separation", "Staff dashboard", "SMS notifications", "Queue hold & resume"],
-    stat: { value: "3x", label: "faster average service completion" },
   },
   {
     name: "Service centers",
     tagline: "For workshops, showrooms, and repair shops.",
     body: "Check in on arrival, wait in your car, and get called in via WhatsApp. No crowded waiting rooms, no frustration.",
     features: ["Remote wait (wait in car)", "Two-way WhatsApp", "Appointment + walk-in mix", "Multi-bay routing"],
-    stat: { value: "8 min", label: "average wait time reduction" },
   },
   {
     name: "Telecom providers",
     tagline: "Match service time to demand.",
     body: "Route customers to the right specialist instantly. Measure queue load per service type and staff accordingly.",
     features: ["Specialist routing", "Peak hour analytics", "Staff allocation insights", "Customer satisfaction tracking"],
-    stat: { value: "28%", label: "improvement in staff utilization" },
   },
 ];
 
@@ -151,10 +145,11 @@ function IndustryGrid() {
                   ))}
                 </div>
               </div>
-              <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 24, marginTop: 8 }}>
-                <div style={{ fontSize: 28, fontWeight: 400, color: C.ink, fontFamily: "Georgia, serif", letterSpacing: "-0.02em", lineHeight: 1 }}>{ind.stat.value}</div>
-                <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>{ind.stat.label}</div>
-              </div>
+              {/* Per-industry stat removed 4 Sept 2026 — "40% avg. reduction in
+                  perceived wait time", "92% customer satisfaction", "3x faster
+                  service" and the rest were invented. AzQueue has one live
+                  business and no measured figures for any of these sectors.
+                  See docs/website-audit-2026-09-04.md. */}
             </div>
           ))}
         </div>

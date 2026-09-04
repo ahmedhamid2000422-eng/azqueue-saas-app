@@ -47,19 +47,16 @@ const PILLARS = [
   { title: "Values",   body: "Trust, speed, respect, and a premium experience — for both staff and customers." },
 ];
 
+/* Only facts that can be checked against this repository or the live
+   database. The previous set claimed "29 branches across case studies"
+   (those case studies were fictional and are now deleted), "4 countries
+   served" (one customer, one country), and "99.9% production uptime" —
+   which nothing measures. See docs/website-audit-2026-09-04.md. */
 const STATS = [
-  { value: "29",      label: "Branches across case studies" },
-  { value: "4",       label: "Countries served" },
-  { value: "6",       label: "Languages built-in" },
-  { value: "99.9%",   label: "Production uptime" },
+  { value: "5",  label: "Languages built in" },
+  { value: "1",  label: "Business running live" },
 ];
 
-const ROLES = [
-  { role: "Product Operations Lead",       loc: "Remote · Full-time" },
-  { role: "Customer Success Specialist",   loc: "Kuala Lumpur · Full-time" },
-  { role: "Senior Frontend Engineer",      loc: "Remote · Full-time" },
-  { role: "Enterprise Account Executive",  loc: "Dubai · Full-time" },
-];
 
 export default function Company() {
   usePageMeta({
@@ -74,7 +71,8 @@ export default function Company() {
       <StatBand />
       <Pillars />
       <AboutSplit />
-      <Careers />
+      {/* Careers removed 4 Sept 2026 — four job openings in Dubai and
+          Kuala Lumpur for a team that does not exist. */}
       <PageCTA />
       <SiteFooter />
     </div>
@@ -104,7 +102,7 @@ function StatBand() {
   return (
     <section style={{ padding: "80px 48px", borderBottom: `1px solid ${C.border}` }}>
       <div style={{ maxWidth: 1160, margin: "0 auto" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 1, background: C.border, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 1, background: C.border, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
           {STATS.map(s => (
             <div key={s.label} style={{ background: C.void, padding: "36px 28px", textAlign: "center" }}>
               <div style={{ fontSize: 38, fontWeight: 400, color: C.ink, fontFamily: "Georgia, serif", letterSpacing: "-0.02em", lineHeight: 1, marginBottom: 10 }}>{s.value}</div>
@@ -182,42 +180,6 @@ function AboutSplit() {
   );
 }
 
-function Careers() {
-  const [ref, visible] = useInView();
-  return (
-    <section ref={ref} style={{ padding: "120px 48px" }}>
-      <div style={{ maxWidth: 1160, margin: "0 auto" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 48, gap: 32, flexWrap: "wrap" }}>
-          <div>
-            <div style={{ ...T.label, marginBottom: 20 }}>Careers</div>
-            <h2 style={{ ...T.h2, color: C.ink, margin: 0 }}>Join the team.</h2>
-          </div>
-          <p style={{ ...T.body, maxWidth: 360, margin: 0 }}>
-            Hiring senior engineers, product operators, and customer success partners to scale queues that work for businesses and people.
-          </p>
-        </div>
-        <div style={{ border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden", background: C.card }}>
-          {ROLES.map((r, i) => (
-            <a key={r.role} href="mailto:careers@azqueue.io" style={{
-              display: "grid", gridTemplateColumns: "1fr 220px 32px", padding: "26px 32px",
-              alignItems: "center", textDecoration: "none",
-              borderBottom: i === ROLES.length - 1 ? "none" : `1px solid ${C.border}`,
-              opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(8px)",
-              transition: `all 0.4s ease ${i * 0.06}s`,
-              background: C.card,
-            }}
-              onMouseEnter={e => e.currentTarget.style.background = "#0f0f0e"}
-              onMouseLeave={e => e.currentTarget.style.background = C.card}>
-              <div style={{ fontSize: 15, color: C.ink, letterSpacing: "-0.005em" }}>{r.role}</div>
-              <div style={{ fontSize: 11, color: C.muted, letterSpacing: "0.04em" }}>{r.loc}</div>
-              <div style={{ color: C.gold, display: "flex", justifyContent: "flex-end" }}><Arr /></div>
-            </a>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
 
 function PageCTA() {
   return (

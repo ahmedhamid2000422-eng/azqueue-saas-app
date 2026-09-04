@@ -79,7 +79,4 @@
   <url><loc>https://azqueue.io/resources/queue-analytics</loc>    <changefreq>monthly</changefreq><priority>0.7</priority></url>
 
   <!-- Case studies -->
-  <url><loc>https://azqueue.io/case-studies/meridian-health</loc> <changefreq>yearly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://azqueue.io/case-studies/nordic-bank</loc>     <changefreq>yearly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://azqueue.io/case-studies/caelum-salons</loc>   <changefreq>yearly</changefreq><priority>0.7</priority></url>
 </urlset>

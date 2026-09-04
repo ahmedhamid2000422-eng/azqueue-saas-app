@@ -41,7 +41,6 @@ const COLS = [
     ["All guides",            "/resources"],
     ["Science of waiting",    "/resources/science-of-waiting"],
     ["Setup guide",           "/resources/setup-guide"],
-    ["Case studies",          "/resources#case-studies"],
     ["Support",               "/support"],
   ]},
   { heading: "Company",     links: [

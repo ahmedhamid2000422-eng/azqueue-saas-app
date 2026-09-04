@@ -30,6 +30,12 @@ const OVERDUE_DAYS = 3;
 export default function InReviewList({ branchId, branchName, branchSlug, onChange }) {
   const [rows, setRows] = useState([]);
   const [busy, setBusy] = useState(null);
+  /* Closed by default, unlike InProgressPanel. Nobody here is standing in
+     the room — these are people who went home and will come back. It was
+     taking as much vertical space as the live queue, which is the wrong way
+     round. The count is in the header, so an unopened panel still answers
+     "is there anything waiting for me?". */
+  const [open, setOpen] = useState(false);
 
   async function load() {
     setRows(await loadBackQueue(branchId));
@@ -77,6 +83,10 @@ export default function InReviewList({ branchId, branchName, branchSlug, onChang
 
   const days = (iso) => (Date.now() - new Date(iso).getTime()) / 86_400_000;
 
+  /* Surfaced in the closed header so collapsing never hides the one thing
+     that actually needs attention. */
+  const overdueCount = rows.filter((t) => days(t.handed_off_at) > OVERDUE_DAYS).length;
+
   const age = (iso) => {
     const d = days(iso);
     if (d < 1) {
@@ -89,21 +99,25 @@ export default function InReviewList({ branchId, branchName, branchSlug, onChang
 
   return (
     <div className="border border-line">
-      <div className="px-5 py-3 border-b border-line flex items-baseline justify-between gap-3">
-        <div>
-          <div className="text-[13px] text-ink">In review</div>
-          <div className="text-[11px] text-ink-mute mt-0.5">
-            Left with us — not waiting in the room
-          </div>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full px-5 py-2.5 flex items-center justify-between gap-3 text-left hover:bg-[rgba(201,168,106,0.03)] transition"
+      >
+        <div className="text-[13px] text-ink">
+          In review
+          <span className="text-ink-mute"> · {rows.length}</span>
+          {!open && overdueCount > 0 && (
+            <span className="text-[#d49185]"> · {overdueCount} overdue</span>
+          )}
         </div>
-        <span className="text-[11px] text-ink-mute">{rows.length}</span>
-      </div>
+        <span className="text-[11px] text-ink-mute shrink-0">{open ? "Hide" : "Show"}</span>
+      </button>
 
-      <div className="divide-y divide-line">
+      {open && <div className="divide-y divide-line border-t border-line">
         {rows.map((t) => {
           const overdue = days(t.handed_off_at) > OVERDUE_DAYS;
           return (
-            <div key={t.id} className="px-5 py-3 flex items-center gap-3">
+            <div key={t.id} className="px-5 py-2 flex items-center gap-3">
               <div className="min-w-0 flex-1">
                 <div className="text-[12.5px] text-ink truncate">
                   {t.customer_name || t.token}
@@ -126,12 +140,7 @@ export default function InReviewList({ branchId, branchName, branchSlug, onChang
             </div>
           );
         })}
-      </div>
-
-      <div className="px-5 py-2.5 text-[10.5px] text-ink-mute leading-relaxed border-t border-line">
-        Press Ready to collect when the work is finished. Anything older than{" "}
-        {OVERDUE_DAYS} days is shown in red.
-      </div>
+      </div>}
     </div>
   );
 }

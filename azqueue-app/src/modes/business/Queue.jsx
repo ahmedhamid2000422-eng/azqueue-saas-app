@@ -1558,17 +1558,28 @@ export default function Queue() {
               Reassign beside it for the one genuinely common exception, and
               the rare cases sit smaller underneath where they can still be
               reached but do not compete. */}
-          <div className="flex flex-wrap gap-3 items-center">
+          {/* THREE SQUARE TILES, COLOUR-CODED BY WHAT THEY MEAN.
+              Gold is the ordinary path and the only one that should be
+              pressed most of the time. Amber is "this went differently but
+              nothing is wrong" — a no-show is a normal event, not a fault,
+              and red would make ordinary days look like bad ones. Green is
+              handing work to a colleague.
+
+              Equal-sized squares in a row, matching the card grids used
+              everywhere else in the product, rather than one giant button
+              and a scatter of text links underneath. */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {serving ? (
               <button
                 onClick={complete}
                 disabled={busy}
-                className="flex-1 min-w-[280px] bg-gold-deep/15 border-2 border-gold-deep text-ink hover:bg-gold-deep/25 transition disabled:opacity-40 px-8 py-6 text-left"
+                style={{ background: "#8a7246" }}
+                className="aspect-[4/3] sm:aspect-auto sm:min-h-[132px] border-2 border-[#b8955a] text-[#141410] hover:brightness-110 transition disabled:opacity-40 px-5 py-5 text-left flex flex-col justify-between"
               >
-                <div className="text-[19px] leading-tight">
+                <div className="text-[17px] leading-tight">
                   Done with {serving.customer_name ? serving.customer_name.split(" ")[0] : serving.token}
                 </div>
-                <div className="text-[12.5px] text-ink-mute mt-1">
+                <div className="text-[12px] text-[#141410]/70 mt-2 leading-snug">
                   {waiting.length > 0
                     ? `Finish and call the next person · ${waiting.length} waiting`
                     : "Finish — nobody else is waiting"}
@@ -1578,18 +1589,32 @@ export default function Queue() {
               <button
                 onClick={startNext}
                 disabled={busy || waiting.length === 0}
-                className="flex-1 min-w-[280px] bg-gold-deep/15 border-2 border-gold-deep text-ink hover:bg-gold-deep/25 transition disabled:opacity-30 px-8 py-6 text-left"
+                style={{ background: "#8a7246" }}
+                className="aspect-[4/3] sm:aspect-auto sm:min-h-[132px] border-2 border-[#b8955a] text-[#141410] hover:brightness-110 transition disabled:opacity-30 px-5 py-5 text-left flex flex-col justify-between"
               >
-                <div className="text-[19px] leading-tight">
+                <div className="text-[17px] leading-tight">
                   {waiting.length > 0 ? "Call the next person" : "Nobody waiting"}
                 </div>
-                <div className="text-[12.5px] text-ink-mute mt-1">
+                <div className="text-[12px] text-[#141410]/70 mt-2 leading-snug">
                   {waiting.length > 0
                     ? `${waiting.length} ${waiting.length === 1 ? "person" : "people"} in the queue`
                     : "The queue is empty"}
                 </div>
               </button>
             )}
+
+            {/* Amber, not red. A no-show is an ordinary outcome. */}
+            <button
+              onClick={skipServing}
+              disabled={busy || !serving}
+              style={{ background: "#8a6a2a" }}
+              className="aspect-[4/3] sm:aspect-auto sm:min-h-[132px] border-2 border-[#c08a34] text-[#f5ead6] hover:brightness-110 transition disabled:opacity-25 px-5 py-5 text-left flex flex-col justify-between"
+            >
+              <div className="text-[17px] leading-tight">No show</div>
+              <div className="text-[12px] text-[#f5ead6]/70 mt-2 leading-snug">
+                They never came to the counter
+              </div>
+            </button>
 
             {serving && (
               <ReassignMenu
@@ -1626,30 +1651,10 @@ export default function Queue() {
             )}
           </div>
 
-          {/* The uncommon cases. Deliberately small and below the fold of the
-              main action — they are needed a few times a week, not a few
-              times an hour, and at full size they made the screen look like
-              it was asking a question every time someone finished. */}
-          {serving && (
-            <div className="flex flex-wrap gap-4 items-center mt-4 pt-3 border-t border-line">
-              <button
-                onClick={skipServing}
-                disabled={busy}
-                className="text-[11.5px] text-ink-mute hover:text-ink transition disabled:opacity-40"
-                title="They did not come to the counter"
-              >
-                Didn't show up
-              </button>
-              <button
-                onClick={sendBackToQueue}
-                disabled={busy}
-                className="text-[11.5px] text-ink-mute hover:text-ink transition disabled:opacity-40"
-                title="Put this customer back in the queue"
-              >
-                Back to the queue
-              </button>
-            </div>
-          )}
+          {/* The old "Didn't show up" / "Back to the queue" text links were
+              removed here — No show is now one of the three tiles, and
+              returning someone to the line lives inside Hand over, where it
+              belongs next to handing them to a person. */}
         </Card>
 
         {/* Up Next */}
@@ -2383,11 +2388,12 @@ function ReassignMenu({ ticket, staffList, onReassign, onBackToQueue, disabled }
       <button
         onClick={() => setOpen((x) => !x)}
         disabled={disabled}
-        className="border-2 border-[#506b50] text-[#9bbd9b] hover:bg-[rgba(80,107,80,0.15)] transition disabled:opacity-40 px-6 py-6 text-left min-w-[190px]"
+        style={{ background: "#3d5a3d" }}
+        className="w-full aspect-[4/3] sm:aspect-auto sm:min-h-[132px] border-2 border-[#6b8f6b] text-[#e8f0e8] hover:brightness-110 transition disabled:opacity-25 px-5 py-5 text-left flex flex-col justify-between"
       >
-        <div className="text-[15px] leading-tight">Hand over</div>
-        <div className="text-[11.5px] text-[#9bbd9b]/70 mt-1">
-          Someone else takes this
+        <div className="text-[17px] leading-tight">Hand over</div>
+        <div className="text-[12px] text-[#e8f0e8]/70 mt-2 leading-snug">
+          Someone else takes this, or back to the line
         </div>
       </button>
 

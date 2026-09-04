@@ -189,9 +189,14 @@ Deno.serve(async (req) => {
 
   // Resolve the From number for the requested channel
   const fromNumber = channel === "sms" ? smsFrom : whatsappFrom;
+  /* The branch's timezone decides the country code — see normalisePhone.
+     `record` is a ticket or booking joined with branches(*), so this is the
+     business's own timezone, not the server's and not the customer's. */
+  const branchTz = (record as { branches?: { timezone?: string } }).branches?.timezone;
+  const normalisedTo = normalisePhone(record.customer_phone, branchTz);
   const toNumber   = channel === "sms"
-    ? normalisePhone(record.customer_phone)
-    : `whatsapp:${normalisePhone(record.customer_phone)}`;
+    ? normalisedTo
+    : `whatsapp:${normalisedTo}`;
 
   const logBase = {
     branch_id:  record.branch_id,
@@ -260,10 +265,70 @@ Deno.serve(async (req) => {
   );
 });
 
-function normalisePhone(p: string): string {
+/**
+ * Turn whatever a customer typed into E.164, using the country the BUSINESS
+ * is in rather than a hardcoded assumption.
+ *
+ * The old version just glued a "+" on the front of anything without one. So a
+ * Denver customer typing their ordinary 10-digit number, 7205551234, became
+ * "+7205551234" — country code +7, which is Russia and Kazakhstan. Every such
+ * message failed. Elsewhere in the codebase the opposite mistake was made:
+ * a hardcoded "+1", which is wrong the moment a branch is not in North
+ * America.
+ *
+ * Neither assumption is safe for a product sold in more than one country, so
+ * the country comes from the branch's timezone, which is already stored and
+ * already correct. A tax office in America/Denver gets +1; a salon in
+ * Asia/Kuala_Lumpur gets +60. Nothing to configure, nothing to migrate.
+ *
+ * Anything the customer types WITH a country code is left alone — that is
+ * the one case where they have told us explicitly, and guessing over the top
+ * of it would be worse than doing nothing.
+ */
+const DIAL_CODE_BY_TZ_PREFIX: Record<string, string> = {
+  "America/":            "1",
+  "Asia/Kuala_Lumpur":   "60",
+  "Asia/Singapore":      "65",
+  "Asia/Dubai":          "971",
+  "Asia/Riyadh":         "966",
+  "Asia/Karachi":        "92",
+  "Africa/Lagos":        "234",
+  "Europe/London":       "44",
+};
+
+function dialCodeFor(timezone?: string): string | null {
+  if (!timezone) return null;
+  if (DIAL_CODE_BY_TZ_PREFIX[timezone]) return DIAL_CODE_BY_TZ_PREFIX[timezone];
+  for (const [prefix, code] of Object.entries(DIAL_CODE_BY_TZ_PREFIX)) {
+    if (prefix.endsWith("/") && timezone.startsWith(prefix)) return code;
+  }
+  return null;
+}
+
+function normalisePhone(p: string, timezone?: string): string {
   if (!p) return "";
-  const trimmed = p.replace(/[\s\-()]/g, "");
-  return trimmed.startsWith("+") ? trimmed : `+${trimmed}`;
+  const trimmed = p.replace(/[\s\-()./]/g, "");
+
+  // Already explicit — trust it.
+  if (trimmed.startsWith("+")) return trimmed;
+
+  const dial = dialCodeFor(timezone);
+  const digits = trimmed.replace(/\D/g, "");
+  if (!digits) return "";
+
+  /* No idea what country this branch is in. Returning the bare digits means
+     Twilio rejects it with a clear "invalid number" rather than silently
+     delivering to whichever country the leading digits happen to match. */
+  if (!dial) return `+${digits}`;
+
+  // Many countries write local numbers with a trunk "0" that is dropped
+  // when the country code is added: 012-345 6789 -> +6012 345 6789.
+  if (digits.startsWith("0")) return `+${dial}${digits.slice(1)}`;
+
+  // Already carries this country's code (e.g. 1720… for a US branch).
+  if (digits.startsWith(dial)) return `+${digits}`;
+
+  return `+${dial}${digits}`;
 }
 
 function formatScheduledAt(iso: string, timezone?: string): string {

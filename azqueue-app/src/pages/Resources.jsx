@@ -51,11 +51,6 @@ const GUIDES = [
   { slug: "queue-analytics",     tag: "ANALYTICS",              title: "Reading the Insights dashboard",         body: "The six metrics that matter, what they mean, and what to do about them.", minutes: "8 min read" },
 ];
 
-const CASE_STUDIES = [
-  { slug: "meridian-health", tag: "HEALTHCARE", title: "Meridian Health: 70% drop in wait complaints", body: "Fourteen clinics replaced paper sign-ins with AzQueue.", stat: "70%" },
-  { slug: "nordic-bank",     tag: "BANKING",    title: "Nordic Bank: prayer pause was the deal-maker",  body: "Nine branches live in two weeks. No manual pauses since.", stat: "2 wks" },
-  { slug: "caelum-salons",   tag: "BEAUTY",     title: "Caelum Salons: digital loyalty lifted repeats 38%", body: "Switched from plastic punch cards. 90 days later, repeat rate up 38%.", stat: "38%" },
-];
 
 export default function Resources() {
   usePageMeta({
@@ -69,7 +64,8 @@ export default function Resources() {
       <PageHero />
       <FeaturedGuide />
       <GuidesGrid />
-      <CaseStudiesGrid />
+      {/* CaseStudiesGrid removed 4 Sept 2026 — the three studies were
+          fabricated. See docs/website-audit-2026-09-04.md. */}
       <IntegrationCTA />
       <SiteFooter />
     </div>
@@ -159,38 +155,6 @@ function GuidesGrid() {
   );
 }
 
-function CaseStudiesGrid() {
-  const [ref, visible] = useInView();
-  return (
-    <section ref={ref} id="case-studies" style={{ padding: "100px 48px", background: C.card, borderTop: `1px solid ${C.border}` }}>
-      <div style={{ maxWidth: 1160, margin: "0 auto" }}>
-        <div style={{ marginBottom: 36 }}>
-          <div style={{ ...T.label, marginBottom: 18 }}>Case studies</div>
-          <h2 style={{ ...T.h2, color: C.ink, margin: 0 }}>Real teams. Real results.</h2>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1, background: C.border, borderRadius: 12, overflow: "hidden" }}>
-          {CASE_STUDIES.map((s, i) => (
-            <Link key={s.slug} to={`/case-studies/${s.slug}`} style={{
-              background: C.void, padding: "32px 28px", textDecoration: "none", display: "flex", flexDirection: "column",
-              opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(10px)",
-              transition: `all 0.55s ease ${i * 0.08}s`,
-            }}
-              onMouseEnter={e => e.currentTarget.style.background = "#0f0f0e"}
-              onMouseLeave={e => e.currentTarget.style.background = C.void}>
-              <div style={{ fontSize: 9, color: C.gold, letterSpacing: "0.16em", marginBottom: 18, fontWeight: 600 }}>{s.tag}</div>
-              <div style={{ fontSize: 18, color: C.ink, lineHeight: 1.3, letterSpacing: "-0.005em", marginBottom: 14, fontWeight: 500, fontFamily: "Georgia, serif" }}>{s.title}</div>
-              <p style={{ fontSize: 13, color: C.muted, lineHeight: 1.7, margin: "0 0 22px", flex: 1 }}>{s.body}</p>
-              <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 14, display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                <span style={{ fontSize: 22, color: C.gold, fontFamily: "Georgia, serif", letterSpacing: "-0.02em", lineHeight: 1 }}>{s.stat}</span>
-                <span style={{ fontSize: 11, color: C.goldLit, letterSpacing: "0.02em" }}>Read →</span>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
 
 function IntegrationCTA() {
   return (

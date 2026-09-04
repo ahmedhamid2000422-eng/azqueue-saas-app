@@ -107,7 +107,7 @@ const FAQ_DATA = [
   { q: "How much does AzQueue cost?",
     a: "Starter is $29/month for single-location businesses. Growth is $99/month for up to 10 branches with WhatsApp, SMS, loyalty cards and prayer pause. Enterprise is custom-priced for larger networks. All plans include a 14-day free trial — no credit card required." },
   { q: "How long does setup take?",
-    a: "Most single-branch businesses are live within 15 minutes. Our team connects your WhatsApp Business account, configures your kiosk, and sets up your notification templates — you don't need to touch any technical settings. Multi-branch rollouts typically take one to two weeks." },
+    a: "You create a branch, add your services, and share the check-in link or QR code. It runs in a browser, so there is nothing to install. Text notifications need a one-time carrier registration before they can be switched on." },
   { q: "What languages does AzQueue support?",
     a: "The customer-facing interface ships in English, Bahasa Malaysia, Arabic, French, and Urdu. Staff dashboard adds more on request. Custom translations are available on Enterprise plans." },
 ];
@@ -166,7 +166,8 @@ export default function Landing() {
 
       <SiteNav />
       <Hero />
-      <LogoCloud />
+      {/* LogoCloud removed 4 Sept 2026 — ten invented company names under
+          "Trusted by clinics, banks, and salons". See docs/website-audit-2026-09-04.md. */}
       <StatBand />
       <FeatureGrid />
       <LiveDashboard />
@@ -175,9 +176,15 @@ export default function Landing() {
       <WhatsAppFlow />
       <HowItWorks />
       <CustomerJourneySection />
-      <CaseStudies />
-      <Testimonials />
-      <SavingsCalculator />
+      {/* CaseStudies and Testimonials removed 4 Sept 2026 — both were
+          fabricated. See docs/website-audit-2026-09-04.md. */}
+      {/* SavingsCalculator removed 4 Sept 2026. It multiplied a business's
+          own numbers by invented constants — 1.5 staff-hours saved per day,
+          no-shows falling to 5%, an 8% walkout rate — and presented the
+          result as a personalised annual saving and an ROI multiple. A
+          fabricated number is worse when it looks computed. Nothing in the
+          product has ever measured any of those three figures.
+          See docs/website-audit-2026-09-04.md. */}
       <FAQSection />
       <Pricing />
       <FinalCTA />
@@ -301,63 +308,13 @@ function KioskMockup() {
 }
 
 /* ── Logo Cloud — infinite marquee ───────────────────────────────── */
-function LogoCloud() {
-  useEffect(() => {
-    const id = "az-marquee-style";
-    if (document.getElementById(id)) return;
-    const s = document.createElement("style");
-    s.id = id;
-    s.textContent = `
-      @keyframes az-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-      .az-marquee-track { display: flex; animation: az-marquee 36s linear infinite; width: max-content; }
-      .az-marquee-track:hover { animation-play-state: paused; }
-    `;
-    document.head.appendChild(s);
-  }, []);
-
-  const logos = [
-    { name: "MERIDIAN HEALTH",   style: { fontFamily: "Georgia, serif",   letterSpacing: "0.18em", fontWeight: 400, fontSize: 13 } },
-    { name: "NORDIC BANK",       style: { fontFamily: "Inter, sans-serif", letterSpacing: "0.09em", fontWeight: 700, fontSize: 14 } },
-    { name: "Caelum Salons",     style: { fontFamily: "Georgia, serif",   fontStyle: "italic", letterSpacing: "0.02em", fontWeight: 500, fontSize: 19 } },
-    { name: "ATLAS · OFFICE",    style: { fontFamily: "Inter, sans-serif", letterSpacing: "0.2em",  fontWeight: 500, fontSize: 11 } },
-    { name: "PHARMACITY",        style: { fontFamily: "Inter, sans-serif", letterSpacing: "0.06em", fontWeight: 800, fontSize: 14 } },
-    { name: "ORION GROUP",       style: { fontFamily: "Georgia, serif",   letterSpacing: "0.14em", fontWeight: 400, fontSize: 13 } },
-    { name: "VISTA CLINICS",     style: { fontFamily: "Inter, sans-serif", letterSpacing: "0.12em", fontWeight: 600, fontSize: 12 } },
-    { name: "Lumière",           style: { fontFamily: "Georgia, serif",   fontStyle: "italic", letterSpacing: "0.04em", fontWeight: 500, fontSize: 20 } },
-    { name: "FIRST FEDERAL",     style: { fontFamily: "Inter, sans-serif", letterSpacing: "0.1em",  fontWeight: 700, fontSize: 11 } },
-    { name: "CITYSERVE",         style: { fontFamily: "Inter, sans-serif", letterSpacing: "0.06em", fontWeight: 600, fontSize: 13 } },
-  ];
-
-  const doubled = [...logos, ...logos];
-
-  return (
-    <section style={{ padding: "52px 0", borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`, background: C.void, overflow: "hidden" }}>
-      <div style={{ textAlign: "center", marginBottom: 28, padding: "0 48px" }}>
-        <div style={{ ...T.label, color: C.muted }}>Trusted by clinics, banks, and salons</div>
-      </div>
-      <div style={{ position: "relative" }}>
-        <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 140, background: `linear-gradient(90deg, ${C.void}, transparent)`, zIndex: 1, pointerEvents: "none" }} />
-        <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 140, background: `linear-gradient(-90deg, ${C.void}, transparent)`, zIndex: 1, pointerEvents: "none" }} />
-        <div className="az-marquee-track" style={{ alignItems: "center" }}>
-          {doubled.map((l, i) => (
-            <div key={i} style={{ padding: "0 44px", whiteSpace: "nowrap", color: C.muted, opacity: 0.6, cursor: "default", transition: "opacity 0.25s, color 0.25s", ...l.style }}
-              onMouseEnter={e => { e.currentTarget.style.color = C.ink; e.currentTarget.style.opacity = "1"; }}
-              onMouseLeave={e => { e.currentTarget.style.color = C.muted; e.currentTarget.style.opacity = "0.6"; }}>
-              {l.name}
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
 
 /* ── Stat Band ────────────────────────────────────────────────────── */
 function StatBand() {
   const [ref, visible] = useInView();
   const mob = useMob();
   const stats = [
-    { value: "≤ 15 min",   label: "Setup time",            sub: "From sign-up to first ticket" },
+    { value: "No install", label: "To get started",        sub: "Runs in a browser on any tablet" },
     { value: "Zero",       label: "Hardware required",     sub: "Any tablet or phone works" },
     { value: "One tap",    label: "Customer check-in",     sub: "No app, no paper, no queuing" },
     { value: "Real-time",  label: "Staff dashboard",       sub: "Live view across all stations" },
@@ -746,7 +703,7 @@ function WhatsAppFlow() {
           <div style={{ ...T.label, marginBottom: 18 }}>WhatsApp &amp; SMS</div>
           <h2 style={{ ...T.h2, fontSize: mob ? 26 : 34, color: C.ink, margin: "0 0 22px" }}>We connect WhatsApp for you. You just set the rules.</h2>
           <p style={{ ...T.body, margin: "0 0 24px" }}>
-            No API keys. No Meta Business Manager. No webhook configuration. Our team connects your WhatsApp Business account and sets up your message templates. Customers start getting updates the same day.
+            WhatsApp is not live yet. Customers are notified by email today, and by text once carrier registration is complete for your number.
           </p>
           <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 11 }}>
             {[
@@ -877,324 +834,7 @@ function CustomerJourneySection() {
 }
 
 /* ── Case Studies ─────────────────────────────────────────────────── */
-function CaseStudies() {
-  const [ref, visible] = useInView(0.08);
-  const mob = useMob();
-  const studies = [
-    {
-      slug: "meridian-health",
-      tag: "Healthcare",
-      org: "Meridian Health · 14 clinics",
-      headline: "Cut perceived wait time by 70%",
-      body: "Replaced paper sign-ins across 14 clinics. Patients now check in on the iPad, wait in their car, and get called on WhatsApp. Front-desk staff handle 40% more patients per shift.",
-      stat: { value: "70%", label: "Drop in complaints" },
-    },
-    {
-      slug: "nordic-bank",
-      tag: "Banking",
-      org: "Nordic Bank · 9 branches",
-      headline: "Prayer pause was the deal-maker",
-      body: "Needed a queue system that respected prayer time during Ramadan. AzQueue auto-pauses, notifies customers in line, and resumes — no manual reset. Rolled out across 9 branches in two weeks.",
-      stat: { value: "2 wks", label: "Full rollout" },
-    },
-    {
-      slug: "caelum-salons",
-      tag: "Salon",
-      org: "Caelum Salons · 6 locations",
-      headline: "Loyalty card lifted repeats 38%",
-      body: "Switched from a plastic punch card to AzQueue's digital loyalty. Every visit auto-punches. The new reward unlock messages drove a 38% lift in repeat visits within 90 days.",
-      stat: { value: "38%", label: "More repeats" },
-    },
-  ];
-  return (
-    <section ref={ref} style={{ padding: mob ? "60px 20px" : "120px 48px" }}>
-      <div style={{ maxWidth: 1160, margin: "0 auto" }}>
-        <div style={{ marginBottom: mob ? 36 : 56 }}>
-          <div style={{ ...T.label, marginBottom: 20 }}>Real outcomes</div>
-          <h2 style={{ ...T.h2, fontSize: mob ? 26 : 34, color: C.ink, margin: 0, maxWidth: 640 }}>
-            What these businesses stopped dealing with after switching.
-          </h2>
-        </div>
-        <div id="case-studies" style={{ display: "grid", gridTemplateColumns: mob ? "1fr" : "repeat(3, 1fr)", gap: 1, background: C.border, borderRadius: 14, overflow: "hidden" }}>
-          {studies.map((s, i) => (
-            <Link key={i} to={`/case-studies/${s.slug}`} style={{ background: C.card, padding: "36px 32px", display: "flex", flexDirection: "column", textDecoration: "none", opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(12px)", transition: `all 0.55s ease ${i * 0.1}s` }}
-              onMouseEnter={e => e.currentTarget.style.background = "#0f0f0e"}
-              onMouseLeave={e => e.currentTarget.style.background = C.card}>
-              <div style={{ fontSize: 9, color: C.gold, letterSpacing: "0.16em", textTransform: "uppercase", fontWeight: 600, marginBottom: 14 }}>{s.tag}</div>
-              <div style={{ fontSize: 11, color: C.muted, letterSpacing: "0.04em", marginBottom: 18 }}>{s.org}</div>
-              <h3 style={{ fontSize: 22, color: C.ink, fontFamily: "Georgia, serif", letterSpacing: "-0.01em", lineHeight: 1.25, margin: "0 0 16px" }}>{s.headline}</h3>
-              <p style={{ fontSize: 13, color: C.muted, lineHeight: 1.7, margin: "0 0 24px", flex: 1 }}>{s.body}</p>
-              <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 18, display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                <span style={{ fontSize: 28, color: C.ink, fontFamily: "Georgia, serif", letterSpacing: "-0.02em", lineHeight: 1, background: "linear-gradient(180deg, #f0ede6, #b8955a 140%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>{s.stat.value}</span>
-                <span style={{ fontSize: 10.5, color: C.muted, letterSpacing: "0.04em" }}>{s.stat.label}</span>
-              </div>
-              <div style={{ marginTop: 14, fontSize: 11, color: C.goldLit, letterSpacing: "0.02em" }}>Read full case →</div>
-            </Link>
-          ))}
-        </div>
-        <div style={{ textAlign: "center", marginTop: 28 }}>
-          <Link to="/industries" style={{ fontSize: 12, color: C.goldLit, textDecoration: "none", letterSpacing: "0.02em", display: "inline-flex", alignItems: "center", gap: 6 }}
-            onMouseEnter={e => e.currentTarget.style.opacity = "0.7"}
-            onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
-            See more industries we serve <Ic.Arr />
-          </Link>
-        </div>
-      </div>
-    </section>
-  );
-}
 
-/* ── Testimonials ─────────────────────────────────────────────────── */
-function Testimonials() {
-  const [ref, visible] = useInView(0.08);
-  const mob = useMob();
-  const quotes = [
-    {
-      text: "Setup took 20 minutes. Within a week our front desk stopped getting complaints about the wait. Patients actually thank us now.",
-      author: "Ahmad R.",
-      role: "Clinic Manager · Dubai",
-      stat: "–62% wait complaints",
-    },
-    {
-      text: "The prayer pause feature was the only reason we chose AzQueue over three other vendors. It just works, completely automatically.",
-      author: "Siti N.",
-      role: "Branch Head · Kuala Lumpur",
-      stat: "9 branches live",
-    },
-    {
-      text: "Loyalty punch card repeat visits went up 38% in the first quarter. That single feature paid for the whole year on its own.",
-      author: "James O.",
-      role: "Salon Owner · Lagos",
-      stat: "+38% repeat visits",
-    },
-  ];
-  return (
-    <section ref={ref} style={{ padding: mob ? "60px 20px" : "100px 48px", background: C.card, borderTop: `1px solid ${C.border}` }}>
-      <div style={{ maxWidth: 1160, margin: "0 auto" }}>
-        <div style={{ textAlign: "center", marginBottom: mob ? 36 : 56 }}>
-          <div style={{ display: "flex", justifyContent: "center", gap: 2, marginBottom: 16 }}>
-            {[...Array(5)].map((_, i) => <span key={i} style={{ color: C.gold, fontSize: 16 }}>★</span>)}
-          </div>
-          <div style={{ ...T.label, marginBottom: 14, color: C.muted }}>Customer stories</div>
-          <h2 style={{ ...T.h2, fontSize: mob ? 26 : 34, color: C.ink, margin: 0, maxWidth: 640, marginLeft: "auto", marginRight: "auto" }}>
-            Real outcomes from real businesses.
-          </h2>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: mob ? "1fr" : "repeat(3, 1fr)", gap: 1, background: C.border, borderRadius: 16, overflow: "hidden" }}>
-          {quotes.map((q, i) => (
-            <div key={i} style={{ background: C.void, padding: "36px 32px", display: "flex", flexDirection: "column", opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(12px)", transition: `all 0.55s ease ${i * 0.1}s` }}>
-              <div style={{ display: "flex", gap: 1, marginBottom: 20 }}>
-                {[...Array(5)].map((_, j) => <span key={j} style={{ color: C.gold, fontSize: 11 }}>★</span>)}
-              </div>
-              <p style={{ fontSize: 14, color: C.ink, lineHeight: 1.72, margin: "0 0 28px", flex: 1, letterSpacing: "-0.005em" }}>
-                &ldquo;{q.text}&rdquo;
-              </p>
-              <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 20, display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
-                <div>
-                  <div style={{ fontSize: 13, color: C.ink, fontWeight: 500, marginBottom: 3 }}>{q.author}</div>
-                  <div style={{ fontSize: 11, color: C.muted }}>{q.role}</div>
-                </div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: C.goldLit, fontFamily: "Georgia, serif", letterSpacing: "-0.01em", textAlign: "right" }}>{q.stat}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ── Savings Calculator ───────────────────────────────────────────── */
-const CURRENCIES = {
-  USD: { symbol: "$", label: "USD", rate: 1,      price: 79 },
-  AED: { symbol: "AED ", label: "AED", rate: 3.67, price: 290 },
-};
-
-function SavingsCalculator() {
-  const [ref, visible] = useInView(0.08);
-  const mob = useMob();
-
-  const [currency, setCurrency] = useState("USD");
-  const [custsPerDay, setCustsPerDay]   = useState(30);
-  const [avgVal,      setAvgVal]        = useState(150);
-  const [staffCount,  setStaffCount]    = useState(2);
-  const [hourlyRate,  setHourlyRate]    = useState(18);
-  const [noshowPct,   setNoshowPct]     = useState(18);
-
-  const cur = CURRENCIES[currency];
-
-  // Calculation logic (same as the chat widget above)
-  const workingDays  = 22;
-  const staffSavings = Math.round(staffCount * 1.5 * hourlyRate * workingDays * cur.rate);
-  const savedNoshows = Math.max(0, (noshowPct / 100) - 0.05);
-  const noshowSave   = Math.round(custsPerDay * workingDays * savedNoshows * avgVal * cur.rate);
-  const walkoutSave  = Math.round(custsPerDay * workingDays * 0.08 * avgVal * cur.rate);
-  const total        = staffSavings + noshowSave + walkoutSave;
-  const annual       = total * 12;
-  const roi          = cur.price > 0 ? Math.round(total / cur.price) : 0;
-
-  const fmt = n => cur.symbol + n.toLocaleString();
-
-  const sliders = [
-    { label: "Customers per day",    id: "cust",   min: 5,  max: 200, step: 5,  val: custsPerDay, set: setCustsPerDay,  fmt: v => v },
-    { label: "Average service value",id: "val",    min: 20, max: 1000,step: 10, val: avgVal,      set: setAvgVal,       fmt: v => cur.symbol + v },
-    { label: "Staff on queue duty",  id: "staff",  min: 1,  max: 10,  step: 1,  val: staffCount,  set: setStaffCount,   fmt: v => v },
-    { label: "Staff hourly rate",    id: "rate",   min: 10, max: 80,  step: 1,  val: hourlyRate,  set: setHourlyRate,   fmt: v => cur.symbol + v },
-    { label: "Current no-show rate", id: "noshow", min: 0,  max: 40,  step: 1,  val: noshowPct,   set: setNoshowPct,    fmt: v => v + "%" },
-  ];
-
-  const buckets = [
-    { label: "Staff time recovered",  sub: "1.5 hrs/day saved per staff member",           val: staffSavings, color: "#378ADD" },
-    { label: "No-shows eliminated",   sub: `${noshowPct}% → 5% with SMS reminders`,         val: noshowSave,   color: C.sage    },
-    { label: "Walkouts prevented",    sub: "23% of customers leave after 5+ min wait",      val: walkoutSave,  color: C.gold    },
-  ];
-
-  return (
-    <section
-      ref={ref}
-      id="savings"
-      style={{
-        padding: mob ? "60px 20px" : "120px 48px",
-        background: C.void,
-        borderTop: `1px solid ${C.border}`,
-        opacity: visible ? 1 : 0,
-        transform: visible ? "none" : "translateY(24px)",
-        transition: "all 0.7s ease",
-      }}
-    >
-      <div style={{ maxWidth: 1160, margin: "0 auto" }}>
-
-        {/* Header row */}
-        <div style={{ display: "flex", flexDirection: mob ? "column" : "row", justifyContent: "space-between", alignItems: mob ? "flex-start" : "flex-end", gap: 24, marginBottom: mob ? 40 : 64 }}>
-          <div>
-            <div style={{ ...T.label, marginBottom: 16 }}>ROI Calculator</div>
-            <h2 style={{ ...T.h2, fontSize: mob ? 26 : 34, color: C.ink, margin: "0 0 12px" }}>
-              See exactly what you're leaving on the table.
-            </h2>
-            <p style={{ ...T.body, margin: 0, maxWidth: 520, fontSize: 14 }}>
-              Adjust the sliders to match your business. Every number is grounded in real operating costs — no marketing inflation.
-            </p>
-          </div>
-
-          {/* Currency toggle */}
-          <div style={{ display: "flex", border: `1px solid ${C.border}`, borderRadius: 6, overflow: "hidden", flexShrink: 0 }}>
-            {Object.keys(CURRENCIES).map(k => (
-              <button
-                key={k}
-                onClick={() => setCurrency(k)}
-                style={{
-                  padding: "8px 20px",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  letterSpacing: "0.1em",
-                  background: currency === k ? C.gold : "transparent",
-                  color: currency === k ? C.void : C.muted,
-                  border: "none",
-                  cursor: "pointer",
-                  transition: "all 0.15s",
-                }}
-              >
-                {k}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Two-column layout */}
-        <div style={{ display: "grid", gridTemplateColumns: mob ? "1fr" : "1fr 1fr", gap: mob ? 40 : 64, alignItems: "start" }}>
-
-          {/* Left — sliders */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-            {sliders.map(s => (
-              <div key={s.id}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
-                  <span style={{ fontSize: 12, color: C.muted, letterSpacing: "0.04em" }}>{s.label}</span>
-                  <span style={{ fontSize: 16, color: C.ink, fontVariantNumeric: "tabular-nums" }}>{s.fmt(s.val)}</span>
-                </div>
-                <div style={{ position: "relative" }}>
-                  {/* Track fill */}
-                  <div style={{
-                    position: "absolute", top: "50%", left: 0,
-                    width: `${((s.val - s.min) / (s.max - s.min)) * 100}%`,
-                    height: 2, background: C.gold, transform: "translateY(-50%)", pointerEvents: "none", borderRadius: 2,
-                  }} />
-                  <input
-                    type="range" min={s.min} max={s.max} step={s.step} value={s.val}
-                    onChange={e => s.set(Number(e.target.value))}
-                    style={{
-                      width: "100%", appearance: "none", WebkitAppearance: "none",
-                      background: C.faint, height: 2, borderRadius: 2, outline: "none", cursor: "pointer",
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Right — results */}
-          <div>
-            {/* Breakdown rows */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 1, marginBottom: 2 }}>
-              {buckets.map(b => (
-                <div key={b.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 0", borderBottom: `1px solid ${C.border}`, gap: 16 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-                    <div style={{ width: 3, height: 36, background: b.color, borderRadius: 2, flexShrink: 0 }} />
-                    <div>
-                      <div style={{ fontSize: 13, color: C.ink, marginBottom: 2 }}>{b.label}</div>
-                      <div style={{ fontSize: 11, color: C.muted }}>{b.sub}</div>
-                    </div>
-                  </div>
-                  <div style={{ fontSize: 18, color: C.ink, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{fmt(b.val)}<span style={{ fontSize: 10, color: C.muted, marginLeft: 4 }}>/mo</span></div>
-                </div>
-              ))}
-            </div>
-
-            {/* Total card */}
-            <div style={{
-              marginTop: 20,
-              padding: mob ? "24px 20px" : "28px 28px",
-              border: `1px solid rgba(184,149,90,0.3)`,
-              borderRadius: 8,
-              background: "rgba(184,149,90,0.04)",
-              display: "flex", flexDirection: mob ? "column" : "row", justifyContent: "space-between", alignItems: mob ? "flex-start" : "center", gap: 20,
-            }}>
-              <div>
-                <div style={{ fontSize: 11, color: C.muted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6 }}>Monthly savings</div>
-                <div style={{ fontSize: mob ? 36 : 44, color: C.gold, fontFamily: "Georgia, serif", fontWeight: 500, letterSpacing: "-0.02em", lineHeight: 1 }}>
-                  {fmt(total)}
-                </div>
-                <div style={{ fontSize: 12, color: C.muted, marginTop: 6 }}>
-                  {roi}× return on your {cur.symbol}{cur.price.toLocaleString()}/mo AzQueue plan
-                </div>
-              </div>
-              <div style={{ textAlign: mob ? "left" : "right" }}>
-                <div style={{ fontSize: 11, color: C.muted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6 }}>Annual savings</div>
-                <div style={{ fontSize: mob ? 24 : 28, color: C.ink, fontFamily: "Georgia, serif", fontWeight: 500, letterSpacing: "-0.01em" }}>
-                  {fmt(annual)}
-                </div>
-              </div>
-            </div>
-
-            {/* CTA */}
-            <div style={{ marginTop: 20, display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <Link
-                to="/signup"
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 8,
-                  padding: "12px 24px", background: C.gold, color: C.void,
-                  fontSize: 13, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase",
-                  textDecoration: "none", borderRadius: 4, transition: "opacity 0.15s",
-                }}
-              >
-                Start saving — free 14 days <Ic.Arr />
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
 
 /* ── FAQ ──────────────────────────────────────────────────────────── */
 function FAQSection() {
@@ -1267,7 +907,7 @@ function Pricing() {
       name: "Enterprise",
       price: null,
       desc: "For networks, franchises, and public-sector deployments.",
-      features: ["Unlimited branches & users", "SSO & role-based access", "Dedicated success manager", "Custom integrations & API", "Uptime SLA on contract", "24/7 phone & WhatsApp support", "White-glove onboarding"],
+      features: ["Unlimited branches & users", "Role-based access", "Custom integrations & API", "Priority email support", "Onboarding help"],
       cta: "Talk to sales",
       ctaTo: "/support",
       featured: false,
@@ -1348,7 +988,7 @@ function FinalCTA() {
           Stop losing customers{" "}
           <em style={{ color: C.gold, fontStyle: "italic" }}>to the waiting room.</em>
         </h2>
-        <p style={{ ...T.body, margin: "0 0 36px", fontSize: 16 }}>We handle setup. You're live in 15 minutes. No hardware, no training, no API keys.</p>
+        <p style={{ ...T.body, margin: "0 0 36px", fontSize: 16 }}>Runs in a browser on any tablet. No hardware to buy, nothing to install.</p>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
           <Link to="/contact" style={{ display: "inline-flex", alignItems: "center", gap: 10, background: C.gold, color: C.void, padding: "13px 28px", borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: "none", letterSpacing: "0.01em", transition: "all 0.2s ease", boxShadow: "0 10px 30px -10px rgba(184,149,90,0.5)" }}
             onMouseEnter={e => { e.currentTarget.style.opacity = "0.9"; e.currentTarget.style.transform = "translateY(-1px)"; }}
