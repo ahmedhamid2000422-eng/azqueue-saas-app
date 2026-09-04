@@ -64,35 +64,54 @@ const TEMPLATES = {
 const TICKET_TEMPLATES  = new Set(["confirm", "call", "thanks", "prayer_pause"]);
 const BOOKING_TEMPLATES = new Set(["booking_confirmation"]);
 
+/**
+ * CORS. Every other edge function in this project had these headers; this one
+ * never did, which meant the browser refused the request before it was ever
+ * sent — the preflight OPTIONS call got no Access-Control-Allow-Origin back
+ * and the actual POST never happened.
+ *
+ * That is why SMS appeared to do nothing while email worked fine from the same
+ * check-in: queue-email had CORS, this did not. The failure was invisible in
+ * the function's own logs, because the request never reached the function.
+ */
+const cors = {
+  "Access-Control-Allow-Origin":  "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
 Deno.serve(async (req) => {
-  if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
+  /* Preflight. Must come before the method check — the browser sends OPTIONS,
+     not POST, and rejecting it as "method not allowed" is what produced the
+     CORS error rather than a useful one. */
+  if (req.method === "OPTIONS") return new Response(null, { headers: cors });
+  if (req.method !== "POST") return new Response("Method not allowed", { status: 405, headers: cors });
 
   let body;
   try {
     body = await req.json();
   } catch {
-    return new Response("Invalid JSON", { status: 400 });
+    return new Response("Invalid JSON", { status: 400, headers: cors });
   }
 
   const { ticketId, bookingId, template, channel = "whatsapp", extras = {} } = body;
 
   if (!template || !TEMPLATES[template]) {
-    return new Response("Missing/invalid template", { status: 400 });
+    return new Response("Missing/invalid template", { status: 400, headers: cors });
   }
   if (!ticketId && !bookingId) {
-    return new Response("Either ticketId or bookingId is required", { status: 400 });
+    return new Response("Either ticketId or bookingId is required", { status: 400, headers: cors });
   }
   if (ticketId && bookingId) {
-    return new Response("Provide only one of ticketId / bookingId, not both", { status: 400 });
+    return new Response("Provide only one of ticketId / bookingId, not both", { status: 400, headers: cors });
   }
   if (bookingId && !BOOKING_TEMPLATES.has(template)) {
-    return new Response(`Template "${template}" is not valid for a bookingId`, { status: 400 });
+    return new Response(`Template "${template}" is not valid for a bookingId`, { status: 400, headers: cors });
   }
   if (ticketId && !TICKET_TEMPLATES.has(template)) {
-    return new Response(`Template "${template}" is not valid for a ticketId`, { status: 400 });
+    return new Response(`Template "${template}" is not valid for a ticketId`, { status: 400, headers: cors });
   }
   if (channel !== "whatsapp" && channel !== "sms") {
-    return new Response("channel must be 'whatsapp' or 'sms'", { status: 400 });
+    return new Response("channel must be 'whatsapp' or 'sms'", { status: 400, headers: cors });
   }
 
   const supabase = createClient(
@@ -113,7 +132,7 @@ Deno.serve(async (req) => {
       .single();
 
     if (tErr || !ticket) {
-      return new Response(JSON.stringify({ error: "Ticket not found" }), { status: 404 });
+      return new Response(JSON.stringify({ error: "Ticket not found" }), { status: 404, headers: { "content-type": "application/json", ...cors } });
     }
     record = ticket;
     message = TEMPLATES[template]({
@@ -130,7 +149,7 @@ Deno.serve(async (req) => {
       .single();
 
     if (bErr || !booking) {
-      return new Response(JSON.stringify({ error: "Booking not found" }), { status: 404 });
+      return new Response(JSON.stringify({ error: "Booking not found" }), { status: 404, headers: { "content-type": "application/json", ...cors } });
     }
     record = booking;
     message = TEMPLATES[template]({
@@ -178,7 +197,7 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ dryRun: true, missing, message, would_send_to: record.customer_phone }),
-      { headers: { "content-type": "application/json" } }
+      { headers: { "content-type": "application/json", ...cors } }
     );
   }
 
@@ -216,7 +235,7 @@ Deno.serve(async (req) => {
 
   return new Response(
     JSON.stringify({ ok: !errorText, channel, error: errorText, twilio: result }),
-    { headers: { "content-type": "application/json" }, status: errorText ? 500 : 200 }
+    { headers: { "content-type": "application/json", ...cors }, status: errorText ? 500 : 200 }
   );
 });
 

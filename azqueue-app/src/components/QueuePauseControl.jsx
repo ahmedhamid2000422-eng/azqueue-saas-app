@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
+import { broadcastToQueue } from "../lib/alerts";
 
 /**
  * QueuePauseControl — stop taking people, and keep saying so.
@@ -18,8 +19,10 @@ import { supabase } from "../lib/supabase";
  * the back-office laptop have to agree about whether the office is taking
  * people, and a per-device pause would let them disagree.
  */
-export default function QueuePauseControl({ branch, onChange }) {
+export default function QueuePauseControl({ branch, onChange, waiting = [] }) {
   const [busy, setBusy] = useState(false);
+  const [told, setTold] = useState(null);   // { texted, emailed } after a send
+  const [telling, setTelling] = useState(false);
   const pausedAt = branch?.queue_paused_at ? new Date(branch.queue_paused_at) : null;
 
   async function set(paused) {
@@ -30,7 +33,29 @@ export default function QueuePauseControl({ branch, onChange }) {
       .update({ queue_paused_at: paused ? new Date().toISOString() : null })
       .eq("id", branch.id);
     setBusy(false);
+    if (!paused) setTold(null);   // resuming clears the notice state
     onChange?.();
+  }
+
+  /* TELLING PEOPLE IS A SEPARATE, DELIBERATE PRESS.
+     It would be easy to fire this automatically the moment the queue pauses.
+     That would be wrong. A pause flipped by accident, or for ninety seconds
+     while someone finds a document, would text everybody in the room — a
+     real cost per message, and the kind of notification that teaches people
+     to ignore the next one.
+
+     So pausing is instant and silent; telling the room is a second choice,
+     made once staff know this pause is long enough to be worth a message. */
+  async function tellEveryone() {
+    if (!waiting.length) return;
+    setTelling(true);
+    const res = await broadcastToQueue(
+      waiting,
+      "We've paused the queue for a short while. Your place is kept - we'll call you as soon as we start again.",
+      branch?.name ?? "AzQueue",
+    ).catch(() => null);
+    setTelling(false);
+    if (res) setTold(res);
   }
 
   if (!pausedAt) {
@@ -60,13 +85,32 @@ export default function QueuePauseControl({ branch, onChange }) {
           being called. Anyone already waiting is still waiting.
         </div>
       </div>
-      <button
-        onClick={() => set(false)}
-        disabled={busy}
-        className="text-[12px] border border-gold-deep px-4 py-2 text-gold-soft hover:bg-[rgba(201,168,106,0.1)] transition disabled:opacity-40 shrink-0"
-      >
-        {busy ? "…" : "Resume"}
-      </button>
+      <div className="flex items-center gap-2 shrink-0">
+        {/* Only offered when there is actually somebody to tell, and only
+            once — a second press would send the same message twice. */}
+        {waiting.length > 0 && !told && (
+          <button
+            onClick={tellEveryone}
+            disabled={telling}
+            className="text-[12px] border border-line px-4 py-2 text-ink-mute hover:text-ink hover:border-gold-deep transition disabled:opacity-40"
+            title="Send one message to everyone currently waiting"
+          >
+            {telling ? "Sending…" : `Tell the ${waiting.length} waiting`}
+          </button>
+        )}
+        {told && (
+          <span className="text-[11px] text-[#9bbd9b]">
+            Told {told.texted + told.emailed} of {told.total} ✓
+          </span>
+        )}
+        <button
+          onClick={() => set(false)}
+          disabled={busy}
+          className="text-[12px] border border-gold-deep px-4 py-2 text-gold-soft hover:bg-[rgba(201,168,106,0.1)] transition disabled:opacity-40"
+        >
+          {busy ? "…" : "Resume"}
+        </button>
+      </div>
     </div>
   );
 }

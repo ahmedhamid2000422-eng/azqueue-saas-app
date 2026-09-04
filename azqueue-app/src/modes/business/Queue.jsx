@@ -92,6 +92,10 @@ export default function Queue() {
   const [smsSent, setSmsSent] = useState({});
   const [clearConfirm, setClearConfirm] = useState(false);
 
+  /* Reveals the end-of-day and destructive actions. Closed by default —
+     see the note beside Clear queue in the header. */
+  const [moreOpen, setMoreOpen] = useState(false);
+
   // Currently-live broadcast banner (so staff can see and take it down)
   const [activeAlert, setActiveAlert] = useState(null);
   const [alertMinutes, setAlertMinutes] = useState(15); // how long it stays on the TV
@@ -132,8 +136,8 @@ export default function Queue() {
     // it automatically retries with the base columns so the queue still loads.
     try {
       let active = null;
-      const fullCols = "id, token, status, customer_name, customer_phone, customer_email, service_id, staff_id, priority, source, created_at, called_at, started_at, completed_at, branch_id, notes, assigned_station_id, bounce_count, is_premium, requested_advisor_id, advisor_fee, near_front_notified_at, turn_expires_at";
-      const baseCols = "id, token, status, customer_name, customer_phone, customer_email, service_id, staff_id, priority, source, created_at, called_at, started_at, completed_at, branch_id, notes, is_premium, requested_advisor_id, advisor_fee, near_front_notified_at, turn_expires_at";
+      const fullCols = "id, token, status, customer_name, customer_phone, customer_email, service_id, staff_id, priority, source, created_at, called_at, started_at, completed_at, branch_id, notes, assigned_station_id, bounce_count, is_premium, requested_advisor_id, advisor_fee, near_front_notified_at, turn_expires_at, detail, handoff_category";
+      const baseCols = "id, token, status, customer_name, customer_phone, customer_email, service_id, staff_id, priority, source, created_at, called_at, started_at, completed_at, branch_id, notes, is_premium, requested_advisor_id, advisor_fee, near_front_notified_at, turn_expires_at, detail, handoff_category";
 
       const { data: a1, error: e1 } = await supabase
         .from("tickets")
@@ -502,10 +506,19 @@ export default function Queue() {
     setBusy(false);
   }
 
+  /* NO LONGER WIRED TO ANY BUTTON — kept, not deleted, deliberately.
+     "Call next" as a separate action is gone: finishing someone is now how
+     the next person is called (see complete() below). Nothing calls this,
+     which also means the intercept modal it opens can no longer appear.
+     Left in place because the intercept logic — what to do with a visit that
+     has run long — is the right idea and may return as a prompt on the
+     Done button rather than as its own action. Delete it if that never
+     happens; do not wire it back to a button without reading complete(). */
   // callNext — if someone is already being served, ask what to do with them
   // first. But only when the visit is genuinely running long: prompting on
   // every call is noise, because normally staff finish one customer and move
   // straight to the next.
+  // eslint-disable-next-line no-unused-vars
   //
   // Dismissing the prompt ("Cancel") suppresses it for that ticket, so it
   // doesn't reappear on the very next click.
@@ -611,12 +624,26 @@ export default function Queue() {
     await callNextInner();
   }
 
-  // Opens the satisfaction survey before completing the ticket
+  /* ONE ACTION, NOT TWO.
+     There used to be a Complete button and a separate "Call next customer"
+     button. Two buttons for what is, at the counter, a single moment: this
+     person is finished, bring me the next one. Staff pressed Call next
+     (because that is what they wanted) and skipped Complete (because it
+     looked like optional bookkeeping) — which is why whole days closed in a
+     single burst at 5pm with no outcomes recorded.
+
+     Now finishing someone IS how you get the next person. The bookkeeping
+     is no longer a separate act of discipline; it happens because it is on
+     the path to the thing staff actually want. */
   function complete() {
     if (!serving) return;
-    setSurveyTicket(serving);
-    setSurveyScore(0);
-    setSurveyNote("");
+    setCompleting({ ticket: serving, andCallNext: true });
+  }
+
+  /* Nobody is at the counter yet — the only thing to do is start. */
+  function startNext() {
+    if (waiting.length === 0) return;
+    callNextInner();
   }
 
   // Called when staff submit the survey (or skip it)
@@ -1271,23 +1298,26 @@ export default function Queue() {
                 {queueAnalysis.tally.dropoff} drop-off{queueAnalysis.tally.dropoff > 1 ? "s" : ""} · fast-track
               </span>
             )}
-            {waiting.length > 0 && (
-              <button
-                onClick={() => setSmartSortOn((x) => !x)}
-                className={"text-[9px] border px-2 py-0.5 ovline transition " + (smartSortOn ? "border-gold-deep text-gold-soft" : "border-line text-ink-mute hover:border-line-2")}
-                title="Smart sort: quick cases first, complex cases last — keeps the line moving"
-              >
-                {smartSortOn ? "Smart sort ON" : "Smart sort"}
-              </button>
+            {/* SMART SORT AND SPLIT LANES USED TO BE BUTTONS HERE.
+                They are configuration, not actions: nobody decides whether
+                the queue should reorder itself while a customer is standing
+                in front of them. You decide once and forget. On the counter
+                screen they were two more things to read past, on a page the
+                owner said was already too complex for his father.
+
+                Their state still lives in this component and both features
+                work exactly as before — only the toggles moved. When either
+                is on, a small label shows below so it is never a mystery why
+                the order looks different. */}
+            {waiting.length > 0 && smartSortOn && (
+              <span className="text-[9px] ovline text-gold-soft border border-gold-deep/50 px-2 py-0.5">
+                Smart sort on
+              </span>
             )}
-            {waiting.length > 0 && (
-              <button
-                onClick={() => setSplitLaneOn((x) => !x)}
-                className={"text-[9px] border px-2 py-0.5 ovline transition " + (splitLaneOn ? "border-amber-800 text-amber-400" : "border-line text-ink-mute hover:border-line-2")}
-                title="Split-lane view: Fast Lane (quick/standard) on the left, Complex Lane (complex/extended) on the right"
-              >
-                {splitLaneOn ? "Split lanes ON" : "Split lanes"}
-              </button>
+            {waiting.length > 0 && splitLaneOn && (
+              <span className="text-[9px] ovline text-amber-400 border border-amber-800/50 px-2 py-0.5">
+                Split lanes on
+              </span>
             )}
           </div>
         </div>
@@ -1323,13 +1353,33 @@ export default function Queue() {
             >
               📢 Alert queue
             </button>
+            {/* CLEAR QUEUE IS BEHIND A DISCLOSURE NOW.
+                It cancels every remaining ticket, and it was sitting inches
+                from controls pressed several times an hour. That is a
+                foot-gun on a screen used at speed by someone who did not
+                choose this software.
+
+                It is also needed far less than it was: the nightly sweep now
+                closes anything left open for 18 hours, which is what this
+                button was really being used for. Kept, because end-of-day
+                still happens; moved, because a destructive action should
+                take one more press than a safe one. */}
+            {moreOpen && (
+              <button
+                onClick={() => setClearConfirm(true)}
+                disabled={waiting.length === 0 && !serving}
+                className="text-[9px] border border-red-900/60 px-2.5 py-1 text-[#d49185] hover:border-red-900 transition disabled:opacity-30 ovline"
+                title="Cancel all remaining tickets — end of day only"
+              >
+                🗑 Clear queue
+              </button>
+            )}
             <button
-              onClick={() => setClearConfirm(true)}
-              disabled={waiting.length === 0 && !serving}
-              className="text-[9px] border border-line px-2.5 py-1 text-ink-mute hover:text-[#d49185] hover:border-red-900 transition disabled:opacity-30 ovline"
-              title="Cancel all remaining tickets — use at end of day"
+              onClick={() => setMoreOpen((x) => !x)}
+              className="text-[9px] border border-line px-2.5 py-1 text-ink-mute hover:text-ink transition ovline"
+              title="End-of-day and rarely used actions"
             >
-              🗑 Clear queue
+              {moreOpen ? "Less" : "More"}
             </button>
             <button
               onClick={() => reload()}
@@ -1435,7 +1485,7 @@ export default function Queue() {
           {/* A paused queue is the single most important fact on this screen, so
           it goes above the hygiene nudge and the header. */}
       <div className="mb-5">
-        <QueuePauseControl branch={branch} onChange={reloadBranches} />
+        <QueuePauseControl branch={branch} onChange={reloadBranches} waiting={waiting} />
       </div>
 
       {/* Fires once each time a NEW person is called, then removes itself
@@ -1498,37 +1548,55 @@ export default function Queue() {
             </div>
           )}
 
+          {/* ONE BIG BUTTON, THEN EVERYTHING ELSE.
+              There were five buttons here of near-equal weight — Complete,
+              Call next, Skip, Return, Reassign — and the owner said plainly
+              that the queue is too complex for his father to use. Five
+              choices at the moment you finish with someone is four too many.
+
+              Now there is one large action that covers the ordinary case,
+              Reassign beside it for the one genuinely common exception, and
+              the rare cases sit smaller underneath where they can still be
+              reached but do not compete. */}
           <div className="flex flex-wrap gap-3 items-center">
             {serving ? (
-              <>
-                <Button onClick={complete} disabled={busy} size="lg">
-                  Complete {serving.customer_name ? serving.customer_name.split(" ")[0] : serving.token} ✓
-                </Button>
-                <Button variant="ghost" onClick={callNext} disabled={busy || waiting.length === 0}>
-                  Call next customer →
-                </Button>
-              </>
+              <button
+                onClick={complete}
+                disabled={busy}
+                className="flex-1 min-w-[280px] bg-gold-deep/15 border-2 border-gold-deep text-ink hover:bg-gold-deep/25 transition disabled:opacity-40 px-8 py-6 text-left"
+              >
+                <div className="text-[19px] leading-tight">
+                  Done with {serving.customer_name ? serving.customer_name.split(" ")[0] : serving.token}
+                </div>
+                <div className="text-[12.5px] text-ink-mute mt-1">
+                  {waiting.length > 0
+                    ? `Finish and call the next person · ${waiting.length} waiting`
+                    : "Finish — nobody else is waiting"}
+                </div>
+              </button>
             ) : (
-              <>
-                <Button onClick={callNext} disabled={busy || waiting.length === 0} size="lg">
-                  Call next customer →
-                </Button>
-                <Button variant="ghost" onClick={complete} disabled>
-                  Complete
-                </Button>
-              </>
+              <button
+                onClick={startNext}
+                disabled={busy || waiting.length === 0}
+                className="flex-1 min-w-[280px] bg-gold-deep/15 border-2 border-gold-deep text-ink hover:bg-gold-deep/25 transition disabled:opacity-30 px-8 py-6 text-left"
+              >
+                <div className="text-[19px] leading-tight">
+                  {waiting.length > 0 ? "Call the next person" : "Nobody waiting"}
+                </div>
+                <div className="text-[12.5px] text-ink-mute mt-1">
+                  {waiting.length > 0
+                    ? `${waiting.length} ${waiting.length === 1 ? "person" : "people"} in the queue`
+                    : "The queue is empty"}
+                </div>
+              </button>
             )}
-            <Button variant="ghost" onClick={skipServing} disabled={busy || !serving}>
-              Skip
-            </Button>
-            <Button variant="ghost" onClick={sendBackToQueue} disabled={busy || !serving} title="Return this customer to the queue">
-              Return
-            </Button>
-            {serving && staffList.length > 1 && (
+
+            {serving && (
               <ReassignMenu
                 ticket={serving}
                 staffList={staffList}
                 onReassign={(staffId) => reassignTicket(serving.id, staffId)}
+                onBackToQueue={sendBackToQueue}
                 disabled={busy}
               />
             )}
@@ -1557,6 +1625,31 @@ export default function Queue() {
               </button>
             )}
           </div>
+
+          {/* The uncommon cases. Deliberately small and below the fold of the
+              main action — they are needed a few times a week, not a few
+              times an hour, and at full size they made the screen look like
+              it was asking a question every time someone finished. */}
+          {serving && (
+            <div className="flex flex-wrap gap-4 items-center mt-4 pt-3 border-t border-line">
+              <button
+                onClick={skipServing}
+                disabled={busy}
+                className="text-[11.5px] text-ink-mute hover:text-ink transition disabled:opacity-40"
+                title="They did not come to the counter"
+              >
+                Didn't show up
+              </button>
+              <button
+                onClick={sendBackToQueue}
+                disabled={busy}
+                className="text-[11.5px] text-ink-mute hover:text-ink transition disabled:opacity-40"
+                title="Put this customer back in the queue"
+              >
+                Back to the queue
+              </button>
+            </div>
+          )}
         </Card>
 
         {/* Up Next */}
@@ -1654,6 +1747,30 @@ export default function Queue() {
                         </span>
                       )}
                     </div>
+                    {/* What they actually came in for, before they reach the
+                        counter. `detail` is free text staff typed on a
+                        previous visit or at handoff — "I-130, missing birth
+                        certificate". Without it here, the first anyone knows
+                        of a complex case is when the person is already
+                        sitting down, which is exactly when it is most
+                        expensive to discover it needs someone else. */}
+                    {(t.detail || t.handoff_category) && (
+                      <div className="text-[10.5px] mt-1 leading-snug flex items-start gap-1.5">
+                        {/* A visit that ended "needs documents" is the one
+                            worth seeing before you call the person — it is
+                            the difference between a two-minute conversation
+                            and a wasted counter slot. Amber, not red: it is
+                            information, not a fault. */}
+                        {t.handoff_category === "dropoff" && (
+                          <span className="text-[9px] ovline text-amber-400 border border-amber-800/50 px-1.5 py-0.5 shrink-0">
+                            Drop-off
+                          </span>
+                        )}
+                        {t.detail && (
+                          <span className="text-ink-soft">{t.detail}</span>
+                        )}
+                      </div>
+                    )}
                     <div className="text-[10px] text-ink-mute font-mono mt-0.5">
                       {t.customer_phone}
                     </div>
@@ -2247,34 +2364,70 @@ function TicketActionsMenu({ ticket, staffList, isPriority, onEscalate, onReassi
 }
 
 /* ── ReassignMenu ───────────────────────────────────────────────────── */
-function ReassignMenu({ ticket, staffList, onReassign, disabled }) {
+function ReassignMenu({ ticket, staffList, onReassign, onBackToQueue, disabled }) {
   const [open, setOpen] = useState(false);
-  if (!staffList || staffList.length <= 1) return null;
+
+  /* Green, and sized to sit beside the main action rather than beneath it.
+     This is the one exception that happens often in a two-person office:
+     someone reaches the counter and turns out to need the other person —
+     a notarisation, a complex case. Making it hard to reach is how a
+     customer ends up waiting through a second full queue cycle.
+
+     Green because it is not a warning and not the primary path. Gold is
+     "finish this", red is "something is wrong"; handing work to a
+     colleague is neither. */
+  const others = (staffList ?? []).filter((s) => s.id !== ticket?.staff_id);
+
   return (
     <div className="relative">
       <button
         onClick={() => setOpen((x) => !x)}
         disabled={disabled}
-        className="text-[10px] text-ink-mute hover:text-ink border border-line px-2.5 py-1 transition disabled:opacity-40"
+        className="border-2 border-[#506b50] text-[#9bbd9b] hover:bg-[rgba(80,107,80,0.15)] transition disabled:opacity-40 px-6 py-6 text-left min-w-[190px]"
       >
-        Reassign
+        <div className="text-[15px] leading-tight">Hand over</div>
+        <div className="text-[11.5px] text-[#9bbd9b]/70 mt-1">
+          Someone else takes this
+        </div>
       </button>
+
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full mt-1 z-20 bg-bg-elev border border-line shadow-lg min-w-[160px] py-1">
-            {staffList.map((s) => (
+          <div className="absolute left-0 top-full mt-1 z-20 bg-bg-elev border border-[#506b50]/60 shadow-lg min-w-[240px] py-1">
+            {others.length > 0 && (
+              <div className="px-4 pt-2 pb-1 text-[9px] ovline text-ink-mute">
+                To a person
+              </div>
+            )}
+            {others.map((s) => (
               <button
                 key={s.id}
                 onClick={() => { setOpen(false); onReassign(s.id); }}
-                className="w-full text-left px-4 py-2 text-[11px] text-ink-soft hover:text-ink hover:bg-white/[0.03] transition"
+                className="w-full text-left px-4 py-2.5 text-[12.5px] text-ink-soft hover:text-ink hover:bg-white/[0.03] transition"
               >
                 {s.display_name}
-                {ticket?.staff_id === s.id && (
-                  <span className="text-[9px] text-gold-soft ml-2">current</span>
-                )}
               </button>
             ))}
+
+            {/* Back to the line, for when it is not a specific person's job —
+                just "not mine". Without this, staff either guess at a name or
+                leave the ticket sitting on them. */}
+            {onBackToQueue && (
+              <>
+                <div className="border-t border-line mt-1 pt-1">
+                  <div className="px-4 pt-1 pb-1 text-[9px] ovline text-ink-mute">
+                    Or
+                  </div>
+                  <button
+                    onClick={() => { setOpen(false); onBackToQueue(); }}
+                    className="w-full text-left px-4 py-2.5 text-[12.5px] text-ink-soft hover:text-ink hover:bg-white/[0.03] transition"
+                  >
+                    Put back in the line
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </>
       )}

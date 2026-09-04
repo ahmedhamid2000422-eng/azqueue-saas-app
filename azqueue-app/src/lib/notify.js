@@ -1,6 +1,29 @@
 /**
  * notify.js — Twilio SMS notifications (multi-tenant, used by all branches).
  *
+ * ╔═════════════════════════════════════════════════════════════════╗
+ * ║ DO NOT RE-ENABLE THIS FILE. IT IS DEAD ON PURPOSE.              ║
+ * ║                                                                 ║
+ * ║ Every function here sends a message that does NOT match any of  ║
+ * ║ the five samples on approved A2P campaign                       ║
+ * ║ CM9d4930a3a84ff613446b2ae3155b99af. sendWaitUpdate and          ║
+ * ║ sendBroadcastAlert have no matching sample at all, and          ║
+ * ║ sendClassReminder embeds a link on a campaign that declares     ║
+ * ║ "no embedded links".                                            ║
+ * ║                                                                 ║
+ * ║ Nothing here sends today only because VITE_TWILIO_* was deleted ║
+ * ║ from Vercel and sendSms() returns early without credentials.    ║
+ * ║ That is accidental safety. Adding those variables back would    ║
+ * ║ start five undeclared message types going to real customers on  ║
+ * ║ a registered campaign — which is how carriers start filtering   ║
+ * ║ your traffic.                                                   ║
+ * ║                                                                 ║
+ * ║ The compliant path is lib/notifications.js → the                ║
+ * ║ send-notification edge function, whose templates ARE the        ║
+ * ║ approved samples. Repoint callers there and delete this file.   ║
+ * ║ See docs/sms-compliance-audit.md.                               ║
+ * ╚═════════════════════════════════════════════════════════════════╝
+ *
  * ┌─────────────────────────────────────────────────────────────────┐
  * │ SECURITY WARNING                                                │
  * │ These calls run in the browser, which means the Twilio Auth    │
