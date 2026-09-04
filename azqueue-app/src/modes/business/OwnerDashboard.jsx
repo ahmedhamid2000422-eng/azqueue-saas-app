@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useBranch } from "../../lib/BranchContext";
 import Card, { CardHeader } from "../../components/Card";
@@ -20,10 +21,12 @@ import Stat from "../../components/Stat";
  */
 export default function OwnerDashboard() {
   const { branch } = useBranch();
+  const navigate = useNavigate();
 
   const [stats,    setStats]    = useState(null);   // { waitingNow, servedToday, avgWaitSec, noShowToday }
   const [stations, setStations] = useState([]);     // rows from stations + current ticket
   const [roster,   setRoster]   = useState([]);     // staff rows + served-today count
+  const [queue,    setQueue]    = useState([]);     // active tickets, newest last, with their "problem" if any
   const [loading,  setLoading]  = useState(true);
 
   /* ── Fetch ────────────────────────────────────────────────────── */
@@ -43,7 +46,7 @@ export default function OwnerDashboard() {
       // Active tickets (waiting + serving)
       supabase
         .from("tickets")
-        .select("id, token, status, customer_name, service_id, staff_id, assigned_station_id, called_at, created_at")
+        .select("id, token, status, customer_name, service_id, staff_id, assigned_station_id, called_at, created_at, detail, escalated_at, escalated_reason")
         .eq("branch_id", branch.id)
         .in("status", ["waiting", "serving"])
         .order("priority", { ascending: false })
@@ -93,6 +96,12 @@ export default function OwnerDashboard() {
       noShowToday: noShow.length,
       avgWaitSec,
     });
+
+    /* Same order the queue itself uses — priority first, then who arrived
+       earliest. "Problem" is escalated_reason when someone flagged it for the
+       owner, otherwise the free-text detail staff typed in, otherwise blank —
+       a ticket with neither is just proceeding normally. */
+    setQueue(activeTickets ?? []);
 
     /* ── Enrich stations with current ticket ─────────────────── */
     const servedMap = {};
@@ -211,6 +220,52 @@ export default function OwnerDashboard() {
           hint="Created → called"
         />
       </div>
+
+      {/* ── Who's in line right now ───────────────────────────────
+          The stats bar says how many. This says who, and whether anything
+          about their visit needs a look — a ticket with detail or an
+          escalation reason is one the owner would otherwise only discover
+          by asking. Click through for the full picture on that one visit. */}
+      {queue.length > 0 && (
+        <Card luxe className="mb-6">
+          <CardHeader
+            title="In line"
+            subtitle="Tap anyone for the full picture"
+            right={<span className="ovline text-[9px] text-ink-mute">{queue.length}</span>}
+          />
+          <div className="divide-y divide-line">
+            {queue.map((t) => {
+              const problem = t.escalated_reason || t.detail || null;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => navigate(`ticket/${t.id}`)}
+                  className="w-full px-5 py-3 flex items-center gap-3 text-left hover:bg-[rgba(201,168,106,0.03)] transition"
+                >
+                  <span
+                    className="pip shrink-0"
+                    style={{ background: t.status === "serving" ? "#c9a86a" : "#9bbd9b" }}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm text-ink truncate">
+                      {t.customer_name || t.token}
+                    </div>
+                    {problem && (
+                      <div className={`text-[11px] mt-0.5 truncate ${t.escalated_reason ? "text-[#d49185]" : "text-ink-mute"}`}>
+                        {t.escalated_reason ? `Escalated · ${problem}` : problem}
+                      </div>
+                    )}
+                  </div>
+                  <span className="ovline text-[9px] text-ink-mute shrink-0">
+                    {t.status === "serving" ? "Serving" : "Waiting"}
+                  </span>
+                  <span className="text-ink-mute shrink-0">›</span>
+                </button>
+              );
+            })}
+          </div>
+        </Card>
+      )}
 
       {/* ── Stations grid ──────────────────────────────────────── */}
       <Card luxe className="mb-6">

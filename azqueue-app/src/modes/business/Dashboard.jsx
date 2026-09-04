@@ -25,6 +25,7 @@ import Onboarding from "./Onboarding";
 import StaffProfile from "./StaffProfile";
 import Reviews from "./Reviews";
 import OwnerDashboard from "./OwnerDashboard";
+import TicketDetail from "./TicketDetail";
 import ClientIntelligence from "./ClientIntelligence";
 
 const QUEUE_NAV = [
@@ -109,6 +110,7 @@ export default function BusinessDashboard() {
           <Routes>
             <Route index element={isGym ? <Classes /> : <Queue />} />
             <Route path="overview"   element={<OwnerDashboard />} />
+            <Route path="overview/ticket/:id" element={<TicketDetail />} />
             <Route path="bookings" element={<Bookings />} />
             <Route path="schedule" element={<Schedule />} />
             <Route path="stations"   element={<Stations />} />
