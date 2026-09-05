@@ -2276,13 +2276,13 @@ export default function Queue() {
                       <span className={`text-[9px] border px-1.5 py-0.5 leading-none ${
                         isBreach ? "border-red-800 text-red-400" : "border-amber-800 text-amber-400"
                       }`}>
-                        {isBreach ? "Breach" : "Warning"}
+                        {isBreach ? "Too long" : "Getting long"}
                       </span>
                     </div>
                     <div className="text-[10px] text-ink-mute mt-0.5">
                       {isBounce
-                        ? `Returned to queue ${ticket.bounce_count || 0}x — customer may need direct attention`
-                        : "Waiting beyond SLA threshold — act now"}
+                        ? `Sent back to the queue ${ticket.bounce_count || 0} times. They may need a specific person.`
+                        : "Waiting longer than they should be."}
                     </div>
                   </div>
                   {isManager && (

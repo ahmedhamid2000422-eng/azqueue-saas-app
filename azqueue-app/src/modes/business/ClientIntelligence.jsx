@@ -362,7 +362,7 @@ export default function ClientIntelligence() {
             label="Typical visit"
             value={vitals.medianVisitMins != null ? `${Math.round(vitals.medianVisitMins)}m` : "—"}
             hint={vitals.timedPeople
-              ? `median, ${vitals.timedPeople.toLocaleString()} clients timed`
+              ? `on average, from ${vitals.timedPeople.toLocaleString()} timed visits`
               : "no timed visits yet"}
           />
           <Vital
@@ -372,7 +372,7 @@ export default function ClientIntelligence() {
                 ? `${Math.round(vitals.medianGapDays / 30)} mo`
                 : `${Math.round(vitals.medianGapDays)} d`
               : "—"}
-            hint="median, repeat clients only"
+            hint="on average, people who came back"
           />
         </div>
       )}
@@ -474,7 +474,7 @@ export default function ClientIntelligence() {
             </span>
             {/* Blank rather than zero when a client has no timed visits —
                 an em dash says "not recorded", a 0 would say "instant". */}
-            <span className="text-[10px] text-ink-mute font-mono" title={c.timedVisits ? `median of ${c.timedVisits} timed visit${c.timedVisits === 1 ? "" : "s"}` : "no timed visits yet"}>
+            <span className="text-[10px] text-ink-mute font-mono" title={c.timedVisits ? `average of ${c.timedVisits} timed visit${c.timedVisits === 1 ? "" : "s"}` : "no timed visits yet"}>
               {c.medMins != null ? `${Math.round(c.medMins)}m` : "—"}
             </span>
             <span className="text-[10px] text-ink-mute font-mono">{fmtDate(c.f)}</span>

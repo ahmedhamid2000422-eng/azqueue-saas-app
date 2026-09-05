@@ -44,8 +44,8 @@ export default function Stations() {
   return (
     <TierGate
       requires="professional"
-      feature="Stations & Routing"
-      reason="Balance workload across service counters. Route tasks to the least-loaded active station automatically. Pause a station for prayer or break — coverage is the system's responsibility, not the worker's."
+      feature="Counters"
+      reason="Set up your counters and see who is at each one. Send the next person to whichever counter is quietest. Pause a counter for a break without anyone losing their place."
     >
       <StationsInner />
     </TierGate>
@@ -418,9 +418,9 @@ function StationsInner() {
             variant="ghost" size="sm"
             onClick={handleRouteNext}
             disabled={busy || activeCount === 0}
-            title="Assign next unrouted task to the least-loaded active station"
+            title="Send the next waiting person to whichever counter is quietest"
           >
-            Route next →
+            Send next person →
           </Button>
           <Button size="sm" onClick={() => setCreating(true)} disabled={busy}>
             + Add station
@@ -444,7 +444,7 @@ function StationsInner() {
         <div className="mb-6 border border-line bg-bg-elev p-4">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <div className="ovline text-[9px] mb-1 text-gold-soft">SLA · Breach &amp; Bounce tracking</div>
+              <div className="ovline text-[9px] mb-1 text-gold-soft">Long-wait alerts</div>
               <div className="text-xs text-ink-soft">
                 {policy?.enabled
                   ? `⏱ warn ${fmtElapsed(policy.target_secs)} · breach ${fmtElapsed(policy.breach_secs)}  ·  ↩ warn ${policy.bounce_warn_count ?? 2}× · breach ${policy.bounce_breach_count ?? 3}×`
@@ -468,7 +468,7 @@ function StationsInner() {
                   onChange={(e) => setSlaForm((f) => ({ ...f, enabled: e.target.checked }))}
                   className="accent-gold-deep"
                 />
-                <span>Enable SLA sweep (runs every 60 seconds)</span>
+                <span>Check for long waits every minute</span>
               </label>
               <div className="flex gap-6 flex-wrap">
                 <div className="flex flex-col gap-2">
@@ -530,7 +530,7 @@ function StationsInner() {
       {/* ── Open escalations — station-level only, never per-person ── */}
       {slaEnabled && escalations.length > 0 && (
         <div className="mb-6 flex flex-col gap-2">
-          <div className="ovline text-[9px] mb-2">Open escalations</div>
+          <div className="ovline text-[9px] mb-2">Needs a look</div>
           {escalations.map((esc) => {
             const station  = stations.find((s) => s.id === esc.station_id);
             const isBreach = esc.level === "breach";
@@ -538,13 +538,17 @@ function StationsInner() {
             const icon     = isBounce ? "↩" : "⏱";
 
             // Message differs by reason type so managers know what action to take
+            /* Plain words. "Breach", "bounce" and "threshold" are the
+               vocabulary of the system, not of the person reading it
+               between customers. The underlying fields keep their names —
+               only what appears on screen changes. */
             const description = isBounce
               ? isBreach
-                ? `A customer has been parked back 3+ times${station ? ` at ${station.name}` : ""} — direct manager attention needed.`
-                : `A customer has been parked back repeatedly${station ? ` at ${station.name}` : ""} — consider a dedicated counter.`
+                ? `Someone has been sent back to the queue three or more times${station ? ` at ${station.name}` : ""}. Worth handling personally.`
+                : `Someone has been sent back to the queue more than once${station ? ` at ${station.name}` : ""}. They may need a specific person.`
               : isBreach
-                ? `${station ? station.name : "A station"} has a task past the breach threshold — consider reassigning or opening another counter.`
-                : `${station ? station.name : "A station"} has a task approaching the time limit — keep an eye on it.`;
+                ? `${station ? station.name : "A counter"} has had someone waiting a long time. Consider moving them or opening another counter.`
+                : `${station ? station.name : "A counter"} has someone getting close to a long wait. Worth an eye.`;
 
             return (
               <div
@@ -561,8 +565,8 @@ function StationsInner() {
                 <span className="flex-1">
                   <span className="font-medium">
                     {isBounce
-                      ? (isBreach ? "Bounce breach" : "Bounce warning")
-                      : (isBreach ? "Time breach"  : "Time warning")}
+                      ? (isBreach ? "Sent back repeatedly" : "Sent back again")
+                      : (isBreach ? "Waiting a long time"  : "Getting long")}
                   </span>
                   {" · "}
                   {description}
@@ -832,7 +836,7 @@ function StationCard({
             {station.load}
           </div>
           <div className="ovline text-[9px] mt-1">
-            task{station.load !== 1 ? "s" : ""} assigned
+            {station.load === 1 ? "person here" : "people here"}
           </div>
         </div>
 
