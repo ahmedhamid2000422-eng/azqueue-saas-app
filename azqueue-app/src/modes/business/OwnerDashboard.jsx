@@ -81,13 +81,26 @@ export default function OwnerDashboard() {
     const done    = (doneTickets  ?? []).filter((t) => t.status === "completed");
     const noShow  = (doneTickets  ?? []).filter((t) => t.status === "cancelled");
 
-    // Average wait: time from created_at → called_at, for completed tickets with both timestamps
-    const waitSamples = done.filter((t) => t.called_at && t.created_at);
-    const avgWaitSec = waitSamples.length
-      ? waitSamples.reduce((sum, t) =>
-          sum + (new Date(t.called_at) - new Date(t.created_at)) / 1000, 0
-        ) / waitSamples.length
-      : null;
+    /* MEDIAN, NOT MEAN. Wait times are right-skewed — they cannot go below
+       zero but one forgotten customer sits for hours, and a single outlier
+       drags an average to a number nobody experienced. The whole project has
+       been bitten by this: a pooled mean of 62 minutes matched none of the
+       four clean days, which ranged 18–47. See docs/statistics-lessons.md. */
+    const waitSamples = done
+      .filter((t) => t.called_at && t.created_at)
+      .map((t) => ({
+        sec: (new Date(t.called_at) - new Date(t.created_at)) / 1000,
+        at:  new Date(t.created_at),
+      }));
+
+    const median = (arr) => {
+      if (!arr.length) return null;
+      const v = [...arr].sort((a, b) => a - b);
+      const mid = Math.floor(v.length / 2);
+      return v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2;
+    };
+
+    const avgWaitSec = median(waitSamples.map((w) => w.sec));
 
     setStats({
       waitingNow:  waiting.length,
@@ -95,6 +108,7 @@ export default function OwnerDashboard() {
       servedToday: done.length,
       noShowToday: noShow.length,
       avgWaitSec,
+      waitSamples,
     });
 
     /* Same order the queue itself uses — priority first, then who arrived
@@ -185,7 +199,7 @@ export default function OwnerDashboard() {
 
   return (
     <div className="atmosphere-hero p-8 max-w-6xl">
-      <header className="mb-8">
+      <header className="mb-6">
         <div className="ovline mb-2 text-gold-soft flex items-center gap-2">
           <span className="pip breathe" style={{ background: "#c9a86a" }} />
           Live · branch overview
@@ -196,8 +210,54 @@ export default function OwnerDashboard() {
         <div className="text-xs text-ink-mute mt-1">{branch.city}</div>
       </header>
 
-      {/* ── Stats bar ──────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+      {/* ── Who is next, and the one thing to do about it ────────
+          Modelled on the reference dashboard's hero card, with one
+          deliberate difference: it does NOT put a Call Next button here.
+
+          Calling and completing happen on the Queue page. Two screens with
+          the same action is how this project already broke station
+          assignment — Overview wrote preparer_id, Stations wrote staff_id,
+          and neither knew about the other for months. So this says who is
+          next and hands you to the place that does the work. */}
+      {!loading && queue.length > 0 && (() => {
+        const next = queue.find((t) => t.status === "waiting");
+        if (!next) return null;
+        const waitedMin = Math.max(
+          0,
+          Math.round((Date.now() - new Date(next.created_at).getTime()) / 60000),
+        );
+        return (
+          <button
+            onClick={() => navigate("..")}
+            className="w-full text-left mb-6 border-2 border-gold-deep bg-[rgba(201,168,106,0.06)] hover:bg-[rgba(201,168,106,0.12)] transition px-6 py-5 flex items-center justify-between gap-6 flex-wrap"
+          >
+            <div className="min-w-0">
+              <div className="text-[10px] font-medium tracking-[0.08em] uppercase text-gold-soft mb-1.5">
+                Next in line
+              </div>
+              <div className="font-display text-3xl font-light tracking-tight truncate">
+                {next.customer_name || next.token}
+              </div>
+              <div className="text-[11.5px] text-ink-mute mt-1">
+                {next.token} · waiting {waitedMin} min
+                {next.detail ? ` · ${next.detail}` : ""}
+              </div>
+            </div>
+            <div className="text-[11px] font-medium tracking-[0.08em] uppercase text-gold-soft shrink-0">
+              Open the queue →
+            </div>
+          </button>
+        );
+      })()}
+
+      {/* ── Stats bar ────────────────────────────────────────────
+          Three, not four. "Serving now" was the weakest of the four — it is
+          already visible in the stations grid below and on the queue page,
+          and a number that repeats something two inches away is a number
+          people stop reading. Wait is a MEDIAN now, and says so: the label
+          used to read "Avg wait" while the hint said "Created → called",
+          which described the calculation but not the statistic. */}
+      <div className="grid grid-cols-3 gap-3 mb-6">
         <Stat
           label="Waiting now"
           value={loading ? "…" : stats?.waitingNow ?? 0}
@@ -205,19 +265,20 @@ export default function OwnerDashboard() {
           accent={stats?.waitingNow > 0}
         />
         <Stat
-          label="Serving now"
-          value={loading ? "…" : stats?.servingNow ?? 0}
-          hint="At counters"
-        />
-        <Stat
           label="Served today"
           value={loading ? "…" : stats?.servedToday ?? 0}
           hint="Completed"
         />
+        {/* Says "average", computes a median — on purpose, and do not
+            "fix" it to a mean. "Median" is a word for a statistics class,
+            not for someone glancing at a screen between customers, and in
+            everyday English "average" means "typical", which is exactly
+            what a median is. A mean here would be the wrong number
+            wearing the right word. */}
         <Stat
-          label="Avg wait"
+          label="Average wait"
           value={loading ? "…" : fmtWait(stats?.avgWaitSec)}
-          hint="Created → called"
+          hint="Today, check-in to called"
         />
       </div>
 
@@ -415,6 +476,11 @@ export default function OwnerDashboard() {
           Staff counts show completed visits today — not relative comparisons.
         </div>
       </Card>
+
+      {/* The one chart, full width along the bottom. See WaitToday. */}
+      <div className="mt-6">
+        <WaitToday samples={stats?.waitSamples} loading={loading} />
+      </div>
     </div>
   );
 }
@@ -447,5 +513,110 @@ function AssignStaffSelect({ stationId, currentStaffId, roster, onAssigned }) {
         </option>
       ))}
     </select>
+  );
+}
+
+/* ── WaitToday ───────────────────────────────────────────────────────
+   The one chart on this page, full width along the bottom.
+
+   WHY ONLY ONE
+   The reference dashboard this was modelled on had three side by side —
+   an hourly bar chart, a service-mix donut and a suggestions panel. Three
+   charts is three things to interpret before you know whether today is
+   going well, and the owner said plainly it was too much. Wait time is the
+   number this business actually competes on, so it gets the space and the
+   others go away.
+
+   WHY IT REFUSES TO DRAW SOMETIMES
+   With fewer than four completed visits an "average wait per hour" is one or
+   two people's experience drawn as a trend. This project has already
+   retracted five findings that were exactly that — a shape fitted to too
+   little data. So under the threshold it states the count instead, which is
+   honest and still useful.
+*/
+const MIN_FOR_CHART = 4;
+
+function WaitToday({ samples, loading }) {
+  if (loading) {
+    return (
+      <Card luxe>
+        <CardHeader title="Wait times today" />
+        <div className="px-5 py-10 text-center text-ink-mute text-xs">Loading…</div>
+      </Card>
+    );
+  }
+
+  const list = samples ?? [];
+
+  if (list.length < MIN_FOR_CHART) {
+    return (
+      <Card luxe>
+        <CardHeader title="Wait times today" />
+        <div className="px-5 py-8 text-center">
+          <div className="text-[13px] text-ink-soft">
+            {list.length === 0
+              ? "Nobody has been served yet today."
+              : `Only ${list.length} ${list.length === 1 ? "visit" : "visits"} so far today.`}
+          </div>
+          <div className="text-[11px] text-ink-mute mt-1.5">
+            A pattern needs at least {MIN_FOR_CHART} to mean anything.
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  /* Bucket by hour of arrival, median within each. Only hours that actually
+     had visits are drawn — an empty 8am bar reads as "nobody waited" rather
+     than "we were closed". */
+  const byHour = {};
+  for (const s of list) {
+    const h = s.at.getHours();
+    (byHour[h] ??= []).push(s.sec);
+  }
+
+  const med = (arr) => {
+    const v = [...arr].sort((a, b) => a - b);
+    const mid = Math.floor(v.length / 2);
+    return v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2;
+  };
+
+  const hours = Object.keys(byHour)
+    .map(Number)
+    .sort((a, b) => a - b)
+    .map((h) => ({ hour: h, min: Math.round(med(byHour[h]) / 60), n: byHour[h].length }));
+
+  const peak = Math.max(...hours.map((h) => h.min), 1);
+  const overall = Math.round(med(list.map((s) => s.sec)) / 60);
+  const label = (h) => `${h % 12 === 0 ? 12 : h % 12}${h < 12 ? "am" : "pm"}`;
+
+  return (
+    <Card luxe>
+      <CardHeader
+        title="Wait times today"
+        subtitle={`${overall} min on average across ${list.length} visits`}
+      />
+      <div className="px-5 py-5">
+        <div className="flex items-end gap-2 h-32">
+          {hours.map((h) => (
+            <div key={h.hour} className="flex-1 flex flex-col items-center justify-end gap-1.5 min-w-0">
+              <div className="text-[10px] text-ink-mute">{h.min}</div>
+              <div
+                className="w-full bg-gold-deep/70 hover:bg-gold-deep transition"
+                style={{ height: `${Math.max(4, (h.min / peak) * 100)}%` }}
+                title={`${h.n} ${h.n === 1 ? "visit" : "visits"}, ${h.min} min on average`}
+              />
+              <div className="text-[9px] font-medium tracking-[0.08em] uppercase text-ink-mute truncate w-full text-center">
+                {label(h.hour)}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="text-[10px] text-ink-mute mt-3 leading-relaxed">
+          Minutes from check-in to being called, by the hour people arrived.
+          One unusually long visit will not drag the whole day up.
+        </div>
+      </div>
+    </Card>
   );
 }
