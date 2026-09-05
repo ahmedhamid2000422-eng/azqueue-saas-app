@@ -9,20 +9,28 @@ import Button from "../../components/Button";
 import Card from "../../components/Card";
 import ShadowSlots from "./ShadowSlots";
 
-/* Half-hour slots. Hour blocks meant a 20-minute consultation reserved a
-   full hour, so a day looked full at six bookings — and the owner wanted
-   specific slots he could fill rather than a coarse grid. Generated rather
-   than typed so the day range can move without editing a list by hand. */
-const SLOT_MINUTES = 30;
+/* SLOT LENGTH IS THE BUSINESS'S CHOICE, NOT OURS.
+   Hour blocks meant a 20-minute consultation reserved a full hour, so a day
+   looked full at six bookings. Half-hour blocks fix that but double the rows,
+   which makes the grid longer to scan. Neither is right for every office —
+   a notary doing 15-minute signings and a clinic doing hour consultations
+   want different grids.
+
+   Stored per branch in localStorage rather than the database: it is a view
+   preference, it changes nothing about the data, and it did not warrant a
+   migration on a day that already had several. */
+const SLOT_CHOICES = [15, 30, 60];
+const SLOT_KEY = (branchId) => `azq.slotMinutes.${branchId ?? "none"}`;
 const DAY_START_HOUR = 9;
 const DAY_END_HOUR = 18;
-const SLOTS = (() => {
+
+function buildSlots(minutes) {
   const out = [];
-  for (let m = DAY_START_HOUR * 60; m < DAY_END_HOUR * 60; m += SLOT_MINUTES) {
+  for (let m = DAY_START_HOUR * 60; m < DAY_END_HOUR * 60; m += minutes) {
     out.push(`${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`);
   }
   return out;
-})();
+}
 
 export default function Schedule() {
   const { branch, dbReady } = useBranch();
@@ -31,6 +39,21 @@ export default function Schedule() {
   const [services, setServices] = useState([]);
   const [prayerTimes, setPrayerTimes] = useState(null);
   const [date, setDate] = useState(() => new Date());
+  const [slotMinutes, setSlotMinutes] = useState(30);
+  const SLOTS = buildSlots(slotMinutes);
+
+  useEffect(() => {
+    if (!branch?.id) return;
+    try {
+      const saved = Number(localStorage.getItem(SLOT_KEY(branch.id)));
+      if (SLOT_CHOICES.includes(saved)) setSlotMinutes(saved);
+    } catch { /* private browsing — the default is fine */ }
+  }, [branch?.id]);
+
+  function chooseSlotMinutes(m) {
+    setSlotMinutes(m);
+    try { localStorage.setItem(SLOT_KEY(branch.id), String(m)); } catch { /* non-fatal */ }
+  }
   const [durationStats, setDurationStats] = useState({});
   const [activeTickets, setActiveTickets] = useState([]);
   const [fixBusy, setFixBusy] = useState(false);
@@ -285,6 +308,25 @@ export default function Schedule() {
         </div>
       </header>
 
+      {/* How long a slot is. Three choices, not a free-text field — an
+          office that types 37 minutes has a grid nobody can read. */}
+      <div className="mb-3 flex items-center gap-2 text-[11px]">
+        <span className="text-ink-mute">Slot length:</span>
+        {SLOT_CHOICES.map((m) => (
+          <button
+            key={m}
+            onClick={() => chooseSlotMinutes(m)}
+            className={`border px-2.5 py-1 transition ${
+              slotMinutes === m
+                ? "border-gold-deep text-gold-soft bg-[rgba(201,168,106,0.08)]"
+                : "border-line text-ink-mute hover:text-ink"
+            }`}
+          >
+            {m} min
+          </button>
+        ))}
+      </div>
+
       {/* Off today, with a way back. They lost their column so the grid
           shows the day rather than the payroll, but hiding them entirely
           would make bringing someone in impossible from this page. */}
@@ -413,57 +455,11 @@ export default function Schedule() {
                   );
                 }
                 const isAdding = addingSlot?.slot === t && addingSlot?.staffId === s.id;
-                if (isAdding) {
-                  return (
-                    <div key={s.id} className={`px-2 py-2 ${border} bg-[rgba(201,168,106,0.04)]`}>
-                      <form onSubmit={submitAddSlot} className="space-y-1.5">
-                        <input
-                          autoFocus
-                          type="text"
-                          placeholder="Name *"
-                          value={addName}
-                          onChange={(e) => setAddName(e.target.value)}
-                          className="w-full bg-bg-elev border border-gold-deep/50 focus:border-gold-deep outline-none text-[11px] px-2 py-1 text-ink placeholder:text-ink-mute"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Phone"
-                          value={addPhone}
-                          onChange={(e) => setAddPhone(e.target.value)}
-                          className="w-full bg-bg-elev border border-line focus:border-gold-deep outline-none text-[11px] px-2 py-1 text-ink placeholder:text-ink-mute"
-                        />
-                        {services.length > 0 && (
-                          <select
-                            value={addService}
-                            onChange={(e) => setAddService(e.target.value)}
-                            className="w-full bg-bg-elev border border-line focus:border-gold-deep outline-none text-[11px] px-2 py-1 text-ink"
-                          >
-                            {services.map((sv) => (
-                              <option key={sv.id} value={sv.id}>{sv.name}</option>
-                            ))}
-                          </select>
-                        )}
-                        {addError && <div className="text-[10px] text-[#d49185]">{addError}</div>}
-                        <div className="flex gap-1 pt-0.5">
-                          <button
-                            type="submit"
-                            disabled={addBusy || !addName.trim()}
-                            className="flex-1 text-[10px] bg-gold-deep/80 hover:bg-gold-deep text-[#1a1814] py-1 disabled:opacity-40 transition font-medium"
-                          >
-                            {addBusy ? "…" : "Add"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setAddingSlot(null)}
-                            className="px-2 text-[10px] border border-line text-ink-mute hover:text-ink transition"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      </form>
-                    </div>
-                  );
-                }
+                /* The add form used to render INSIDE the grid cell: three
+                   inputs, a dropdown and two buttons at 11px, in a box about
+                   two inches wide. It is now a modal — see the bottom of this
+                   component. A cell shows a booking; it should not also be a
+                   form. */
                 return (
                   <div
                     key={s.id}
@@ -583,6 +579,88 @@ export default function Schedule() {
               </div>
             </Card>
           )}
+        </div>
+      )}
+
+      {/* ── Add a booking ────────────────────────────────────────
+          A modal rather than a form squeezed into a grid cell. Same fields,
+          room to read them, and the person's name gets to be the size of a
+          name rather than 11px. */}
+      {addingSlot && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="bg-bg border border-line w-full max-w-sm">
+            <div className="px-6 py-4 border-b border-line">
+              <div className="ovline text-[9px] text-gold-soft mb-1">New booking</div>
+              <div className="font-display text-xl font-light tracking-tight">
+                {addingSlot.slot}
+                {(() => {
+                  const who = staff.find((x) => x.id === addingSlot.staffId);
+                  return who ? <span className="text-ink-mute text-sm"> · {who.display_name}</span> : null;
+                })()}
+              </div>
+            </div>
+
+            <form onSubmit={submitAddSlot} className="px-6 py-5 space-y-4">
+              <div>
+                <div className="text-[10px] font-medium tracking-[0.08em] uppercase text-ink-mute mb-1.5">Name</div>
+                <input
+                  autoFocus
+                  type="text"
+                  value={addName}
+                  onChange={(e) => setAddName(e.target.value)}
+                  placeholder="Their name"
+                  className="w-full bg-bg-elev border border-line focus:border-gold-deep outline-none text-[15px] px-3 py-2.5 text-ink placeholder:text-ink-mute"
+                />
+              </div>
+
+              <div>
+                <div className="text-[10px] font-medium tracking-[0.08em] uppercase text-ink-mute mb-1.5">
+                  Phone <span className="normal-case tracking-normal">(optional)</span>
+                </div>
+                <input
+                  type="tel"
+                  value={addPhone}
+                  onChange={(e) => setAddPhone(e.target.value)}
+                  placeholder="(720) 555 0142"
+                  className="w-full bg-bg-elev border border-line focus:border-gold-deep outline-none text-[15px] px-3 py-2.5 text-ink placeholder:text-ink-mute"
+                />
+              </div>
+
+              {services.length > 0 && (
+                <div>
+                  <div className="text-[10px] font-medium tracking-[0.08em] uppercase text-ink-mute mb-1.5">What for</div>
+                  <select
+                    value={addService}
+                    onChange={(e) => setAddService(e.target.value)}
+                    className="w-full bg-bg-elev border border-line focus:border-gold-deep outline-none text-[15px] px-3 py-2.5 text-ink"
+                  >
+                    {services.map((sv) => (
+                      <option key={sv.id} value={sv.id}>{sv.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {addError && <div className="text-[12px] text-[#d49185]">{addError}</div>}
+
+              <div className="flex items-center gap-3 pt-1">
+                <button
+                  type="submit"
+                  disabled={addBusy || !addName.trim()}
+                  className="flex-1 bg-gold text-[#141410] text-[12px] font-medium tracking-[0.08em] uppercase py-3 disabled:opacity-30 hover:bg-gold-soft transition"
+                >
+                  {addBusy ? "Adding…" : "Add booking"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAddingSlot(null)}
+                  className="text-[11px] font-medium tracking-[0.08em] uppercase text-ink-mute hover:text-ink transition px-3"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

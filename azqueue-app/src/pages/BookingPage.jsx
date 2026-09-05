@@ -46,6 +46,13 @@ export default function BookingPage() {
   const [confirmed, setConfirmed] = useState(null); // booking row after success
   const [error, setError] = useState(null);
   const [reviewing, setReviewing] = useState(false); // showing the review/confirm screen
+  /* ONE DECISION PER SCREEN — same reasoning as the kiosk.
+     This page showed a service list, a seven-day strip, a grid of time
+     slots and three text fields all at once. That is four decisions
+     competing for attention before the person has made the first one, and
+     on a phone it means scrolling past choices you have not made yet to
+     reach ones you cannot answer. */
+  const [step, setStep] = useState("service");
 
   // Slots for the chosen day + service
   const [slots, setSlots] = useState([]);
@@ -233,8 +240,8 @@ export default function BookingPage() {
       </div>
 
       <form onSubmit={continueToReview} className="mt-8 space-y-6">
-        {/* Service */}
-        <div>
+        {/* ── Step 1 · What you need ─────────────────────────── */}
+        <div className={step === "service" ? "" : "hidden"}>
           <div className="ovline mb-3">{isGym ? "Pick a class" : t("booking.pick_service")}</div>
 
           {/* Level filter — gym mode only, and only when classes have levels set */}
@@ -292,9 +299,27 @@ export default function BookingPage() {
               );
             })}
           </div>
+
+          <button
+            type="button"
+            disabled={!serviceId}
+            onClick={() => setStep("when")}
+            className="w-full bg-gold-deep/90 hover:bg-gold-deep text-[#f5efe2] transition disabled:opacity-25 px-4 py-3 text-sm mt-5"
+          >
+            {t("common.next", { defaultValue: "Continue" })} →
+          </button>
         </div>
 
-        {/* Day strip */}
+        {/* ── Step 2 · When ──────────────────────────────────── */}
+        <div className={step === "when" ? "space-y-6" : "hidden"}>
+          <button
+            type="button"
+            onClick={() => setStep("service")}
+            className="text-[12px] text-ink-mute hover:text-ink transition"
+          >
+            ‹ {t("common.back")}
+          </button>
+
         <div>
           <div className="ovline mb-3">Day</div>
           <div className="grid grid-cols-7 gap-1">
@@ -370,9 +395,11 @@ export default function BookingPage() {
           )}
         </div>
 
-        {/* Name + phone — only show once a slot is picked */}
+        </div>
+
+        {/* ── Step 3 · Your details ──────────────────────────── */}
         {slot && (
-          <>
+          <div className={step === "when" ? "space-y-6" : "hidden"}>
             <Field label={t("checkin.name_label")} value={name} onChange={setName} placeholder={t("checkin.name_placeholder")} />
             {SMS_ENABLED && (
               <Field label={t("checkin.phone_label")} value={phone} onChange={setPhone} placeholder={t("checkin.phone_placeholder")} type="tel" />
@@ -410,7 +437,7 @@ export default function BookingPage() {
             <div className="text-[10px] text-ink-mute text-center tracking-wide pt-2">
               {t("checkin.footer")}
             </div>
-          </>
+          </div>
         )}
       </form>
 

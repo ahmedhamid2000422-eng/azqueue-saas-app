@@ -16,6 +16,7 @@ import { getEffectiveChecklist, buildChecklistMessage } from "../lib/checklists"
 import { sendMessage } from "../lib/messaging";
 import Button from "../components/Button";
 import LanguagePicker from "../components/LanguagePicker";
+import { LANGUAGES } from "../lib/i18n";
 import { loadStationServices, stationsForService } from "../lib/stations";
 
 /**
@@ -29,7 +30,7 @@ export default function CustomerCheckIn() {
   const { slug } = useParams();
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   /* Which device this check-in came from.
      ?kiosk=1 already exists — it switches the page to large touch targets and
@@ -55,6 +56,16 @@ export default function CustomerCheckIn() {
 
   // form state
   const [serviceId, setServiceId] = useState(null);
+  /* ONE THING PER SCREEN.
+     Everything used to be on a single page: five services, three fields, a
+     consent paragraph, a checklist and a booking nudge — all visible at
+     once on a tablet held by somebody who may not read English well. The
+     complaint was that it needed scrolling; the deeper problem is that it
+     asked for six decisions simultaneously.
+
+     Now: language, then what you need, then how to reach you. Each step
+     fits without scrolling and asks for exactly one thing. */
+  const [step, setStep] = useState("lang");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -338,60 +349,55 @@ export default function CustomerCheckIn() {
         {branch.city && <div className="text-[10px] text-ink-mute mt-2 tracking-wide">{branch.city}</div>}
       </div>
 
-      {/* Step progress — Effectiveness principle: users know where they are */}
-      <div className="mt-6 flex items-center">
-        {[t("checkin.step_service"), t("checkin.step_details"), t("checkin.step_ticket")].map((label, i) => {
-          const done = i === 0 && !!serviceId;
-          const active = i === 0 || (i === 1 && !!serviceId);
-          return (
-            <div key={i} className="flex items-center flex-1 last:flex-none">
-              <div className="flex flex-col items-center">
-                <div className={`w-5 h-5 flex items-center justify-center text-[9px] font-mono border transition ${
-                  done ? "bg-gold border-gold text-[#141410]" :
-                  active ? "border-gold-deep text-gold-soft" :
-                  "border-line text-ink-mute"
-                }`}>
-                  {done ? "✓" : i + 1}
-                </div>
-                <div className={`text-[8px] tracking-[0.15em] uppercase mt-1 transition ${
-                  active ? "text-gold-soft" : "text-ink-mute"
-                }`}>{label}</div>
-              </div>
-              {i < 2 && (
-                <div className={`h-px flex-1 mb-4 mx-1 transition ${done ? "bg-gold-deep" : "bg-line"}`} />
-              )}
-            </div>
-          );
-        })}
-      </div>
+      {/* ── Step 1 · Language ───────────────────────────────────
+          First, because a customer who cannot read the next screen cannot
+          get past it. The picker existed only in the header, which is the
+          last place someone looks when they are trying to work out what the
+          machine wants. */}
+      {step === "lang" && (
+        <div className="mt-6">
+          <div className={`text-ink-soft mb-4 ${isKiosk ? "text-lg" : "text-sm"}`}>
+            {t("common.language")}
+          </div>
+          <div className="space-y-px bg-line border border-line">
+            {LANGUAGES.map((l) => (
+              <button
+                key={l.code}
+                type="button"
+                onClick={() => { i18n.changeLanguage(l.code); setStep("service"); }}
+                className={`w-full text-left bg-bg-elev hover:bg-[rgba(201,168,106,0.06)] transition flex items-center justify-between ${
+                  isKiosk ? "px-6 py-5" : "px-4 py-3.5"
+                }`}
+              >
+                <span className={`text-ink ${isKiosk ? "text-2xl" : "text-base"}`} dir={l.rtl ? "rtl" : "ltr"}>
+                  {l.native}
+                </span>
+                <span className="text-[11px] text-ink-mute uppercase tracking-[0.18em]">{l.code}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
-      {/* What to bring — shown BEFORE joining, which is the entire point.
-          Told at the counter after a 90-minute wait, a missing document
-          wastes the whole visit; told at the door, the wait becomes the time
-          in which to go and fetch it. */}
-      <ServiceChecklist
-        branch={branch}
-        serviceName={services.find((s) => s.id === serviceId)?.name}
-        quietPhrase={quiet}
-        email={email}
-      />
-
-      {/* Offers an afternoon appointment when the queue is long. Renders
-          nothing when the wait is short or no slots are free, so it never
-          gets in the way of a quick check-in. */}
-      <QuietSlotNudge
-        branch={branch}
-        serviceId={serviceId}
-        waitingCount={waitingCount}
-        onBook={(when) =>
-          navigate(`/b/${branch.slug}?at=${encodeURIComponent(when.toISOString())}` +
-                   (serviceId ? `&service=${serviceId}` : ""))
-        }
-      />
+      {/* Step dots — only from step 2, since choosing a language is not
+          progress through the form, it is the thing that makes the form
+          readable. */}
+      {step !== "lang" && (
+        <div className="mt-6 flex items-center gap-2">
+          {["service", "details"].map((sKey, i) => (
+            <div
+              key={sKey}
+              className={`h-[3px] flex-1 transition ${
+                step === sKey || (step === "details" && i === 0) ? "bg-gold-deep" : "bg-line"
+              }`}
+            />
+          ))}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className={`mt-4 ${isKiosk ? "space-y-4" : "space-y-6"}`}>
-        {/* Service picker */}
-        <div>
+        {/* ── Step 2 · What you need ─────────────────────────── */}
+        <div className={step === "service" ? "" : "hidden"}>
           <div className={`ovline mb-3 ${isKiosk ? "text-[15px]" : ""}`}>{t("checkin.service_label")}</div>
           <div className="space-y-px bg-line border border-line">
             {services.length === 0 && (
@@ -443,7 +449,52 @@ export default function CustomerCheckIn() {
               );
             })()}
           </div>
+
+          {/* What to bring, once they have chosen. Sits here rather than at
+              the top of the page because it is meaningless before a service
+              is picked, and a checklist for the wrong service is noise. */}
+          <ServiceChecklist
+            branch={branch}
+            serviceName={services.find((s) => s.id === serviceId)?.name}
+            quietPhrase={quiet}
+            email={email}
+          />
+
+          {/* "Come back at 3, it's quieter" — only when the queue is
+              genuinely long and a slot is genuinely free, so on most days it
+              renders nothing at all. Kept because on the days it does appear
+              it saves somebody an hour. */}
+          <QuietSlotNudge
+            branch={branch}
+            serviceId={serviceId}
+            waitingCount={waitingCount}
+            onBook={(when) =>
+              navigate(`/b/${branch.slug}?at=${encodeURIComponent(when.toISOString())}` +
+                       (serviceId ? `&service=${serviceId}` : ""))
+            }
+          />
+
+          <button
+            type="button"
+            disabled={!serviceId}
+            onClick={() => setStep("details")}
+            className={`w-full bg-gold-deep/90 hover:bg-gold-deep text-[#f5efe2] transition disabled:opacity-25 mt-4 ${
+              isKiosk ? "text-xl px-6 py-4" : "text-sm px-4 py-3"
+            }`}
+          >
+            {t("common.next", { defaultValue: "Continue" })} →
+          </button>
         </div>
+
+        {/* ── Step 3 · How to reach you ──────────────────────── */}
+        <div className={step === "details" ? "space-y-4" : "hidden"}>
+        <button
+          type="button"
+          onClick={() => setStep("service")}
+          className="text-[12px] text-ink-mute hover:text-ink transition"
+        >
+          ‹ {t("common.back")}
+        </button>
 
         <Field
           label={t("checkin.name_label")}
@@ -534,6 +585,7 @@ export default function CustomerCheckIn() {
 
         <div className={`text-ink-mute text-center tracking-wide pt-2 ${isKiosk ? "text-base" : "text-[10px]"}`}>
           {t("checkin.footer")}
+        </div>
         </div>
       </form>
     </Shell>
