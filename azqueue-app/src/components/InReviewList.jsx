@@ -133,7 +133,7 @@ export default function InReviewList({ branchId, branchName, branchSlug, onChang
               <button
                 onClick={() => markReady(t)}
                 disabled={busy === t.id}
-                className="text-[11.5px] border border-gold-deep px-3 py-1.5 text-gold-soft hover:bg-[rgba(201,168,106,0.1)] transition disabled:opacity-40 shrink-0"
+                className="text-[11px] font-medium tracking-[0.08em] uppercase border border-gold-deep px-3 py-2 text-gold-soft hover:bg-[rgba(201,168,106,0.1)] transition disabled:opacity-40 shrink-0"
               >
                 {busy === t.id ? "…" : "Ready to collect"}
               </button>

@@ -18,20 +18,6 @@ import { buildPeople, buildClientFacts } from "../lib/clientSegments";
  * the first question pays the cost of loading history.
  */
 
-/* Example questions. Written the way someone would actually speak, not the
-   way a dashboard would label a metric — "how long are people waiting" gets
-   clicked, "wait time analysis" does not. Mixed between right-now questions
-   and business questions so it's clear the assistant handles both. */
-const SUGGESTIONS = [
-  "How busy are we right now?",
-  "How long are people waiting today?",
-  "What time of day is busiest?",
-  "Why do people leave without being seen?",
-  "Do I need more staff?",
-  "How many people came in this week?",
-  "Which service takes the longest?",
-  "What should I fix first?",
-];
 
 const KEY = (branchId) => `azq.assist.${branchId ?? "none"}`;
 const LEVEL_KEY = "azq.assist.level";
@@ -325,27 +311,16 @@ export default function AiAssistDock() {
               </div>
             </div>
             <div className="flex items-center gap-1">
-              {/* Reading level. Simple avoids statistical vocabulary entirely —
-                  it's the default because the person on the counter usually
-                  isn't the one who asked for the statistics. */}
-              <div className="flex border border-line mr-1">
-                {["simple", "detailed"].map((l) => (
-                  <button
-                    key={l}
-                    onClick={() => setLevel(l)}
-                    title={l === "simple"
-                      ? "Plain language, no jargon"
-                      : "Full statistical detail"}
-                    className={`text-[9px] ovline px-2 py-1 transition ${
-                      level === l
-                        ? "bg-[rgba(201,168,106,0.12)] text-gold-soft"
-                        : "text-ink-mute hover:text-ink"
-                    }`}
-                  >
-                    {l === "simple" ? "Simple" : "Detail"}
-                  </button>
-                ))}
-              </div>
+              {/* The Simple/Detail toggle used to sit here, in the header, on
+                  by default and visible before a single question had been
+                  asked. Two controls and a mode switch above a greeting is
+                  not a friendly assistant, it is a settings panel.
+
+                  It still exists and still works — it moved to the "?" panel,
+                  which is where somebody goes when they want to know what the
+                  thing can do. Simple remains the default, because the person
+                  at the counter is usually not the one who asked for
+                  statistics. */}
               <button
                 onClick={() => setTour(true)}
                 title="What is this?"
@@ -393,9 +368,33 @@ export default function AiAssistDock() {
                   </div>
                 ))}
 
+                {/* Reading level lives here now rather than in the header —
+                    it is a preference, and preferences belong where someone
+                    goes to look, not above the greeting. */}
+                <div className="border-t border-line pt-3 mb-3">
+                  <div className="text-[10px] font-medium tracking-[0.08em] uppercase text-ink-mute mb-2">
+                    Answers
+                  </div>
+                  <div className="flex gap-2">
+                    {["simple", "detailed"].map((l) => (
+                      <button
+                        key={l}
+                        onClick={() => setLevel(l)}
+                        className={`text-[11px] font-medium tracking-[0.08em] uppercase rounded-full px-3.5 py-1.5 border transition ${
+                          level === l
+                            ? "border-gold-deep text-gold-soft bg-[rgba(201,168,106,0.1)]"
+                            : "border-line text-ink-mute hover:text-ink"
+                        }`}
+                      >
+                        {l === "simple" ? "Plain" : "Detailed"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <button
                   onClick={dismissTour}
-                  className="ovline text-[9px] border border-gold-deep px-3 py-1.5 text-gold-soft hover:bg-[rgba(201,168,106,0.1)] transition w-full"
+                  className="text-[11px] font-medium tracking-[0.08em] uppercase border border-gold-deep px-3 py-2 text-gold-soft hover:bg-[rgba(201,168,106,0.1)] transition w-full"
                 >
                   Got it
                 </button>
@@ -430,7 +429,7 @@ export default function AiAssistDock() {
                         <button
                           key={o.key}
                           onClick={() => setAskTopic(o.key)}
-                          className="text-[12.5px] border border-gold-deep rounded-full px-4 py-1.5 text-gold-soft hover:bg-[rgba(201,168,106,0.1)] transition"
+                          className="text-[11px] font-medium tracking-[0.08em] uppercase border border-gold-deep rounded-full px-4 py-2 text-gold-soft hover:bg-[rgba(201,168,106,0.1)] transition"
                         >
                           {o.label}
                         </button>
@@ -462,7 +461,7 @@ export default function AiAssistDock() {
                         <button
                           key={q}
                           onClick={() => send(q)}
-                          className="text-[12.5px] border border-gold-deep rounded-full px-4 py-1.5 text-gold-soft hover:bg-[rgba(201,168,106,0.1)] transition"
+                          className="text-[11px] font-medium tracking-[0.08em] uppercase border border-gold-deep rounded-full px-4 py-2 text-gold-soft hover:bg-[rgba(201,168,106,0.1)] transition"
                         >
                           {q}
                         </button>
@@ -512,20 +511,12 @@ export default function AiAssistDock() {
             )}
           </div>
 
-          {!tour && messages.length === 0 && (
-            <div className="px-4 pb-2.5 flex flex-wrap gap-1.5 shrink-0">
-              {SUGGESTIONS.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => send(s)}
-                  disabled={busy}
-                  className="text-[10px] border border-line px-2 py-1 text-ink-mute hover:border-gold-deep hover:text-gold-soft transition disabled:opacity-40"
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          )}
+          {/* An eight-question suggestion strip used to sit here, below the
+              opening message. With the two-step pills above it, the empty
+              state showed one friendly question AND a wall of eight — the
+              exact thing the pills were added to replace. Removed. The
+              harder questions still work when typed; they are simply not
+              advertised before anyone has asked for anything. */}
 
           <div className="px-4 py-3 border-t border-gold-deep/25 flex gap-2 shrink-0">
             <input

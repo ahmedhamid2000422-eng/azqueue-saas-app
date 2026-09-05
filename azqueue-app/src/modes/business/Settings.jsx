@@ -1276,7 +1276,7 @@ function ManagerOnlyReasons({ branch, reload }) {
                 type="button"
                 onClick={() => toggle(r)}
                 disabled={saving}
-                className={`text-[12px] rounded-full px-3.5 py-1.5 border transition disabled:opacity-40 ${
+                className={`text-[11px] font-medium tracking-[0.08em] uppercase rounded-full px-3.5 py-1.5 border transition disabled:opacity-40 ${
                   on
                     ? "border-gold-deep text-gold-soft bg-[rgba(201,168,106,0.1)]"
                     : "border-line text-ink-mute hover:text-ink"

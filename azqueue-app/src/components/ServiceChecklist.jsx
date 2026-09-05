@@ -168,7 +168,7 @@ export default function ServiceChecklist({ branch, serviceName, quietPhrase, ema
                     key={o.key}
                     type="button"
                     onClick={() => setChannel(o.key)}
-                    className={`text-[12px] rounded-full px-4 py-1.5 border transition ${
+                    className={`text-[11px] font-medium tracking-[0.08em] uppercase rounded-full px-4 py-1.5 border transition ${
                       channel === o.key
                         ? "border-gold-deep text-gold-soft bg-[rgba(201,168,106,0.1)]"
                         : "border-line text-ink-mute hover:text-ink"

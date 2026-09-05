@@ -1579,7 +1579,7 @@ export default function Queue() {
                 <div className="font-display text-[20px] font-light tracking-tight leading-tight">
                   Done with {serving.customer_name ? serving.customer_name.split(" ")[0] : serving.token}
                 </div>
-                <div className="text-[12px] text-[#f5efe2]/75 mt-2 leading-snug">
+                <div className="text-[10px] font-medium tracking-[0.08em] uppercase text-[#f5efe2]/70 mt-2 leading-relaxed">
                   {waiting.length > 0
                     ? `Finish and call the next person · ${waiting.length} waiting`
                     : "Finish — nobody else is waiting"}
@@ -1595,7 +1595,7 @@ export default function Queue() {
                 <div className="font-display text-[20px] font-light tracking-tight leading-tight">
                   {waiting.length > 0 ? "Call the next person" : "Nobody waiting"}
                 </div>
-                <div className="text-[12px] text-[#f5efe2]/75 mt-2 leading-snug">
+                <div className="text-[10px] font-medium tracking-[0.08em] uppercase text-[#f5efe2]/70 mt-2 leading-relaxed">
                   {waiting.length > 0
                     ? `${waiting.length} ${waiting.length === 1 ? "person" : "people"} in the queue`
                     : "The queue is empty"}
@@ -1611,7 +1611,7 @@ export default function Queue() {
               className="aspect-[4/3] sm:aspect-auto sm:min-h-[132px] border-2 border-[#c08a34] text-[#f5ead6] hover:brightness-110 transition disabled:opacity-25 px-5 py-5 text-left flex flex-col justify-between"
             >
               <div className="font-display text-[20px] font-light tracking-tight leading-tight">No show</div>
-              <div className="text-[12px] text-[#f5ead6]/70 mt-2 leading-snug">
+              <div className="text-[10px] font-medium tracking-[0.08em] uppercase text-[#f5ead6]/65 mt-2 leading-relaxed">
                 They never came to the counter
               </div>
             </button>
@@ -2392,7 +2392,7 @@ function ReassignMenu({ ticket, staffList, onReassign, onBackToQueue, disabled }
         className="w-full aspect-[4/3] sm:aspect-auto sm:min-h-[132px] border-2 border-[#6b8f6b] text-[#e8f0e8] hover:brightness-110 transition disabled:opacity-25 px-5 py-5 text-left flex flex-col justify-between"
       >
         <div className="font-display text-[20px] font-light tracking-tight leading-tight">Hand over</div>
-        <div className="text-[12px] text-[#e8f0e8]/70 mt-2 leading-snug">
+        <div className="text-[10px] font-medium tracking-[0.08em] uppercase text-[#e8f0e8]/65 mt-2 leading-relaxed">
           Someone else takes this, or back to the line
         </div>
       </button>

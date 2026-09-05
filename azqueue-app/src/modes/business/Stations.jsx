@@ -802,7 +802,7 @@ function StationCard({
                   key={svc.id}
                   type="button"
                   onClick={() => onToggleService?.(station.id, svc.id)}
-                  className={`text-[11px] rounded-full px-2.5 py-1 border transition ${
+                  className={`text-[11px] font-medium tracking-[0.08em] uppercase rounded-full px-3 py-1.5 border transition ${
                     on
                       ? "border-gold-deep text-gold-soft bg-[rgba(201,168,106,0.1)]"
                       : "border-line text-ink-mute hover:text-ink"
