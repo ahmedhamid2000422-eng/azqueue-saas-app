@@ -189,3 +189,95 @@ export async function setStationStaff(stationId, staffId) {
   if (error) { console.error("[stations] assign staff failed", error); return { ok: false, error: error.message }; }
   return { ok: true };
 }
+
+/* ── What each counter can handle ────────────────────────────────────
+   Backed by the station_services join table (migration 0061).
+
+   THE EMPTY-SET RULE, RESTATED HERE BECAUSE IT IS EASY TO GET WRONG:
+   a station with no rows is UNRESTRICTED, not incapable. Every station has
+   zero rows the moment the migration runs, and treating that as "handles
+   nothing" would stop the queue routing to every counter at once — a total
+   outage caused by a migration that only added a table.
+
+   So: an empty set means "not configured", and the caller should treat that
+   station as able to take anything. Do not seed stations with every service
+   to avoid this — that loses the difference between "not set up yet" and
+   "deliberately handles everything", and only the first is worth prompting
+   about. */
+
+/** Map of station_id → array of service_ids, for one branch. */
+export async function loadStationServices(branchId) {
+  if (!branchId) return {};
+
+  const { data: stationRows } = await supabase
+    .from("stations")
+    .select("id")
+    .eq("branch_id", branchId);
+
+  const ids = (stationRows ?? []).map((s) => s.id);
+  if (!ids.length) return {};
+
+  const { data, error } = await supabase
+    .from("station_services")
+    .select("station_id, service_id")
+    .in("station_id", ids);
+
+  if (error) {
+    console.error("[stations] loadStationServices failed", error);
+    return {};
+  }
+
+  const map = {};
+  for (const row of data ?? []) {
+    (map[row.station_id] ??= []).push(row.service_id);
+  }
+  return map;
+}
+
+/**
+ * Replace a station's service list wholesale.
+ *
+ * Delete-then-insert rather than diffing: the lists are a handful of rows,
+ * and a diff has an ordering bug waiting in it that a full replace does not.
+ * Passing an empty array clears the restriction, which per the rule above
+ * means the station goes back to handling anything.
+ */
+export async function setStationServices(stationId, serviceIds) {
+  if (!stationId) return { ok: false, error: "No station" };
+
+  const { error: delErr } = await supabase
+    .from("station_services")
+    .delete()
+    .eq("station_id", stationId);
+
+  if (delErr) {
+    console.error("[stations] clearing services failed", delErr);
+    return { ok: false, error: delErr.message };
+  }
+
+  if (!serviceIds?.length) return { ok: true };
+
+  const { error: insErr } = await supabase
+    .from("station_services")
+    .insert(serviceIds.map((service_id) => ({ station_id: stationId, service_id })));
+
+  if (insErr) {
+    console.error("[stations] setting services failed", insErr);
+    return { ok: false, error: insErr.message };
+  }
+  return { ok: true };
+}
+
+/**
+ * Which stations can take a given service.
+ *
+ * Used by check-in to tell a customer which line to join. Stations with no
+ * configured services are included — unrestricted, per the rule above.
+ */
+export function stationsForService(stations, stationServiceMap, serviceId) {
+  return (stations ?? []).filter((st) => {
+    const list = stationServiceMap?.[st.id];
+    if (!list || list.length === 0) return true;   // not configured = takes anything
+    return list.includes(serviceId);
+  });
+}

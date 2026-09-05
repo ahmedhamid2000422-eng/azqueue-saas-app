@@ -17,6 +17,8 @@ import {
   routeNextTicket,
   reassignTicket,
   isCoverageLow,
+  loadStationServices,
+  setStationServices,
 } from "../../lib/stations";
 import {
   loadPolicy,
@@ -109,6 +111,41 @@ function StationsInner() {
       });
     return () => { off = true; };
   }, [branch?.id]);
+
+  /* What each counter can handle. The services list is needed to render the
+     picker; the map says which are ticked. An empty entry means the station
+     has no restriction set — see the note in lib/stations.js. */
+  const [services, setServices] = useState([]);
+  const [stationServices, setStationServicesMap] = useState({});
+
+  useEffect(() => {
+    if (!branch?.id) return;
+    let off = false;
+    supabase.from("services").select("id, name").eq("branch_id", branch.id)
+      .eq("active", true).order("name")
+      .then(({ data, error }) => {
+        if (error) console.error("[Stations] services fetch failed", error);
+        if (!off) setServices(data ?? []);
+      });
+    loadStationServices(branch.id).then((m) => { if (!off) setStationServicesMap(m); });
+    return () => { off = true; };
+  }, [branch?.id]);
+
+  async function toggleStationService(stationId, serviceId) {
+    const current = stationServices[stationId] ?? [];
+    const next = current.includes(serviceId)
+      ? current.filter((id) => id !== serviceId)
+      : [...current, serviceId];
+
+    /* Optimistic — this is a checkbox, and waiting on a round trip before it
+       ticks makes the whole panel feel broken. Reverted if the write fails. */
+    setStationServicesMap((m) => ({ ...m, [stationId]: next }));
+    const res = await setStationServices(stationId, next);
+    if (!res.ok) {
+      setStationServicesMap((m) => ({ ...m, [stationId]: current }));
+      setError("Couldn't save that — try refreshing the page.");
+    }
+  }
 
   // New-station form state
   const [creating,   setCreating]   = useState(false);
@@ -598,6 +635,9 @@ function StationsInner() {
               renameVal={renameVal}
               pausingId={pausingId}
               staffList={staff}
+              serviceList={services}
+              stationServiceIds={stationServices[station.id] ?? []}
+              onToggleService={toggleStationService}
               onAssignStaff={async (id, staffId) => {
                 setError(null);
                 const res = await setStationStaff(id, staffId);
@@ -667,6 +707,7 @@ function StationCard({
   onStartRename, onRename, onRenameChange, onCancelRename,
   onStartPause, onCancelPause, onSetStatus, onDelete,
   staffList = [], onAssignStaff,
+  serviceList = [], stationServiceIds = [], onToggleService,
 }) {
   const isRenaming = renamingId === station.id;
   const isPausing  = pausingId  === station.id;
@@ -735,6 +776,48 @@ function StationCard({
               </option>
             ))}
           </select>
+        </div>
+      )}
+
+      {/* WHAT THIS COUNTER HANDLES.
+          Nothing has ever known this. Mohamed does notarisation and divorce
+          cases; Benyamin does general tax and immigration. A customer needing
+          a notarisation could wait forty minutes to reach a counter that
+          cannot legally help them, and the only guard against it was somebody
+          remembering.
+
+          No ticks means no restriction, not "handles nothing" — every station
+          starts empty, and treating that as incapable would stop routing to
+          every counter at once. The line underneath says so in words, because
+          an empty set of checkboxes otherwise reads as "nothing selected,
+          therefore nothing works". */}
+      {serviceList.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-line">
+          <div className="text-[10.5px] text-ink-mute mb-1.5">Handles:</div>
+          <div className="flex flex-wrap gap-1.5">
+            {serviceList.map((svc) => {
+              const on = (stationServiceIds ?? []).includes(svc.id);
+              return (
+                <button
+                  key={svc.id}
+                  type="button"
+                  onClick={() => onToggleService?.(station.id, svc.id)}
+                  className={`text-[11px] rounded-full px-2.5 py-1 border transition ${
+                    on
+                      ? "border-gold-deep text-gold-soft bg-[rgba(201,168,106,0.1)]"
+                      : "border-line text-ink-mute hover:text-ink"
+                  }`}
+                >
+                  {svc.name}
+                </button>
+              );
+            })}
+          </div>
+          <div className="text-[10px] text-ink-mute mt-1.5 leading-snug">
+            {(stationServiceIds ?? []).length === 0
+              ? "Nothing selected — this counter takes anything."
+              : "Only these visits come here."}
+          </div>
         </div>
       )}
 
