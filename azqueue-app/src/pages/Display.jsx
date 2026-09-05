@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { useParams } from "react-router-dom";
+import { supabase } from "../lib/supabase";
+import { loadActiveAlert } from "../lib/alerts";
 import { useDisplay } from "../hooks/useDisplay";
 
 /**
@@ -12,20 +15,55 @@ import { useDisplay } from "../hooks/useDisplay";
  *   Corner    — fullscreen toggle button
  */
 
-/* ── Staff colour map (by known staff ID) ─────────────────────── */
-const STAFF_COLORS = {
-  "4285044d-be11-470b-8712-08f52c0a02fd": "#c9a86a", // Mohamed  — gold
-  "38b933f0-1ed2-4d02-a643-d39cc9554521": "#74b9e8", // Benyamin — blue
-  "671d5a70-fd81-4c24-bfe9-6b5ba91651fa": "#9bbd9b", // Abdul    — green
-  "c084308a-270b-4077-b83a-4bc699e5ed01": "#d49185", // Nuredin  — terracotta
-};
+/* ── Staff colours ───────────────────────────────────────────────
+   These were hardcoded to four specific staff UUIDs. Checked against the
+   live database on 5 September: not one of those four IDs exists. Every
+   counter has been rendering the fallback grey since the day it was
+   written, and it would have stayed that way for any other business too,
+   because a colour map keyed to one office's row IDs cannot survive
+   contact with a second customer.
+
+   Derived from the id instead — stable for a given person, no
+   configuration, works for any branch. */
+const PALETTE = ["#c9a86a", "#74b9e8", "#9bbd9b", "#d49185", "#b8a2d4", "#e0b070"];
 
 function staffColor(staffId) {
-  return STAFF_COLORS[staffId] ?? "#6e6c65";
+  if (!staffId) return "#6e6c65";
+  let h = 0;
+  for (let i = 0; i < staffId.length; i++) h = (h * 31 + staffId.charCodeAt(i)) >>> 0;
+  return PALETTE[h % PALETTE.length];
 }
 
 export default function Display() {
+  const { branchId } = useParams();
   const { branchName, serving, waiting, staff, stations, loading } = useDisplay();
+
+  /* ── Banners ──────────────────────────────────────────────────
+     Two things the room needs to be told and currently is not: a message
+     staff posted, and whether the queue is paused. Both already exist and
+     were only ever shown on the staff screen — which is the one screen the
+     people waiting cannot see. Polled rather than subscribed because a TV
+     is left running for hours and a dropped socket would silently freeze
+     the banner. */
+  const [alert, setAlert] = useState(null);
+  const [pausedAt, setPausedAt] = useState(null);
+
+  useEffect(() => {
+    if (!branchId) return;
+    let off = false;
+    const check = async () => {
+      const [a, { data: b }] = await Promise.all([
+        loadActiveAlert(branchId).catch(() => null),
+        supabase.from("branches").select("queue_paused_at").eq("id", branchId).maybeSingle(),
+      ]);
+      if (off) return;
+      setAlert(a);
+      setPausedAt(b?.queue_paused_at ?? null);
+    };
+    check();
+    const id = setInterval(check, 20_000);
+    return () => { off = true; clearInterval(id); };
+  }, [branchId]);
 
   /* ── Live clock ─────────────────────────────────────────────── */
   const [now, setNow] = useState(new Date());
@@ -81,7 +119,13 @@ export default function Display() {
 
   /* ── Station cards ──────────────────────────────────────────── */
   // Always show 4 cards. If DB has fewer stations, pad with placeholder cards.
-  const WINDOW_LABELS = [1, 2, 3, 4];
+  /* Show the counters that exist, not always four. Padding to four meant a
+     two-counter office displayed two empty boxes on the waiting-room wall
+     for the whole day, which reads as "two counters closed" rather than
+     "this office has two counters". */
+  const WINDOW_LABELS = stations.length
+    ? stations.map((st) => st.window_number).filter((n) => n != null).sort((a, b) => a - b)
+    : [1];
   const stationCards = WINDOW_LABELS.map((winNum) => {
     const station = stations.find((s) => s.window_number === winNum) ?? null;
     const ticket  = station ? servingByStation[station.id] ?? null : null;
@@ -183,6 +227,36 @@ export default function Display() {
         </div>
       </header>
 
+      {/* ── Banners ─────────────────────────────────────────────
+          Paused takes priority over a posted message: if the queue is not
+          moving, that is the single most useful sentence on the screen and
+          nothing should sit above it. */}
+      {pausedAt ? (
+        <div
+          className="px-10 py-5 shrink-0 flex items-center gap-4"
+          style={{ background: "rgba(164,97,79,0.18)", borderBottom: "1px solid rgba(164,97,79,0.5)" }}
+        >
+          <span
+            style={{ width: 10, height: 10, borderRadius: "50%", background: "#d49185", flexShrink: 0 }}
+          />
+          <span style={{ fontFamily: "Inter, sans-serif", fontSize: 22, color: "#f0c9bf" }}>
+            We have paused briefly — you keep your place in the queue.
+          </span>
+        </div>
+      ) : alert ? (
+        <div
+          className="px-10 py-5 shrink-0 flex items-center gap-4"
+          style={{ background: "rgba(201,168,106,0.12)", borderBottom: "1px solid rgba(201,168,106,0.4)" }}
+        >
+          <span
+            style={{ width: 10, height: 10, borderRadius: "50%", background: "#c9a86a", flexShrink: 0 }}
+          />
+          <span style={{ fontFamily: "Inter, sans-serif", fontSize: 22, color: "#e4cb95" }}>
+            {alert.message}
+          </span>
+        </div>
+      ) : null}
+
       {/* ── Main area ───────────────────────────────────────── */}
       <main className="flex-1 flex flex-col px-10 py-8">
         {/* Section label */}
@@ -203,7 +277,7 @@ export default function Display() {
         <div
           className="grid gap-5 flex-1"
           style={{
-            gridTemplateColumns: "repeat(4, 1fr)",
+            gridTemplateColumns: `repeat(${Math.min(WINDOW_LABELS.length, 4)}, 1fr)`,
             maxHeight: "calc(100vh - 280px)",
           }}
         >
@@ -296,17 +370,35 @@ export default function Display() {
           background: "rgba(11,11,12,0.97)",
         }}
       >
+        {/* HOW MANY ARE AHEAD, NOT HOW LONG IT WILL TAKE.
+            A minute estimate is the thing everyone asks for and the thing
+            this screen cannot yet say honestly — per-counter timings need
+            several completed visits each before they mean anything, and the
+            owner handles the long cases, so a single office-wide average
+            would be wrong for exactly the people waiting longest.
+
+            A count is always true, needs no history, and answers most of
+            what someone actually wants to know. The timings can join this
+            later, per counter, once they are measured. */}
         <div
-          className="mb-4"
-          style={{
-            fontFamily: "Inter, sans-serif",
-            fontSize: 11,
-            letterSpacing: "0.28em",
-            textTransform: "uppercase",
-            color: "#6e6c65",
-          }}
+          className="mb-4 flex items-baseline gap-3"
+          style={{ fontFamily: "Inter, sans-serif" }}
         >
-          Up Next
+          <span
+            style={{
+              fontSize: 11,
+              letterSpacing: "0.28em",
+              textTransform: "uppercase",
+              color: "#6e6c65",
+            }}
+          >
+            Up Next
+          </span>
+          {waiting.length > 0 && (
+            <span style={{ fontSize: 13, color: "#8a8880" }}>
+              {waiting.length} {waiting.length === 1 ? "person waiting" : "people waiting"}
+            </span>
+          )}
         </div>
 
         {waiting.length === 0 ? (

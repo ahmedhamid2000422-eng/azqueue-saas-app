@@ -9,7 +9,20 @@ import Button from "../../components/Button";
 import Card from "../../components/Card";
 import ShadowSlots from "./ShadowSlots";
 
-const SLOTS = ["09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00"];
+/* Half-hour slots. Hour blocks meant a 20-minute consultation reserved a
+   full hour, so a day looked full at six bookings — and the owner wanted
+   specific slots he could fill rather than a coarse grid. Generated rather
+   than typed so the day range can move without editing a list by hand. */
+const SLOT_MINUTES = 30;
+const DAY_START_HOUR = 9;
+const DAY_END_HOUR = 18;
+const SLOTS = (() => {
+  const out = [];
+  for (let m = DAY_START_HOUR * 60; m < DAY_END_HOUR * 60; m += SLOT_MINUTES) {
+    out.push(`${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`);
+  }
+  return out;
+})();
 
 export default function Schedule() {
   const { branch, dbReady } = useBranch();
@@ -203,7 +216,18 @@ export default function Schedule() {
   }
 
   // Display: staff columns (or "Any" if none)
-  const cols = staff.length ? staff : [{ id: "any", display_name: "Any" }];
+  /* OFF-DUTY STAFF DO NOT GET A COLUMN.
+     The grid used to render every staff record, so a Saturday with two people
+     in showed six columns — four of them empty all day with a "Reopen" button
+     on top. That is not a schedule, it is a list of everyone who has ever
+     worked here, and it makes the day look emptier and wider than it is.
+
+     Anyone off can be brought back from the summary line below the grid, so
+     nothing becomes unreachable — it just stops taking up a seventh of the
+     screen while they are not here. */
+  const onDuty = staff.filter((s) => s.status !== "off");
+  const offDuty = staff.filter((s) => s.status === "off");
+  const cols = onDuty.length ? onDuty : [{ id: "any", display_name: "Anyone" }];
 
   // Bookings indexed by `${HH:00}-staffId|any`
   const bookingMap = {};
@@ -238,7 +262,7 @@ export default function Schedule() {
           <div className="ovline mb-2 text-gold-soft">Live · staff schedule</div>
           <h1 className="font-display text-4xl font-light tracking-tightest">Schedule</h1>
           <div className="text-xs text-ink-soft mt-2">
-            {todayLabel} <span className="text-ink-mute">·</span> {staff.length || "no"} staff <span className="text-ink-mute">·</span> {bookings.length} bookings
+            {todayLabel} <span className="text-ink-mute">·</span> {onDuty.length || "no"} in today <span className="text-ink-mute">·</span> {bookings.length} booked
           </div>
         </div>
         <div className="flex gap-2 items-center flex-wrap justify-end">
@@ -260,6 +284,28 @@ export default function Schedule() {
           <Button variant="ghost" size="sm" onClick={() => setDate(addDays(date,  1))}>Next ›</Button>
         </div>
       </header>
+
+      {/* Off today, with a way back. They lost their column so the grid
+          shows the day rather than the payroll, but hiding them entirely
+          would make bringing someone in impossible from this page. */}
+      {offDuty.length > 0 && (
+        <div className="mb-3 flex items-center gap-2 flex-wrap text-[11px]">
+          <span className="text-ink-mute">Off today:</span>
+          {offDuty.map((s) => (
+            <button
+              key={s.id}
+              onClick={async () => {
+                await supabase.from("staff").update({ status: "active" }).eq("id", s.id);
+                load();
+              }}
+              className="border border-line px-2.5 py-1 text-ink-mute hover:text-[#9bbd9b] hover:border-[#506b50] transition"
+              title="Bring them in today"
+            >
+              {s.display_name} +
+            </button>
+          ))}
+        </div>
+      )}
 
       <Card luxe>
         <div className={`grid border-b border-line`} style={{ gridTemplateColumns: `80px repeat(${cols.length}, minmax(0, 1fr))` }}>
@@ -298,20 +344,24 @@ export default function Schedule() {
           return (
             <div key={t} className="grid border-b border-line last:border-b-0" style={{ gridTemplateColumns: `80px repeat(${cols.length}, minmax(0, 1fr))` }}>
               <div className="px-4 py-4 font-mono text-[11px] text-ink-mute border-r border-line">{t}</div>
-              {cols.map((s, i) => {
+              {/* A break applies to the whole office, so it is one row that
+                  spans every column. It used to repeat the same two lines in
+                  each column — six identical copies of "Pauses automatically"
+                  on a six-person day, which read as six separate events. */}
+              {prayer ? (
+                <div
+                  className="px-4 py-3.5 bg-[rgba(80,107,80,0.10)] flex items-center gap-2 flex-wrap"
+                  style={{ gridColumn: `span ${cols.length}` }}
+                >
+                  <span className="pip shrink-0" style={{ background: "#9bbd9b" }} />
+                  <span className="text-[11.5px] text-[#9bbd9b]">{capitalise(prayer.name)}</span>
+                  <span className="text-[10.5px] text-ink-mute">
+                    · everyone pauses at {prayer.time}, nobody loses their place
+                  </span>
+                </div>
+              ) : cols.map((s, i) => {
                 const cell = bookingMap[`${t}-${s.id}`];
                 const border = i < cols.length - 1 ? "border-r border-line" : "";
-                if (prayer) {
-                  return (
-                    <div key={s.id} className={`px-3 py-4 ${border} bg-[rgba(80,107,80,0.10)]`}>
-                      <div className="text-[11.5px] text-[#9bbd9b] flex items-center gap-1.5">
-                        <span className="pip" />
-                        Prayer · {capitalise(prayer.name)}
-                      </div>
-                      <div className="text-[10px] text-ink-mute mt-1">Pauses automatically · {prayer.time}</div>
-                    </div>
-                  );
-                }
                 if (cell) {
                   const svcName   = serviceNameMap[cell.service_id] ?? services.find((x) => x.id === cell.service_id)?.name ?? "—";
                   const cx        = getComplexity(svcName);

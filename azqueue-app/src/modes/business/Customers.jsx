@@ -259,7 +259,6 @@ function CustomersInner() {
 
   // AI
   const [aiBusy,     setAiBusy]     = useState(false);
-  const [personaBusy, setPersonaBusy] = useState(false);
 
   // Composer
   const [composeChannel,  setComposeChannel]  = useState("manual");
@@ -292,6 +291,47 @@ function CustomersInner() {
   const [studentBookings, setStudentBookings] = useState([]);
 
   // ── Load student bookings (gym mode) ───────────────────────────────
+
+  /* ── This customer's tickets ──────────────────────────────────────
+     What staff actually want before a visit: what happened last time, what
+     it was for, how it ended, and whatever note was left. Newest first,
+     because the last visit is the one that matters.
+
+     This replaces the AI summary that used to sit at the top of the panel —
+     a paragraph of inference about a person from three visits is worth less
+     than the three visits themselves. */
+  const [ticketHistory, setTicketHistory] = useState([]);
+  const [openVisit, setOpenVisit] = useState(null);
+  useEffect(() => {
+    if (!selected || !branch?.id) { setTicketHistory([]); return; }
+    let off = false;
+    (async () => {
+      const [{ data: tix, error }, { data: scores }] = await Promise.all([
+        supabase
+          .from("tickets")
+          .select("id, token, status, created_at, called_at, completed_at, expired_at, detail, outcome, notes, escalated_reason, escalated_at, handoff_category, source, service:service_id ( name ), staff:staff_id ( display_name ), station:assigned_station_id ( name )")
+          .eq("branch_id", branch.id)
+          .eq("customer_id", selected)
+          .order("created_at", { ascending: false })
+          .limit(20),
+        /* Ratings belong on the visit they were given for, not pooled into a
+           single average at the top of the page. "Avg 5★ from 1 rating" tells
+           you nothing; "this visit got 5★, that one got 2★" tells you which
+           visit went wrong. */
+        supabase
+          .from("satisfaction_scores")
+          .select("id, score, note, ticket_id")
+          .eq("customer_id", selected)
+          .not("ticket_id", "is", null),
+      ]);
+      if (error) console.error("[Customers] ticket history failed", error);
+      if (off) return;
+      const byTicket = {};
+      for (const sc of scores ?? []) byTicket[sc.ticket_id] = sc;
+      setTicketHistory((tix ?? []).map((t) => ({ ...t, score: byTicket[t.id] ?? null })));
+    })();
+    return () => { off = true; };
+  }, [selected, branch?.id]);
 
   useEffect(() => {
     if (!selected || branch?.business_type !== "gym") {
@@ -433,36 +473,7 @@ function CustomersInner() {
     }
   }
 
-  async function handleGenerateSummary() {
-    if (!selected || !branch?.id) return;
-    setAiBusy(true); setError(null);
-    try {
-      const summary = await generateSummary(selected, branch.id);
-      if (summary) setProfile((p) => p ? { ...p, summary } : p);
-      else setError("No API key set — add VITE_OPENAI_API_KEY to .env.local");
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setAiBusy(false);
-    }
-  }
 
-  async function handleGeneratePersona() {
-    if (!selected || !branch?.id) return;
-    setPersonaBusy(true); setError(null);
-    try {
-      const persona = await generatePersona(selected, branch.id);
-      if (persona) {
-        setProfile((p) => p ? { ...p, summary: { ...(p.summary ?? {}), persona } } : p);
-      } else {
-        setError("No API key set -- add VITE_OPENAI_API_KEY to .env.local");
-      }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setPersonaBusy(false);
-    }
-  }
 
   async function handleToggleVip() {
     if (!profile) return;
@@ -823,134 +834,19 @@ function CustomersInner() {
               </div>
             )}
 
-            {/* ── AI summary card ── */}
-            <div className="mb-6 border border-line bg-bg-elev p-4">
-              <div className="flex items-center justify-between gap-4 mb-3">
-                <div className="ovline text-[9px] text-gold-soft">AI summary</div>
-                {aiEnabled && (
-                  <button
-                    onClick={handleGenerateSummary}
-                    disabled={aiBusy}
-                    className="text-[10px] text-ink-mute hover:text-ink border border-line px-2.5 py-1 transition disabled:opacity-40"
-                  >
-                    {aiBusy ? "Generating…" : profile.summary ? "Refresh" : "Generate"}
-                  </button>
-                )}
-              </div>
+            {/* AI summary and Marketing Persona were removed on 5 September.
+                Two reasons.
 
-              {profile.summary ? (
-                <div className="flex flex-col gap-3">
-                  {/* Mood + action */}
-                  <div className="flex items-center gap-4 text-xs">
-                    <span className={`font-medium capitalize ${SENTIMENT_COLOR[profile.summary.sentiment] ?? "text-ink-soft"}`}>
-                      {profile.summary.sentiment ?? "—"}
-                    </span>
-                    {profile.summary.recommended_action && (
-                      <span className="text-ink-soft flex-1">{profile.summary.recommended_action}</span>
-                    )}
-                  </div>
-                  {/* Summary text */}
-                  <p className="text-xs text-ink-soft leading-relaxed">{profile.summary.summary}</p>
-                  {/* Key issues */}
-                  {profile.summary.key_issues?.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {profile.summary.key_issues.map((issue, i) => (
-                        <span key={i} className="text-[9px] border border-line px-2 py-0.5 text-ink-mute">
-                          {issue}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  <div className="text-[9px] text-ink-mute">
-                    Generated {fmtDate(profile.summary.generated_at)}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-xs text-ink-mute">
-                  {aiEnabled
-                    ? "No summary yet — click Generate to create one from this customer's history."
-                    : "AI summaries are available on the Executive plan."}
-                </p>
-              )}
-            </div>
+                A "marketing persona" — communication style, marketing angle,
+                a do-and-don't list — is a thing you build for a prospect you
+                are selling to. The people in this table are immigration and
+                tax clients of a family office, and generating a profile of
+                how to pitch to them is both off-brand and uncomfortable.
 
-            {/* ── Marketing persona ── */}
-            <div className="mb-6 border border-line bg-bg-elev p-4">
-              <div className="flex items-center justify-between gap-4 mb-3">
-                <div className="ovline text-[9px] text-gold-soft">Marketing Persona</div>
-                {aiEnabled && (
-                  <button
-                    onClick={handleGeneratePersona}
-                    disabled={personaBusy}
-                    className="text-[10px] text-ink-mute hover:text-ink border border-line px-2.5 py-1 transition disabled:opacity-40"
-                  >
-                    {personaBusy ? "Generating..." : profile.summary?.persona ? "Refresh" : "Generate"}
-                  </button>
-                )}
-              </div>
-              {profile.summary?.persona ? (
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <span className="font-medium text-sm text-gold-soft">
-                      {profile.summary.persona.archetype}
-                    </span>
-                    {profile.summary.persona.lifetime_value && (
-                      <span className={"text-[9px] border px-2 py-0.5 uppercase tracking-widest " + (
-                        profile.summary.persona.lifetime_value === "vip"  ? "border-gold-deep text-gold-soft" :
-                        profile.summary.persona.lifetime_value === "high" ? "border-emerald-700 text-emerald-400" :
-                        "border-line text-ink-mute"
-                      )}>
-                        {profile.summary.persona.lifetime_value}
-                      </span>
-                    )}
-                  </div>
-                  {profile.summary.persona.description && (
-                    <p className="text-xs text-ink-soft leading-relaxed">{profile.summary.persona.description}</p>
-                  )}
-                  <div className="flex gap-2 flex-wrap">
-                    {profile.summary.persona.best_channel && (
-                      <span className="text-[9px] border border-[#506b50] text-[#9bbd9b] px-2 py-0.5">
-                        Best channel: {profile.summary.persona.best_channel}
-                      </span>
-                    )}
-                    {profile.summary.persona.communication_style && (
-                      <span className="text-[9px] border border-line text-ink-mute px-2 py-0.5">
-                        Style: {profile.summary.persona.communication_style}
-                      </span>
-                    )}
-                  </div>
-                  {profile.summary.persona.marketing_angle && (
-                    <div className="border-l-2 border-gold-deep pl-3 text-xs text-ink-soft italic">
-                      {profile.summary.persona.marketing_angle}
-                    </div>
-                  )}
-                  <div className="grid grid-cols-2 gap-3 mt-1">
-                    {profile.summary.persona.do_list?.length > 0 && (
-                      <div>
-                        <div className="text-[9px] text-[#9bbd9b] ovline mb-1.5">Do</div>
-                        {profile.summary.persona.do_list.map((item, i) => (
-                          <div key={i} className="text-[10px] text-ink-soft mb-0.5">+ {item}</div>
-                        ))}
-                      </div>
-                    )}
-                    {profile.summary.persona.avoid_list?.length > 0 && (
-                      <div>
-                        <div className="text-[9px] text-red-400 ovline mb-1.5">Avoid</div>
-                        {profile.summary.persona.avoid_list.map((item, i) => (
-                          <div key={i} className="text-[10px] text-ink-soft mb-0.5">- {item}</div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-xs text-ink-mute">
-                  {aiEnabled
-                    ? "Generate a persona to understand how to communicate with and market to this customer."
-                    : "Marketing personas are available on the Executive plan."}
-                </p>
-              )}
-            </div>
+                The AI summary had the same problem in milder form: it
+                produced a paragraph of inference about a person from three
+                visits. What staff actually need before a visit is what
+                happened last time, which is the ticket history below. */}
 
             {/* ── Tags ── */}
             <div className="mb-6 border border-line bg-bg-elev p-4">
@@ -1045,25 +941,38 @@ function CustomersInner() {
                       </div>
                       <div className="text-[9px] text-ink-mute ovline mt-0.5">Since last visit</div>
                     </div>
+                    {/* "Per month" was a projection, not a count. Three visits
+                        a fortnight apart rendered as "4.7x per month", which is
+                        an annualised rate presented as an observation — and for
+                        a tax office, where people genuinely come once a year,
+                        it is almost always wrong. Replaced with the first visit
+                        date, which is a fact and answers the question staff
+                        actually ask: how long have we known this person. */}
                     <div className="border border-line p-3 text-center">
                       <div className="text-2xl font-light text-ink">
-                        {ins.avgPerMonth !== null ? ins.avgPerMonth + "x" : "--"}
+                        {ins.firstVisit
+                          ? new Date(ins.firstVisit).toLocaleDateString(undefined, { month: "short", year: "2-digit" })
+                          : "--"}
                       </div>
-                      <div className="text-[9px] text-ink-mute ovline mt-0.5">Per month</div>
+                      <div className="text-[9px] text-ink-mute ovline mt-0.5">First came</div>
                     </div>
                   </div>
 
-                  {/* Retention risk badge */}
-                  <div className={"inline-flex items-center gap-2 border px-3 py-1.5 mb-4 " + riskColor}>
-                    <span className="text-[9px] ovline uppercase">
-                      {ins.retentionRisk === "high" ? "High retention risk" :
-                       ins.retentionRisk === "medium" ? "Medium retention risk" :
-                       ins.retentionRisk === "low" ? "Low retention risk" : "Insufficient data"}
-                    </span>
-                    {ins.riskReason && (
-                      <span className="text-[10px] opacity-80">{ins.riskReason}</span>
-                    )}
-                  </div>
+                  {/* Retention risk needs enough visits to have a pattern to
+                      depart from. Below four it is a label attached to a
+                      coincidence, so it simply does not appear. */}
+                  {ins.totalVisits >= 4 && ins.retentionRisk !== "unknown" && (
+                    <div className={"inline-flex items-center gap-2 border px-3 py-1.5 mb-4 " + riskColor}>
+                      <span className="text-[9px] ovline uppercase">
+                        {ins.retentionRisk === "high" ? "May not come back" :
+                         ins.retentionRisk === "medium" ? "Worth a check-in" :
+                         "Comes back regularly"}
+                      </span>
+                      {ins.riskReason && (
+                        <span className="text-[10px] opacity-80">{ins.riskReason}</span>
+                      )}
+                    </div>
+                  )}
 
                   {/* Service breakdown */}
                   {ins.topServices.length > 0 && (
@@ -1107,41 +1016,11 @@ function CustomersInner() {
               );
             })()}
 
-            {/* ── Satisfaction scores ── */}
-            {(profile.scores?.length > 0 || profile.avgScore) && (
-              <div className="mb-6">
-                <div className="ovline text-[9px] mb-3 text-gold-soft">
-                  Satisfaction · {profile.scores?.length ?? 0} ratings
-                  {profile.avgScore && (
-                    <span className={"ml-2 " + scoreColour(profile.avgScore)}>
-                      avg {profile.avgScore}★
-                    </span>
-                  )}
-                </div>
-                <div className="flex flex-col gap-2">
-                  {(profile.scores ?? []).map((s) => (
-                    <div key={s.id} className="flex items-start gap-3 py-2 border-b border-line last:border-b-0">
-                      <span className={"text-xl leading-none " + scoreColour(s.score)}>
-                        {scoreEmoji(s.score)}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className={"text-xs font-mono " + scoreColour(s.score)}>
-                            {"★".repeat(s.score)}{"☆".repeat(5 - s.score)}
-                          </span>
-                          <span className="text-[10px] text-ink-mute">
-                            {new Date(s.created_at).toLocaleDateString([], { day: "numeric", month: "short" })}
-                          </span>
-                        </div>
-                        {s.note && (
-                          <p className="text-[11px] text-ink-soft mt-0.5 leading-snug">{s.note}</p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* The aggregate satisfaction block was removed on 5 September.
+                "Avg 5★ from 1 rating" is not a summary, it is one rating with
+                a label that implies more. Each score now sits on the visit it
+                was given for, in the list above, where it can actually tell
+                you which visit went badly. */}
 
             {/* ── Loyalty card ── */}
             {loyaltyCard && (
@@ -1210,6 +1089,116 @@ function CustomersInner() {
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* ── Their visits ─────────────────────────────────────
+                Newest first. This is the thing staff read before calling
+                someone: what they came for, how it ended, and what was
+                written down. */}
+            {ticketHistory.length > 0 && (
+              <div className="mb-6">
+                <div className="ovline text-[9px] mb-3 text-gold-soft">
+                  Visits · {ticketHistory.length}
+                </div>
+                <div className="divide-y divide-line border-y border-line">
+                  {ticketHistory.map((t) => {
+                    const when = new Date(t.created_at);
+                    const waitMin = t.called_at
+                      ? Math.round((new Date(t.called_at) - when) / 60000)
+                      : null;
+                    const serviceMin = t.called_at && t.completed_at
+                      ? Math.round((new Date(t.completed_at) - new Date(t.called_at)) / 60000)
+                      : null;
+                    const note = t.detail || t.notes || null;
+                    const isOpen = openVisit === t.id;
+                    /* A ticket with expired_at was closed by the nightly sweep,
+                       not by a person. Calling that "done" is the lie that made
+                       every service-time average meaningless before. */
+                    const wasSwept = !!t.expired_at;
+                    return (
+                      <div key={t.id}>
+                        <button
+                          onClick={() => setOpenVisit(isOpen ? null : t.id)}
+                          className="w-full text-left py-3 hover:bg-[rgba(201,168,106,0.03)] transition"
+                        >
+                          <div className="flex items-baseline justify-between gap-3">
+                            <div className="text-[12.5px] text-ink flex items-center gap-2 min-w-0">
+                              <span className="truncate">{t.service?.name || "Visit"}</span>
+                              <span className="text-ink-mute text-[11px] shrink-0">{t.token}</span>
+                              {t.score && (
+                                <span className={"text-[11px] shrink-0 " + scoreColour(t.score.score)}>
+                                  {t.score.score}★
+                                </span>
+                              )}
+                              {t.escalated_at && (
+                                <span className="text-[10px] text-[#d49185] shrink-0">escalated</span>
+                              )}
+                            </div>
+                            <div className="text-[10.5px] text-ink-mute shrink-0 flex items-center gap-2">
+                              {when.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
+                              <span>{isOpen ? "▾" : "›"}</span>
+                            </div>
+                          </div>
+                          <div className="text-[11px] text-ink-mute mt-1 flex flex-wrap gap-x-3">
+                            {t.staff?.display_name && <span>Seen by {t.staff.display_name}</span>}
+                            {waitMin != null && <span>Waited {waitMin} min</span>}
+                            <span>
+                              {wasSwept ? "Left open overnight"
+                                : t.status === "completed" ? (t.outcome || "Done")
+                                : t.status === "cancelled" ? "Did not complete"
+                                : t.status}
+                            </span>
+                          </div>
+                        </button>
+
+                        {isOpen && (
+                          <div className="pb-3 pl-3 border-l-2 border-gold-deep/40 ml-1 flex flex-col gap-1.5">
+                            {note && (
+                              <div className="text-[11.5px] text-ink-soft">{note}</div>
+                            )}
+                            {t.escalated_reason && (
+                              <div className="text-[11.5px] text-[#d49185]">
+                                Needed the manager · {t.escalated_reason}
+                              </div>
+                            )}
+                            {t.handoff_category && (
+                              <div className="text-[11px] text-ink-mute">
+                                Left with us · {t.handoff_category}
+                              </div>
+                            )}
+                            {serviceMin != null && (
+                              <div className="text-[11px] text-ink-mute">
+                                Took {serviceMin} min at the counter
+                              </div>
+                            )}
+                            {t.station?.name && (
+                              <div className="text-[11px] text-ink-mute">At {t.station.name}</div>
+                            )}
+                            {t.source && (
+                              <div className="text-[11px] text-ink-mute">
+                                Checked in {t.source === "kiosk" ? "on the tablet"
+                                  : t.source === "own_device" ? "on their own phone"
+                                  : t.source === "book" ? "by booking ahead"
+                                  : "at the desk"}
+                              </div>
+                            )}
+                            {t.score?.note && (
+                              <div className="text-[11.5px] text-ink-soft italic border-l-2 border-line pl-2.5 mt-1">
+                                “{t.score.note}”
+                              </div>
+                            )}
+                            {!note && !t.escalated_reason && !t.score?.note && serviceMin == null && (
+                              <div className="text-[11px] text-ink-mute italic">
+                                Nothing else was recorded for this visit.
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 

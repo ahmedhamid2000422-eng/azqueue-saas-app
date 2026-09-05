@@ -281,3 +281,72 @@ export function stationsForService(stations, stationServiceMap, serviceId) {
     return list.includes(serviceId);
   });
 }
+
+/* ── How long each counter actually takes ────────────────────────────
+   MEASURED, NEVER ESTIMATED.
+
+   The reason this exists: a single queue-wide wait estimate assumes every
+   counter works at the same pace. At Az Tax Services that is plainly false —
+   the owner handles notarisation, divorce cases and specialised tax advisory,
+   and those take considerably longer than a general return. Telling a
+   customer "about 15 minutes" when they are queued behind two of the owner's
+   cases is worse than telling them nothing.
+
+   THE HONESTY RULE
+   Returns null for any counter without enough completed visits, and the
+   caller must render that as "not measured yet" rather than falling back to
+   a service-category guess. An estimate presented as a measurement is the
+   failure mode this whole project has been correcting for: five retracted
+   findings, every one a plausible number with nothing behind it.
+
+   Note this reads assigned_station_id, which has only been reliably written
+   since staff attribution was fixed. Expect nulls for a while.
+*/
+const MIN_VISITS_FOR_TIMING = 5;
+
+export async function loadStationTimings(branchId, days = 30) {
+  if (!branchId) return {};
+
+  const since = new Date(Date.now() - days * 86_400_000).toISOString();
+
+  const { data, error } = await supabase
+    .from("tickets")
+    .select("assigned_station_id, called_at, completed_at")
+    .eq("branch_id", branchId)
+    .eq("is_test", false)
+    .eq("status", "completed")
+    .not("assigned_station_id", "is", null)
+    .not("called_at", "is", null)
+    .not("completed_at", "is", null)
+    .gte("created_at", since);
+
+  if (error) {
+    console.error("[stations] loadStationTimings failed", error);
+    return {};
+  }
+
+  const byStation = {};
+  for (const t of data ?? []) {
+    const mins = (new Date(t.completed_at) - new Date(t.called_at)) / 60000;
+    /* A visit that ran past midnight, or one closed by a sweep, produces a
+       nonsense duration. Discard rather than let it move the figure — this
+       is exactly how avg_service_min became meaningless before. */
+    if (mins <= 0 || mins > 240) continue;
+    (byStation[t.assigned_station_id] ??= []).push(mins);
+  }
+
+  const out = {};
+  for (const [stationId, arr] of Object.entries(byStation)) {
+    if (arr.length < MIN_VISITS_FOR_TIMING) {
+      out[stationId] = { minutes: null, n: arr.length };
+      continue;
+    }
+    const v = [...arr].sort((a, b) => a - b);
+    const mid = Math.floor(v.length / 2);
+    const middle = v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2;
+    out[stationId] = { minutes: Math.round(middle), n: arr.length };
+  }
+  return out;
+}
+
+export { MIN_VISITS_FOR_TIMING };

@@ -154,19 +154,27 @@ export default function ArrivalChannels({ branchId }) {
         subtitle={`Last ${DAYS} days · ${rows.total.toLocaleString()} visits`}
       />
 
-      <div className="px-5 py-4 space-y-3">
+      {/* PEOPLE, NOT PERCENTAGES.
+          "94% · 127" asks the reader to convert a share back into people
+          before it means anything. "127 of 135 people" is the same fact
+          already converted, and it is the form someone repeats out loud.
+          The bar stays, because relative size is genuinely easier to see
+          than to read — but it is no longer the only thing carrying the
+          meaning. */}
+      <div className="px-5 py-4 space-y-3.5">
         {rows.items.map((i) => (
-          <div key={i.key} className="flex items-center gap-3">
-            <div className="w-28 text-[11px] text-ink-soft shrink-0">{i.label}</div>
-            <div className="flex-1 h-[6px] bg-line/60 relative overflow-hidden">
+          <div key={i.key}>
+            <div className="flex items-baseline justify-between gap-3 mb-1.5">
+              <span className="text-[12.5px] text-ink">{i.label}</span>
+              <span className="text-[11.5px] text-ink-mute shrink-0">
+                {i.n} of {rows.total} people
+              </span>
+            </div>
+            <div className="h-[10px] bg-line/50 relative overflow-hidden">
               <div
-                className="absolute inset-y-0 left-0 bg-gold-soft/60"
+                className="absolute inset-y-0 left-0 bg-gold-deep/70"
                 style={{ width: `${Math.max(2, i.share * 100)}%` }}
               />
-            </div>
-            <div className="w-20 text-right text-[11px] text-ink shrink-0">
-              {Math.round(i.share * 100)}%
-              <span className="text-ink-mute"> · {i.n}</span>
             </div>
           </div>
         ))}

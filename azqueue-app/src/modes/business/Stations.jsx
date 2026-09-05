@@ -19,6 +19,7 @@ import {
   isCoverageLow,
   loadStationServices,
   setStationServices,
+  loadStationTimings,
 } from "../../lib/stations";
 import {
   loadPolicy,
@@ -117,6 +118,7 @@ function StationsInner() {
      has no restriction set — see the note in lib/stations.js. */
   const [services, setServices] = useState([]);
   const [stationServices, setStationServicesMap] = useState({});
+  const [timings, setTimings] = useState({});
 
   useEffect(() => {
     if (!branch?.id) return;
@@ -127,24 +129,61 @@ function StationsInner() {
         if (error) console.error("[Stations] services fetch failed", error);
         if (!off) setServices(data ?? []);
       });
-    loadStationServices(branch.id).then((m) => { if (!off) setStationServicesMap(m); });
+    loadStationServices(branch.id).then((m) => {
+      if (off) return;
+      setStationServicesMap(m);
+      setSavedServices(m);
+    });
+    /* Measured, not estimated — null until a counter has enough completed
+       visits. See loadStationTimings. */
+    loadStationTimings(branch.id).then((t) => { if (!off) setTimings(t); });
     return () => { off = true; };
   }, [branch?.id]);
 
-  async function toggleStationService(stationId, serviceId) {
-    const current = stationServices[stationId] ?? [];
-    const next = current.includes(serviceId)
-      ? current.filter((id) => id !== serviceId)
-      : [...current, serviceId];
+  /* EXPLICIT SAVE, NOT AUTO-SAVE.
+     This used to write on every tap. That is fine for a single toggle and
+     wrong for a set: choosing what a counter handles means ticking three
+     things and untickng one, and saving each keystroke means four writes,
+     four chances to half-apply, and no moment where the person can change
+     their mind. It also gave no feedback that anything had happened.
 
-    /* Optimistic — this is a checkbox, and waiting on a round trip before it
-       ticks makes the whole panel feel broken. Reverted if the write fails. */
-    setStationServicesMap((m) => ({ ...m, [stationId]: next }));
-    const res = await setStationServices(stationId, next);
-    if (!res.ok) {
-      setStationServicesMap((m) => ({ ...m, [stationId]: current }));
-      setError("Couldn't save that — try refreshing the page.");
+     So taps are local now, and a Save button appears once something has
+     changed. Nothing reaches the database until it is pressed. */
+  const [savedServices, setSavedServices] = useState({});   // last persisted state
+
+  function toggleStationService(stationId, serviceId) {
+    setStationServicesMap((m) => {
+      const current = m[stationId] ?? [];
+      return {
+        ...m,
+        [stationId]: current.includes(serviceId)
+          ? current.filter((id) => id !== serviceId)
+          : [...current, serviceId],
+      };
+    });
+  }
+
+  const sameSet = (a = [], b = []) =>
+    a.length === b.length && [...a].sort().join() === [...b].sort().join();
+
+  const dirtyStationIds = stations
+    .map((st) => st.id)
+    .filter((id) => !sameSet(stationServices[id] ?? [], savedServices[id] ?? []));
+
+  async function saveStationServices() {
+    if (!dirtyStationIds.length) return;
+    setBusy(true);
+    setError(null);
+    for (const id of dirtyStationIds) {
+      const res = await setStationServices(id, stationServices[id] ?? []);
+      if (!res.ok) {
+        setError("Couldn't save — try again.");
+        setBusy(false);
+        return;
+      }
     }
+    setSavedServices(stationServices);
+    setBusy(false);
   }
 
   // New-station form state
@@ -628,6 +667,40 @@ function StationsInner() {
           <Button size="sm" onClick={() => setCreating(true)}>+ Add first station</Button>
         </div>
       ) : (
+        <>
+        {/* ── SAVE BAR ──────────────────────────────────────────────
+            Sticks to the bottom of the viewport while there are unsaved
+            changes and is not there at all otherwise. A Save button that is
+            always present but usually does nothing trains people to ignore
+            it; one that appears the moment something changes is the only
+            thing on screen that needs attention. */}
+        {dirtyStationIds.length > 0 && (
+          <div className="sticky bottom-4 z-20 mb-4">
+            <div className="border-2 border-gold-deep bg-bg-elev px-5 py-4 flex items-center justify-between gap-4 flex-wrap shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+              <div className="text-[12.5px] text-ink">
+                Unsaved changes to {dirtyStationIds.length}{" "}
+                {dirtyStationIds.length === 1 ? "counter" : "counters"}.
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setStationServicesMap(savedServices)}
+                  disabled={busy}
+                  className="text-[11px] font-medium tracking-[0.08em] uppercase text-ink-mute hover:text-ink transition disabled:opacity-40"
+                >
+                  Undo
+                </button>
+                <button
+                  onClick={saveStationServices}
+                  disabled={busy}
+                  className="text-[12px] font-medium tracking-[0.08em] uppercase bg-gold text-[#141410] px-8 py-3 hover:bg-gold-soft transition disabled:opacity-40"
+                >
+                  {busy ? "Saving…" : "Save changes"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {stations.map((station) => (
             <StationCard
@@ -642,6 +715,7 @@ function StationsInner() {
               serviceList={services}
               stationServiceIds={stationServices[station.id] ?? []}
               onToggleService={toggleStationService}
+              timing={timings[station.id]}
               onAssignStaff={async (id, staffId) => {
                 setError(null);
                 const res = await setStationStaff(id, staffId);
@@ -668,6 +742,7 @@ function StationsInner() {
             />
           ))}
         </div>
+        </>
       )}
 
       {/* ── Reassign modal ── */}
@@ -711,7 +786,7 @@ function StationCard({
   onStartRename, onRename, onRenameChange, onCancelRename,
   onStartPause, onCancelPause, onSetStatus, onDelete,
   staffList = [], onAssignStaff,
-  serviceList = [], stationServiceIds = [], onToggleService,
+  serviceList = [], stationServiceIds = [], onToggleService, timing,
 }) {
   const isRenaming = renamingId === station.id;
   const isPausing  = pausingId  === station.id;
@@ -797,7 +872,22 @@ function StationCard({
           therefore nothing works". */}
       {serviceList.length > 0 && (
         <div className="mt-3 pt-3 border-t border-line">
-          <div className="text-[10.5px] text-ink-mute mb-1.5">Handles:</div>
+          <div className="flex items-baseline justify-between gap-2 mb-1.5">
+            <span className="text-[10.5px] text-ink-mute">Handles:</span>
+            {/* Measured from completed visits at this counter, or nothing at
+                all. Never a guess — a customer told "about 15 minutes" who
+                is actually queued behind two long cases is worse off than
+                one told nothing. */}
+            {timing?.minutes != null ? (
+              <span className="text-[10.5px] text-gold-soft" title={`From ${timing.n} completed visits`}>
+                ~{timing.minutes} min per visit
+              </span>
+            ) : (
+              <span className="text-[10.5px] text-ink-mute/70">
+                {timing?.n ? `${timing.n} visits so far` : "not measured yet"}
+              </span>
+            )}
+          </div>
           <div className="flex flex-wrap gap-1.5">
             {serviceList.map((svc) => {
               const on = (stationServiceIds ?? []).includes(svc.id);

@@ -114,54 +114,60 @@ export default function RecentDays({ branchId, timezone }) {
       weekday: "short", day: "numeric", month: "short",
     });
 
+  /* GOOD DAY OR BAD DAY, NOT A CHART.
+     The owner said his father would not understand this, and he was right.
+     A row of thin bars with "1h 28m" beside them asks the reader to hold a
+     scale in their head, compare seven bars, and decide what counts as bad.
+     Nobody does that between customers.
+
+     So each day says what kind of day it was, in words, with a colour. The
+     threshold is the measured baseline: clean days at this office run
+     18–47 minutes, so under 30 is a good day, under an hour is a normal one,
+     and past that something happened. Those numbers come from
+     docs/baseline-2026-09.md, not from a guess. */
+  const verdict = (min) => {
+    if (min == null) return { word: "Too few visits", tone: "text-ink-mute", dot: "#4a4a46" };
+    if (min <= 30)   return { word: "Good day",       tone: "text-[#9bbd9b]", dot: "#7fa37f" };
+    if (min <= 60)   return { word: "Normal",         tone: "text-gold-soft", dot: "#c9a86a" };
+    return { word: "Slow day", tone: "text-[#d49185]", dot: "#a4614f" };
+  };
+
+  const human = (min) =>
+    min == null ? "" :
+    min >= 60 ? `about ${Math.round(min / 60)} hour${min >= 90 ? "s" : ""} of waiting`
+              : `about ${Math.round(min)} minutes of waiting`;
+
   return (
     <Card luxe>
       <CardHeader
         title="Your last two weeks"
-        subtitle="Typical wait each day — the middle customer, not the average"
+        subtitle="How long a typical person waited each day"
       />
 
-      <div className="px-5 py-4 space-y-2">
-        {days.map((d) => (
-          <div key={d.date} className="flex items-center gap-3">
-            <div className="w-24 text-[11px] text-ink-soft shrink-0">{label(d.date)}</div>
-
-            <div className="w-16 text-[11px] text-ink-mute shrink-0">
-              {d.arrivals} {d.arrivals === 1 ? "person" : "people"}
+      <div className="divide-y divide-line">
+        {days.map((d) => {
+          const v = verdict(d.wait);
+          return (
+            <div key={d.date} className="px-5 py-3.5 flex items-center gap-4">
+              <span className="pip shrink-0" style={{ background: v.dot }} />
+              <div className="w-28 shrink-0 text-[12px] text-ink-soft">{label(d.date)}</div>
+              <div className="min-w-0 flex-1">
+                <div className={`text-[13px] ${v.tone}`}>{v.word}</div>
+                <div className="text-[11px] text-ink-mute mt-0.5">
+                  {d.arrivals} {d.arrivals === 1 ? "person" : "people"}
+                  {d.wait != null && ` · ${human(d.wait)}`}
+                </div>
+              </div>
             </div>
-
-            <div className="flex-1 h-[6px] bg-line/60 relative overflow-hidden">
-              {d.wait != null && (
-                <div
-                  /* Red past an hour. Not a judgement of the staff — usually
-                     it means the day was written up afterwards rather than
-                     worked live, and that is exactly what this should surface. */
-                  className={`absolute inset-y-0 left-0 ${d.wait > 60 ? "bg-[#a4614f]/70" : "bg-gold-soft/60"}`}
-                  style={{ width: `${Math.max(2, (d.wait / worst) * 100)}%` }}
-                />
-              )}
-            </div>
-
-            <div className="w-20 text-right text-[11px] shrink-0">
-              {d.wait == null ? (
-                <span className="text-ink-mute">—</span>
-              ) : (
-                <span className={d.wait > 60 ? "text-[#d49185]" : "text-ink"}>
-                  {d.wait >= 60
-                    ? `${Math.floor(d.wait / 60)}h ${Math.round(d.wait % 60)}m`
-                    : `${Math.round(d.wait)} min`}
-                </span>
-              )}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      <div className="px-5 pb-4 text-[10.5px] text-ink-mute leading-relaxed">
-        A dash means too few visits that day to say anything useful. Days that
-        look far worse than the rest are usually days the queue was tidied up
-        at closing time rather than worked through as people arrived — the
-        wait shown is measured from check-in to when Call next was pressed.
+      <div className="px-5 py-3.5 text-[11px] text-ink-mute leading-relaxed border-t border-line">
+        A slow day usually means the queue was tidied up at closing time rather
+        than worked through as people arrived — not that anyone was slow. Days
+        with only one or two visits are left blank because a single person is
+        not a pattern.
       </div>
     </Card>
   );
