@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 
 /**
@@ -27,6 +28,7 @@ import { supabase } from "../lib/supabase";
 const LONG_MINUTES = 45;
 
 export default function InProgressPanel({ branchId, refreshKey }) {
+  const navigate = useNavigate();
   const [rows, setRows] = useState([]);
   const [open, setOpen] = useState(true);
   const [now, setNow]   = useState(Date.now());
@@ -85,20 +87,30 @@ export default function InProgressPanel({ branchId, refreshKey }) {
           {rows.map((t) => {
             const m = t.called_at ? mins(t.called_at) : null;
             const long = m != null && m >= LONG_MINUTES;
+            /* Clickable. "Who is with someone right now" is only half the
+               question — the other half is why, and how long, and whether it
+               should still be open. That lives on the ticket page, along with
+               the only way to close a visit from somewhere other than the
+               counter. */
             return (
-              <div key={t.id} className="px-5 py-2.5 flex items-center gap-3">
+              <button
+                key={t.id}
+                onClick={() => navigate(`overview/ticket/${t.id}`)}
+                className="w-full px-5 py-2.5 flex items-center gap-3 text-left hover:bg-[rgba(201,168,106,0.03)] transition"
+              >
                 <div className="min-w-0 flex-1">
                   <div className="text-[12.5px] text-ink truncate">
                     {t.customer_name || t.token}
                   </div>
-                  {t.detail && (
-                    <div className="text-[11px] text-ink-mute mt-0.5 truncate">{t.detail}</div>
-                  )}
+                  <div className="text-[11px] text-ink-mute mt-0.5 truncate">
+                    {t.detail || "No reason recorded"}
+                  </div>
                 </div>
                 <div className={`text-[11.5px] shrink-0 ${long ? "text-[#d49185]" : "text-ink-mute"}`}>
                   {m == null ? "—" : fmt(m)}
                 </div>
-              </div>
+                <span className="text-ink-mute shrink-0 text-[12px]">›</span>
+              </button>
             );
           })}
         </div>

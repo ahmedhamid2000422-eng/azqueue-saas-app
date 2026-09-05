@@ -92,10 +92,6 @@ export default function Queue() {
   const [smsSent, setSmsSent] = useState({});
   const [clearConfirm, setClearConfirm] = useState(false);
 
-  /* Reveals the end-of-day and destructive actions. Closed by default —
-     see the note beside Clear queue in the header. */
-  const [moreOpen, setMoreOpen] = useState(false);
-
   // Currently-live broadcast banner (so staff can see and take it down)
   const [activeAlert, setActiveAlert] = useState(null);
   const [alertMinutes, setAlertMinutes] = useState(15); // how long it stays on the TV
@@ -1353,33 +1349,24 @@ export default function Queue() {
             >
               📢 Alert queue
             </button>
-            {/* CLEAR QUEUE IS BEHIND A DISCLOSURE NOW.
-                It cancels every remaining ticket, and it was sitting inches
-                from controls pressed several times an hour. That is a
-                foot-gun on a screen used at speed by someone who did not
-                choose this software.
+            {/* CLEAR QUEUE LIVES UP HERE, NOT NEXT TO THE ACTION TILES.
+                It cancels every remaining ticket. Briefly it was hidden
+                behind a "More" toggle, which made it safe but also made it
+                hard to find at the one moment it is genuinely wanted — end
+                of day. The header is the right compromise: far from the
+                buttons pressed every few minutes, still one press away, and
+                it keeps its confirmation step.
 
-                It is also needed far less than it was: the nightly sweep now
+                It is also needed less than it was — the nightly sweep now
                 closes anything left open for 18 hours, which is what this
-                button was really being used for. Kept, because end-of-day
-                still happens; moved, because a destructive action should
-                take one more press than a safe one. */}
-            {moreOpen && (
-              <button
-                onClick={() => setClearConfirm(true)}
-                disabled={waiting.length === 0 && !serving}
-                className="text-[9px] border border-red-900/60 px-2.5 py-1 text-[#d49185] hover:border-red-900 transition disabled:opacity-30 ovline"
-                title="Cancel all remaining tickets — end of day only"
-              >
-                🗑 Clear queue
-              </button>
-            )}
+                was really being used for. */}
             <button
-              onClick={() => setMoreOpen((x) => !x)}
-              className="text-[9px] border border-line px-2.5 py-1 text-ink-mute hover:text-ink transition ovline"
-              title="End-of-day and rarely used actions"
+              onClick={() => setClearConfirm(true)}
+              disabled={waiting.length === 0 && !serving}
+              className="text-[9px] border border-red-900/60 px-2.5 py-1 text-[#d49185] hover:border-red-900 hover:bg-red-950/30 transition disabled:opacity-25 ovline"
+              title="Cancel all remaining tickets — end of day only"
             >
-              {moreOpen ? "Less" : "More"}
+              🗑 Clear queue
             </button>
             <button
               onClick={() => reload()}
@@ -1494,7 +1481,20 @@ export default function Queue() {
           this one. */}
       <CompleteReminder serving={serving} />
 
-      {/* The second line. Renders nothing when empty, so it costs no
+      {/* Who is with someone right now. This was written to stop people being
+              forgotten mid-visit — a ticket once sat in "serving" for 45 hours —
+              but the component was imported and never actually rendered, so it
+              has never once appeared on the page it was built for. Each row
+              opens the full ticket, which is where a visit can be closed
+              without walking back to the counter. */}
+          <div className="mt-6">
+            <InProgressPanel
+              branchId={branch?.id}
+              refreshKey={waiting.length + (serving ? 1 : 0)}
+            />
+          </div>
+
+          {/* The second line. Renders nothing when empty, so it costs no
               space on a day with no drop-offs — and appears the moment there
               is something to chase, which is the only time it is useful. */}
           <div className="mt-6">
@@ -1574,12 +1574,12 @@ export default function Queue() {
                 onClick={complete}
                 disabled={busy}
                 style={{ background: "#8a7246" }}
-                className="aspect-[4/3] sm:aspect-auto sm:min-h-[132px] border-2 border-[#b8955a] text-[#141410] hover:brightness-110 transition disabled:opacity-40 px-5 py-5 text-left flex flex-col justify-between"
+                className="aspect-[4/3] sm:aspect-auto sm:min-h-[132px] border-2 border-[#b8955a] text-[#f5efe2] hover:brightness-110 transition disabled:opacity-40 px-5 py-5 text-left flex flex-col justify-between"
               >
-                <div className="text-[17px] leading-tight">
+                <div className="font-display text-[20px] font-light tracking-tight leading-tight">
                   Done with {serving.customer_name ? serving.customer_name.split(" ")[0] : serving.token}
                 </div>
-                <div className="text-[12px] text-[#141410]/70 mt-2 leading-snug">
+                <div className="text-[12px] text-[#f5efe2]/75 mt-2 leading-snug">
                   {waiting.length > 0
                     ? `Finish and call the next person · ${waiting.length} waiting`
                     : "Finish — nobody else is waiting"}
@@ -1590,12 +1590,12 @@ export default function Queue() {
                 onClick={startNext}
                 disabled={busy || waiting.length === 0}
                 style={{ background: "#8a7246" }}
-                className="aspect-[4/3] sm:aspect-auto sm:min-h-[132px] border-2 border-[#b8955a] text-[#141410] hover:brightness-110 transition disabled:opacity-30 px-5 py-5 text-left flex flex-col justify-between"
+                className="aspect-[4/3] sm:aspect-auto sm:min-h-[132px] border-2 border-[#b8955a] text-[#f5efe2] hover:brightness-110 transition disabled:opacity-30 px-5 py-5 text-left flex flex-col justify-between"
               >
-                <div className="text-[17px] leading-tight">
+                <div className="font-display text-[20px] font-light tracking-tight leading-tight">
                   {waiting.length > 0 ? "Call the next person" : "Nobody waiting"}
                 </div>
-                <div className="text-[12px] text-[#141410]/70 mt-2 leading-snug">
+                <div className="text-[12px] text-[#f5efe2]/75 mt-2 leading-snug">
                   {waiting.length > 0
                     ? `${waiting.length} ${waiting.length === 1 ? "person" : "people"} in the queue`
                     : "The queue is empty"}
@@ -1610,7 +1610,7 @@ export default function Queue() {
               style={{ background: "#8a6a2a" }}
               className="aspect-[4/3] sm:aspect-auto sm:min-h-[132px] border-2 border-[#c08a34] text-[#f5ead6] hover:brightness-110 transition disabled:opacity-25 px-5 py-5 text-left flex flex-col justify-between"
             >
-              <div className="text-[17px] leading-tight">No show</div>
+              <div className="font-display text-[20px] font-light tracking-tight leading-tight">No show</div>
               <div className="text-[12px] text-[#f5ead6]/70 mt-2 leading-snug">
                 They never came to the counter
               </div>
@@ -2391,7 +2391,7 @@ function ReassignMenu({ ticket, staffList, onReassign, onBackToQueue, disabled }
         style={{ background: "#3d5a3d" }}
         className="w-full aspect-[4/3] sm:aspect-auto sm:min-h-[132px] border-2 border-[#6b8f6b] text-[#e8f0e8] hover:brightness-110 transition disabled:opacity-25 px-5 py-5 text-left flex flex-col justify-between"
       >
-        <div className="text-[17px] leading-tight">Hand over</div>
+        <div className="font-display text-[20px] font-light tracking-tight leading-tight">Hand over</div>
         <div className="text-[12px] text-[#e8f0e8]/70 mt-2 leading-snug">
           Someone else takes this, or back to the line
         </div>

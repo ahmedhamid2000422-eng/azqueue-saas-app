@@ -68,3 +68,33 @@ export const sendConfirmationSms = (ticketId) => notify({ ticketId, template: "c
 export const sendCallNoticeSms   = (ticketId) => notify({ ticketId, template: "call",         channel: "sms" });
 export const sendThanksSms       = (ticketId) => notify({ ticketId, template: "thanks",       channel: "sms" });
 export const sendBookingConfirmationSms = (bookingId) => notify({ bookingId, template: "booking_confirmation", channel: "sms" });
+
+/**
+ * sendChecklistSms — text a customer the "what to bring" list.
+ *
+ * NOT WIRED TO A LIVE TEMPLATE YET, AND THAT IS DELIBERATE.
+ *
+ * The send-notification edge function only accepts the five templates that
+ * match the approved A2P campaign samples. A checklist is not one of them, so
+ * this throws rather than silently sending something undeclared or silently
+ * doing nothing — a caller that reaches here has got past two feature gates
+ * and should hear about it.
+ *
+ * To make this real:
+ *   1. Add a sixth sample to campaign CM9d4930a3a84ff613446b2ae3155b99af
+ *   2. Add a matching `checklist` template to send-notification/index.ts
+ *   3. Replace this body with a notify({ ticketId, template: "checklist" })
+ *      call — note it needs a ticketId, so the checklist would have to be
+ *      sent after joining rather than before, or the function needs a path
+ *      that takes a raw phone number
+ *
+ * That third point is the real design question: the whole value of the
+ * checklist is that it arrives BEFORE someone joins the queue, and every
+ * existing template hangs off a ticket that does not exist yet.
+ */
+export async function sendChecklistSms() {
+  throw new Error(
+    "Checklist SMS is not available: no approved A2P sample exists for this message type. " +
+    "See docs/sms-compliance-audit.md before enabling."
+  );
+}

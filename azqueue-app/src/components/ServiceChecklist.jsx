@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { getEffectiveChecklist } from "../lib/checklists";
 import { sendChecklistEmail } from "../lib/notifyEmail";
+import { CHECKLIST_SMS_ENABLED } from "../lib/features";
 
 /**
  * ServiceChecklist — "here's what you'll need", shown BEFORE joining the queue.
@@ -29,6 +30,11 @@ export default function ServiceChecklist({ branch, serviceName, quietPhrase, ema
   const [mailTo, setMailTo]       = useState(email ?? "");
   const [sent, setSent]           = useState(false);
   const [sending, setSending]     = useState(false);
+  /* Email or text. Email is the default and always available; text only
+     appears once the checklist message has been registered as an A2P sample
+     — see CHECKLIST_SMS_ENABLED in lib/features.js. */
+  const [channel, setChannel]     = useState("email");
+  const [phoneTo, setPhoneTo]     = useState("");
 
   if (!branch?.id || !serviceName || dismissed) return null;
 
@@ -43,7 +49,38 @@ export default function ServiceChecklist({ branch, serviceName, quietPhrase, ema
      there and a thirty-second question at the desk is far cheaper than a
      wasted appointment. */
 
-  async function emailList() {
+  async function sendList() {
+    /* SMS path is gated twice — the flag, and this guard. A checklist is not
+       one of the five approved A2P samples, so sending it before a sixth is
+       registered would be undeclared traffic on the campaign. If the flag is
+       ever set without the sample being added, this still refuses. */
+    if (channel === "sms") {
+      if (!CHECKLIST_SMS_ENABLED) {
+        console.warn("[ServiceChecklist] SMS path blocked — no approved A2P sample for a checklist message");
+        return;
+      }
+      const phone = phoneTo.trim();
+      if (!phone) return;
+      setSending(true);
+      try {
+        const { sendChecklistSms } = await import("../lib/notifications");
+        await sendChecklistSms({
+          phone,
+          serviceName,
+          items: checklist.items,
+          reminder: checklist.reminder ?? null,
+          branchName: branch.name,
+        });
+        setSent(true);
+      } catch (e) {
+        console.error("[ServiceChecklist] text failed", e);
+        setSent(true);
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
+
     const to = mailTo.trim();
     if (!to) return;
     setSending(true);
@@ -104,7 +141,7 @@ export default function ServiceChecklist({ branch, serviceName, quietPhrase, ema
       {fetching ? (
         sent ? (
           <div className="text-[12px] text-ink-soft leading-relaxed">
-            Sent — the list is in your inbox.
+            Sent — the list is {channel === "sms" ? "on its way to your phone" : "in your inbox"}.
             {quietPhrase && <> We're usually quieter {quietPhrase}, so that's a good time to come back.</>}
             <div className="text-[11px] text-ink-mute mt-1.5">
               You're welcome to join the queue anyway if you'd rather wait.
@@ -113,21 +150,51 @@ export default function ServiceChecklist({ branch, serviceName, quietPhrase, ema
         ) : (
           <div>
             <p className="text-[12px] text-ink-soft leading-relaxed mb-2.5">
-              No problem — we'll email the list so you have it.
+              No problem — we'll send the list so you have it.
               {quietPhrase && <> We're usually quieter {quietPhrase} if you can come back then.</>}
             </p>
+
+            {/* Only offer a choice when there is one. With text unavailable
+                this renders nothing and the email field stands alone, which
+                is better than a disabled toggle inviting the question "why
+                can't I pick that?" */}
+            {CHECKLIST_SMS_ENABLED && (
+              <div className="flex gap-2 mb-2.5">
+                {[
+                  { key: "email", label: "Email it" },
+                  { key: "sms",   label: "Text it" },
+                ].map((o) => (
+                  <button
+                    key={o.key}
+                    type="button"
+                    onClick={() => setChannel(o.key)}
+                    className={`text-[12px] rounded-full px-4 py-1.5 border transition ${
+                      channel === o.key
+                        ? "border-gold-deep text-gold-soft bg-[rgba(201,168,106,0.1)]"
+                        : "border-line text-ink-mute hover:text-ink"
+                    }`}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div className="flex gap-2">
               <input
-                value={mailTo}
-                onChange={(e) => setMailTo(e.target.value)}
-                placeholder="you@example.com"
-                inputMode="email"
+                value={channel === "sms" ? phoneTo : mailTo}
+                onChange={(e) =>
+                  channel === "sms" ? setPhoneTo(e.target.value) : setMailTo(e.target.value)
+                }
+                placeholder={channel === "sms" ? "(303) 555 0142" : "you@example.com"}
+                inputMode={channel === "sms" ? "tel" : "email"}
+                type={channel === "sms" ? "tel" : "email"}
                 className="flex-1 bg-bg-elev border border-line focus:border-gold-deep outline-none px-3 py-2.5 text-[13px] text-ink placeholder:text-ink-mute"
               />
               <button
                 type="button"
-                onClick={emailList}
-                disabled={sending || !mailTo.trim()}
+                onClick={sendList}
+                disabled={sending || !(channel === "sms" ? phoneTo.trim() : mailTo.trim())}
                 className="ovline text-[10px] border border-gold-deep px-3 text-gold-soft hover:bg-[rgba(201,168,106,0.1)] transition disabled:opacity-40"
               >
                 {sending ? "Sending…" : "Send it"}

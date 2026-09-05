@@ -12,10 +12,11 @@ import Card, { CardHeader } from "../../components/Card";
  * the rest of what's known about one visit actually lives: timing, what they
  * came in for, whether it was escalated and why, who's got it.
  *
- * Read-only on purpose. Acting on a ticket — calling it, completing it,
- * escalating it — happens on the Queue page, where staff already are. This
- * page exists so the owner can understand a visit without needing to be at
- * the counter to ask.
+ * Mostly for understanding rather than doing — calling and completing happen
+ * on the Queue page, where staff already are. The one exception is cancelling:
+ * a visit that should never have been in the queue, or a person who left
+ * hours ago, has to be closable from wherever you noticed it, and requiring a
+ * walk back to the counter is how twelve tickets sat open overnight.
  */
 export default function TicketDetail() {
   const { id } = useParams();
@@ -25,6 +26,11 @@ export default function TicketDetail() {
   const [ticket,  setTicket]  = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  /* Two-step: the first press asks, the second acts. Cancelling ends
+     somebody's visit, and this page is reached by tapping a name in a list —
+     easy to open by accident, so it should be hard to fire by accident. */
+  const [confirming, setConfirming] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     if (!id || !branch?.id) return;
@@ -58,6 +64,24 @@ export default function TicketDetail() {
 
     return () => { cancelled = true; };
   }, [id, branch?.id]);
+
+  /* Marks the visit cancelled and records expired_at rather than
+     completed_at — the same distinction the nightly sweep uses. A cancelled
+     visit is not a served one, and writing completed_at here would put a
+     fake service time into every average. */
+  async function cancelTicket() {
+    if (!ticket?.id) return;
+    setCancelling(true);
+    const { error } = await supabase
+      .from("tickets")
+      .update({ status: "cancelled", expired_at: new Date().toISOString() })
+      .eq("id", ticket.id)
+      .eq("branch_id", branch.id);
+    setCancelling(false);
+    if (error) return;
+    setConfirming(false);
+    setTicket((t) => ({ ...t, status: "cancelled" }));
+  }
 
   function fmtTime(iso) {
     if (!iso) return null;
@@ -160,13 +184,49 @@ export default function TicketDetail() {
             </div>
           </Card>
 
-          <Card luxe>
+          <Card luxe className="mb-4">
             <CardHeader title="Contact" />
             <div className="px-5 py-4 space-y-2 text-sm">
               <Row label="Phone" value={ticket.customer_phone || "—"} />
               <Row label="Email" value={ticket.customer_email || "—"} />
             </div>
           </Card>
+
+          {/* Only offered while the visit is actually open. A completed or
+              already-cancelled ticket has nothing to cancel, and showing a
+              live destructive button next to finished work invites the
+              accident it is guarding against. */}
+          {(ticket.status === "waiting" || ticket.status === "serving") && (
+            <div className="mt-6 pt-5 border-t border-line">
+              {!confirming ? (
+                <button
+                  onClick={() => setConfirming(true)}
+                  className="text-[12px] border border-red-900/60 px-4 py-2 text-[#d49185] hover:border-red-900 hover:bg-red-950/30 transition"
+                >
+                  Cancel this visit
+                </button>
+              ) : (
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="text-[12.5px] text-ink-soft">
+                    Cancel {ticket.customer_name || ticket.token}'s visit?
+                  </span>
+                  <button
+                    onClick={cancelTicket}
+                    disabled={cancelling}
+                    className="text-[12px] border border-red-900 bg-red-950/40 px-4 py-2 text-[#d49185] hover:bg-red-950/60 transition disabled:opacity-40"
+                  >
+                    {cancelling ? "…" : "Yes, cancel"}
+                  </button>
+                  <button
+                    onClick={() => setConfirming(false)}
+                    className="text-[12px] text-ink-mute hover:text-ink transition"
+                  >
+                    Keep it
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
     </div>

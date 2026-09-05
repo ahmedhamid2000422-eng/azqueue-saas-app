@@ -121,6 +121,33 @@ export const SLA_ENABLED = import.meta.env.VITE_SLA_ENABLED === "true";
 export const MANAGER_ENABLED = import.meta.env.VITE_MANAGER_ENABLED === "true";
 
 /**
+ * CHECKLIST_SMS_ENABLED — texting a customer the "what to bring" list.
+ *
+ * Off, and this one is a compliance gate rather than a product decision.
+ *
+ * A2P campaign CM9d4930a3a84ff613446b2ae3155b99af was approved with five
+ * sample messages, and carriers compare real traffic against them. A document
+ * checklist is not any of those five — it is a different message type
+ * entirely, so sending it would be undeclared traffic on a registered
+ * campaign. That is how a campaign you fought four rejections for starts
+ * getting filtered.
+ *
+ * The UI is built and the phone path is wired. Before switching this on:
+ *
+ *   1. Add a sixth sample to the campaign, something like
+ *      "[Business Name]: For your [Service] visit please bring: [items].
+ *       Reply STOP to opt out."
+ *   2. Ask Twilio support whether editing samples on an APPROVED campaign
+ *      triggers re-review — this is unverified and worth knowing before
+ *      touching a working approval.
+ *   3. Only then set VITE_CHECKLIST_SMS_ENABLED=true.
+ *
+ * Email has no such constraint and works today, which is why it stays the
+ * default. See docs/sms-compliance-audit.md.
+ */
+export const CHECKLIST_SMS_ENABLED = import.meta.env.VITE_CHECKLIST_SMS_ENABLED === "true";
+
+/**
  * AUTOPILOT_ENABLED — whether the queue may call customers automatically.
  *
  * Currently OFF. Autopilot paces calls from a rolling average service time,
