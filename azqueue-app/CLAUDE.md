@@ -77,6 +77,10 @@ approved campaign samples. See `docs/sms-compliance-audit.md`.
 - Staff: Mohamed (owner, senior advisor — notary, divorce, specialised tax),
   Benyamin (associate — general tax, general immigration, consultancy),
   Nuredin. One shared login.
+- **Do not reopen the A2P campaign.** Approved after four rejections; editing
+  an approved campaign may trigger re-review and nobody has confirmed
+  whether it does. SMS templates stay English even though the interface is
+  translated — see `docs/sms-compliance-audit.md`.
 - A2P campaign `CM9d4930a3a84ff613446b2ae3155b99af`, approved 4 Sept.
   Registered website is `https://www.azqueue.io` — **with www**. A mismatch
   on that string caused repeated rejections.

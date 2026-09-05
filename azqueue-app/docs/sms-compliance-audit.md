@@ -84,3 +84,36 @@ non-compliant code exists but is inert.
 
 The risk is not today. It is the day someone re-adds `VITE_TWILIO_ACCOUNT_SID`
 to Vercel to "fix SMS" without knowing this file exists.
+
+## Multilingual — screens yes, texts no
+
+Added 5 September, when the check-in flow gained Amharic, Tigrinya, Spanish
+and Chinese alongside English and Arabic.
+
+**The interface is translated. The SMS templates are not, and must not be.**
+
+Campaign `CM9d4930a3a84ff613446b2ae3155b99af` was approved with five English
+sample messages. `send-notification` sends exactly those five, in English,
+whatever language the customer picked at the kiosk. That mismatch is
+deliberate and it is what keeps the campaign compliant.
+
+Translating the templates would mean real traffic no longer matches the
+declared samples — undeclared traffic on a registered campaign, the same
+category as the checklist SMS that is gated off above. It is how carriers
+start filtering, and filtering is far harder to undo than a rejection.
+
+So a customer reads the kiosk in Tigrinya and receives an English
+confirmation. Imperfect, and worth fixing eventually — but it works today,
+and it costs nothing.
+
+**Do not open the campaign to add translated samples.** Ahmed's position, 5
+September: the campaign took four rejections to approve, editing an approved
+campaign may trigger re-review, and nobody has confirmed either way. The
+approval is worth more than multilingual texts.
+
+If this is ever revisited, the sequence is: ask Twilio support whether
+editing samples on an approved campaign triggers re-review, get an answer in
+writing, and only then decide. Not before.
+
+**Email has no such constraint** and is already the primary channel — that
+is the place to add languages if the messages need translating.
