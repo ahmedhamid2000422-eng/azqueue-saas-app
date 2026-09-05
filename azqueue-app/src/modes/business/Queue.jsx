@@ -410,6 +410,25 @@ export default function Queue() {
     [waiting, serviceNameMap]
   );
 
+  /* How the waiting line splits across people. The question this answers is
+     "if I send this person to Mohamed, how many are already waiting for him?"
+     — which is what you need before handing anyone over, and what the plain
+     "N waiting" count cannot tell you. Unassigned tickets are counted
+     separately because anyone can take them. */
+  const waitingByStaff = useMemo(() => {
+    const counts = new Map();
+    let unassigned = 0;
+    for (const t of waiting) {
+      if (!t.staff_id) { unassigned += 1; continue; }
+      counts.set(t.staff_id, (counts.get(t.staff_id) ?? 0) + 1);
+    }
+    const named = staffList
+      .filter((s) => counts.has(s.id))
+      .map((s) => ({ id: s.id, name: s.display_name, count: counts.get(s.id) }))
+      .sort((a, b) => b.count - a.count);
+    return { named, unassigned };
+  }, [waiting, staffList]);
+
   // Staff enriched with current workload count — used for smart auto-assignment
   const enrichedStaffList = useMemo(
     () => enrichStaffLoad(staffList, tickets),
@@ -715,6 +734,11 @@ export default function Queue() {
      than a small strip on the screen. */
   const [recentNoShows, setRecentNoShows] = useState([]);
 
+  /* Tickets brought back from a no-show. Kept so the waiting list can mark
+     them — otherwise someone reappears silently in the middle of the line and
+     there is no way to tell they were ever missed. */
+  const [broughtBack, setBroughtBack] = useState([]);
+
   async function skipServing() {
     if (!serving) return;
     const person = serving;
@@ -743,6 +767,7 @@ export default function Queue() {
       .eq("id", ticket.id);
     if (e) { setBusy(false); return setError(e.message); }
     setRecentNoShows((prev) => prev.filter((t) => t.id !== ticket.id));
+    setBroughtBack((prev) => (prev.includes(ticket.id) ? prev : [...prev, ticket.id]));
     await reload();
     setBusy(false);
   }
@@ -1693,7 +1718,11 @@ export default function Queue() {
                 {recentNoShows.map((t) => (
                   <div key={t.id} className="flex items-center justify-between gap-3">
                     <span className="text-[12.5px] text-ink truncate">
-                      {t.customer_name || t.token}
+                      <span className="font-semibold">{t.customer_name || t.token}</span>
+                      <span className="text-ink-mute">
+                        {" · "}{serviceNameMap[t.service_id] || "No service set"}
+                        {t.staff_id ? ` · ${resolveStaffName(t)}` : ""}
+                      </span>
                     </span>
                     <button
                       onClick={() => bringBack(t)}
@@ -1706,7 +1735,8 @@ export default function Queue() {
                 ))}
               </div>
               <div className="text-[10.5px] text-ink-mute mt-2.5 leading-relaxed">
-                They keep their original place if you bring them back.
+                "They're here" puts them at the front of the line — they already
+                waited once. Their ticket stays the same number.
               </div>
             </div>
           )}
@@ -1723,6 +1753,25 @@ export default function Queue() {
             title="Up next"
             right={<span className="ovline text-[9px]">{waiting.length} waiting</span>}
           />
+          {/* Who the line is actually waiting for. Answers the question you
+              have at the moment of handing someone over: sending them to
+              Mohamed means nothing until you know four people are already
+              queued for him and none for Benyamin. */}
+          {(waitingByStaff.named.length > 0 || waitingByStaff.unassigned > 0) && (
+            <div className="mx-5 mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+              {waitingByStaff.named.map((s) => (
+                <span key={s.id} className="text-[11px] text-ink-soft">
+                  {s.name} <span className="font-semibold text-ink">{s.count}</span>
+                </span>
+              ))}
+              {waitingByStaff.unassigned > 0 && (
+                <span className="text-[11px] text-ink-mute">
+                  Anyone <span className="font-semibold text-ink-soft">{waitingByStaff.unassigned}</span>
+                </span>
+              )}
+            </div>
+          )}
+
           {/* Drop-off batch banner */}
           {dropOffTickets.length > 0 && (
             <div className="mx-5 mt-2 mb-1 border border-emerald-800/50 bg-emerald-900/10 px-3 py-2 flex items-center justify-between gap-3">
@@ -1781,6 +1830,14 @@ export default function Queue() {
                   <div>
                     <div className="text-xs text-ink flex items-center gap-2">
                       {t.customer_name}
+                      {broughtBack.includes(t.id) && (
+                        <span
+                          title="Was marked no show, then came back"
+                          className="text-[8px] uppercase tracking-[0.16em] text-amber-300/90 border border-amber-700/60 px-1 py-[1px] leading-none"
+                        >
+                          Came back
+                        </span>
+                      )}
                       {arrival === "arrived" && (
                         <span className="text-[8px] text-[#9bbd9b] uppercase tracking-[0.2em] flex items-center">
                           <span className="pip breathe mr-1" style={{ background: "#9bbd9b" }} />
