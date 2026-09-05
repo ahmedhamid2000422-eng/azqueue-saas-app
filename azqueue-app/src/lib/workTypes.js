@@ -82,3 +82,42 @@ export const HANDLE_YOURSELF = [
   "Booking or rescheduling an appointment",
   "Collecting finished paperwork",
 ];
+
+/**
+ * Does this reason need a manager, or can any available staff member take it?
+ *
+ * THE DISTINCTION THAT NEVER EXISTED
+ * Until now everything escalated to the owner by default, because there was
+ * no way to say otherwise. He is both the manager and the senior advisor, so
+ * "needs a decision" and "needs his particular expertise" collapsed into the
+ * same thing and he absorbed both.
+ *
+ * The list is per branch (`branches.manager_only_reasons`, migration 0061)
+ * rather than hardcoded, because it is a policy and not a fact. One office
+ * requires the owner for a refund decision; another does not. A notarisation
+ * genuinely requires a specific person in Aurora and might not elsewhere.
+ *
+ * EMPTY MEANS NOTHING IS MANAGER-ONLY, and that is the deliberate default.
+ * The failure mode of a wrong entry here is a customer sent to someone who
+ * cannot help them, which is worse than the status quo of asking. So the
+ * office opts in to each restriction rather than opting out.
+ */
+export function needsManager(reason, managerOnlyReasons) {
+  if (!reason) return false;
+  const list = managerOnlyReasons ?? [];
+  if (!list.length) return false;
+  return list.includes(reason);
+}
+
+/**
+ * Split the reason list for display: the ones that will pull in the manager,
+ * and the ones any staff member can resolve. Used to show staff what a choice
+ * will actually do before they make it, rather than after.
+ */
+export function partitionReasons(managerOnlyReasons) {
+  const list = managerOnlyReasons ?? [];
+  return {
+    managerOnly: ESCALATION_REASONS.filter((r) => list.includes(r)),
+    anyone:      ESCALATION_REASONS.filter((r) => !list.includes(r)),
+  };
+}

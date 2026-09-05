@@ -16,6 +16,7 @@ import { getEffectiveChecklist, buildChecklistMessage } from "../lib/checklists"
 import { sendMessage } from "../lib/messaging";
 import Button from "../components/Button";
 import LanguagePicker from "../components/LanguagePicker";
+import { loadStationServices, stationsForService } from "../lib/stations";
 
 /**
  * Public customer check-in page — the "scan QR → enter the queue" surface.
@@ -78,6 +79,25 @@ export default function CustomerCheckIn() {
         if (!off) setQuiet(q && new Date().getHours() < q.hour ? quietPhrase(q) : null);
       })
       .catch(() => {});
+    return () => { off = true; };
+  }, [branch?.id]);
+
+  /* Which counter takes which service. Used only to tell the customer where
+     to go — it does not gate anything. A restriction that stops someone
+     joining the queue would turn a helpful hint into a locked door, and the
+     person who most needs to be seen is the one whose case does not fit a
+     category. */
+  const [stationRouting, setStationRouting] = useState({ stations: [], map: {} });
+  useEffect(() => {
+    let off = false;
+    if (!branch?.id) return;
+    (async () => {
+      const [{ data: sts }, map] = await Promise.all([
+        supabase.from("stations").select("id, name, status").eq("branch_id", branch.id),
+        loadStationServices(branch.id),
+      ]);
+      if (!off) setStationRouting({ stations: sts ?? [], map });
+    })().catch(() => {});
     return () => { off = true; };
   }, [branch?.id]);
 
@@ -398,6 +418,30 @@ export default function CustomerCheckIn() {
                 </button>
               );
             })}
+
+            {/* Where to go, once a service is chosen. Shown only when the
+                office has actually narrowed it down — with no restrictions
+                set, every counter takes everything and naming them all would
+                be noise. Never blocks: this is a signpost, not a gate. */}
+            {serviceId && (() => {
+              const named = stationsForService(
+                stationRouting.stations,
+                stationRouting.map,
+                serviceId,
+              );
+              const allStations = stationRouting.stations.length;
+              const narrowed = allStations > 0 && named.length > 0 && named.length < allStations;
+              if (!narrowed) return null;
+              return (
+                <div className={`bg-bg-elev border-l-2 border-gold-deep mt-2 ${isKiosk ? "px-5 py-3" : "px-4 py-2.5"}`}>
+                  <div className={`text-gold-soft ${isKiosk ? "text-[13px]" : "text-[11.5px]"}`}>
+                    {named.length === 1
+                      ? `This is handled at ${named[0].name}.`
+                      : `Handled at ${named.map((n) => n.name).join(" or ")}.`}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
 

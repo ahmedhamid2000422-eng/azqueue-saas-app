@@ -12,6 +12,7 @@ import { useBranch } from "../../lib/BranchContext";
 import { useStaff } from "../../hooks/useStaff";
 import { getLimits, getTier, TIER_INFO } from "../../lib/tier";
 import { isTtsEnabled, setTtsEnabled } from "../../lib/tts";
+import { ESCALATION_REASONS } from "../../lib/workTypes";
 import Card, { CardHeader } from "../../components/Card";
 import Button from "../../components/Button";
 import {
@@ -119,7 +120,7 @@ export default function Settings() {
       {activeTab === "general"  && <GeneralTab branch={branch} reload={reload} />}
       {activeTab === "branches" && <BranchesTab branches={branches} currentId={branch?.id} select={select} reload={reload} userId={user?.id} />}
       {activeTab === "services" && <ServicesTab branch={branch} />}
-      {activeTab === "staff"    && <StaffTab branch={branch} />}
+      {activeTab === "staff"    && <StaffTab branch={branch} reload={reload} />}
       {activeTab === "support"  && <SupportInboxTab branch={branch} />}
       {activeTab === "modes"    && <ModesTab branch={branch} reload={reload} />}
       {activeTab === "checklists"   && <ChecklistsTab branch={branch} />}
@@ -1229,7 +1230,75 @@ function ServicesTab({ branch }) {
 }
 
 /* ── STAFF (invite by email + role) ────────────────────────────────── */
-function StaffTab({ branch }) {
+/* ── What needs the manager ──────────────────────────────────────────
+   Lives on the Staff tab because it is a statement about people and what
+   they are allowed to decide, not about counters.
+
+   Deliberately opt-in: nothing is manager-only until someone ticks it. A
+   wrong entry here routes a customer to somebody who cannot help them, which
+   is worse than today's behaviour of asking. See needsManager() in
+   lib/workTypes.js. */
+function ManagerOnlyReasons({ branch, reload }) {
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState(null);
+  const current = branch?.manager_only_reasons ?? [];
+
+  async function toggle(reason) {
+    const next = current.includes(reason)
+      ? current.filter((r) => r !== reason)
+      : [...current, reason];
+    setSaving(true);
+    setErr(null);
+    const { error } = await supabase
+      .from("branches")
+      .update({ manager_only_reasons: next })
+      .eq("id", branch.id);
+    setSaving(false);
+    if (error) { setErr("Couldn't save that — try again."); return; }
+    reload?.();
+  }
+
+  if (!branch?.id) return null;
+
+  return (
+    <Card luxe className="mt-6">
+      <CardHeader
+        title="What needs the manager"
+        subtitle="Everything else can be handled by whoever is free"
+      />
+      <div className="px-5 py-4">
+        <div className="flex flex-wrap gap-2">
+          {ESCALATION_REASONS.map((r) => {
+            const on = current.includes(r);
+            return (
+              <button
+                key={r}
+                type="button"
+                onClick={() => toggle(r)}
+                disabled={saving}
+                className={`text-[12px] rounded-full px-3.5 py-1.5 border transition disabled:opacity-40 ${
+                  on
+                    ? "border-gold-deep text-gold-soft bg-[rgba(201,168,106,0.1)]"
+                    : "border-line text-ink-mute hover:text-ink"
+                }`}
+              >
+                {r}
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-[11px] text-ink-mute mt-3 leading-relaxed">
+          {current.length === 0
+            ? "Nothing is manager-only. Any escalation can be picked up by whoever is available — which is how it works today."
+            : "These will be routed to the manager. Anything not ticked can be handled by any staff member."}
+        </p>
+        {err && <p className="text-[11px] text-[#d49185] mt-2">{err}</p>}
+      </div>
+    </Card>
+  );
+}
+
+function StaffTab({ branch, reload }) {
   const { user } = useAuth();
   const [staff, setStaff] = useState([]);
   const [name, setName] = useState("");
@@ -1463,6 +1532,8 @@ function StaffTab({ branch }) {
           </>
         )}
       </Card>
+
+      <ManagerOnlyReasons branch={branch} reload={reload} />
     </div>
   );
 }
