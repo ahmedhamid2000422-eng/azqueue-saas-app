@@ -263,13 +263,13 @@ export default function Schedule() {
 
       <Card luxe>
         <div className={`grid border-b border-line`} style={{ gridTemplateColumns: `80px repeat(${cols.length}, minmax(0, 1fr))` }}>
-          <div className="px-3 py-3 ovline text-[8px] border-r border-line bg-[rgba(201,168,106,0.03)]" />
+          <div className="px-4 py-3.5 border-r border-line bg-[rgba(201,168,106,0.03)]" />
           {cols.map((s, i) => (
-            <div key={s.id} className={`px-3 py-3 ovline text-[8px] bg-[rgba(201,168,106,0.03)] ${i < cols.length - 1 ? "border-r border-line" : ""} ${s.status === "off" ? "opacity-40" : ""}`}>
+            <div key={s.id} className={`px-4 py-3.5 bg-[rgba(201,168,106,0.03)] ${i < cols.length - 1 ? "border-r border-line" : ""} ${s.status === "off" ? "opacity-40" : ""}`}>
               <div className="flex items-center justify-between gap-1">
-                <span>
+                <span className="text-[12px] text-ink">
                   {s.display_name}
-                  {s.role && <span className="text-ink-mute ml-1">· {s.role}</span>}
+                  {s.role && <span className="text-ink-mute ml-1.5 text-[10px]">{s.role}</span>}
                 </span>
                 {s.id !== "any" && (
                   <button
@@ -279,7 +279,7 @@ export default function Schedule() {
                       load();
                     }}
                     title={s.status === "off" ? "Mark as available" : "Close for today"}
-                    className={`text-[7px] border px-1.5 py-0.5 transition whitespace-nowrap ${
+                    className={`text-[10px] border px-2 py-1 transition whitespace-nowrap ${
                       s.status === "off"
                         ? "border-[#506b50]/60 text-[#9bbd9b]/80 hover:text-[#9bbd9b]"
                         : "border-line text-ink-mute hover:border-[#b56b5f]/50 hover:text-[#d49185]"
@@ -297,18 +297,18 @@ export default function Schedule() {
           const prayer = isPrayerSlot(t);
           return (
             <div key={t} className="grid border-b border-line last:border-b-0" style={{ gridTemplateColumns: `80px repeat(${cols.length}, minmax(0, 1fr))` }}>
-              <div className="px-3 py-4 font-mono text-[10px] text-ink-mute border-r border-line">{t}</div>
+              <div className="px-4 py-4 font-mono text-[11px] text-ink-mute border-r border-line">{t}</div>
               {cols.map((s, i) => {
                 const cell = bookingMap[`${t}-${s.id}`];
                 const border = i < cols.length - 1 ? "border-r border-line" : "";
                 if (prayer) {
                   return (
                     <div key={s.id} className={`px-3 py-4 ${border} bg-[rgba(80,107,80,0.10)]`}>
-                      <div className="text-[10px] text-[#9bbd9b] flex items-center gap-1.5">
+                      <div className="text-[11.5px] text-[#9bbd9b] flex items-center gap-1.5">
                         <span className="pip" />
                         Prayer · {capitalise(prayer.name)}
                       </div>
-                      <div className="text-[9px] text-ink-mute mt-1">Auto-pause · {prayer.time}</div>
+                      <div className="text-[10px] text-ink-mute mt-1">Pauses automatically · {prayer.time}</div>
                     </div>
                   );
                 }
@@ -334,21 +334,31 @@ export default function Schedule() {
                         ? "bg-amber-950/10"
                         : "bg-[rgba(116,185,232,0.06)]";
                   return (
-                    <div key={s.id} className={`px-3 py-3 ${border} ${cellBg}`}>
-                      <div className="text-[10px] text-gold-soft truncate">{cell.customer_name}</div>
-                      <div className="text-[9px] text-ink-mute mt-0.5 truncate">{svcName}</div>
-                      <div className={"text-[8px] mt-1 flex items-center gap-1 " + cx.color}>
-                        <span>{cx.label}</span>
-                        <span className="text-ink-mute">·</span>
-                        <span>{durMin}m{hasReal ? " ✓" : ""}</span>
+                    /* A booking used to stack five lines of 8–10px text in one
+                       cell: name, service, complexity label, duration, staff,
+                       and sometimes two warnings on top. At that size it is a
+                       block of grey, not information.
+
+                       Now: name and service at a readable size, and the
+                       duration only when it is measured from real visits
+                       rather than guessed from a category — an estimate
+                       dressed as a fact is worse than no number. Complexity
+                       shows as a colour on the cell, not another line of
+                       text. Warnings stay, because those are the only things
+                       here that need acting on. */
+                    <div key={s.id} className={`px-4 py-3.5 ${border} ${cellBg}`}>
+                      <div className="text-[12.5px] text-gold-soft truncate">{cell.customer_name}</div>
+                      <div className="text-[11px] text-ink-mute mt-0.5 truncate">
+                        {svcName}
+                        {hasReal && <span className="text-ink-soft"> · {durMin}m</span>}
                       </div>
                       {assignedStaff ? (
-                        <div className="text-[8px] text-[#9bbd9b] mt-0.5 truncate">{assignedStaff.display_name}</div>
+                        <div className="text-[10.5px] text-[#9bbd9b] mt-1 truncate">{assignedStaff.display_name}</div>
                       ) : suggestion ? (
-                        <div className="text-[8px] text-amber-400 mt-0.5 truncate">→ {suggestion.staffName}</div>
+                        <div className="text-[10.5px] text-amber-400 mt-1 truncate">Try {suggestion.staffName}</div>
                       ) : null}
-                      {hasCollision && <div className="text-[8px] text-red-400 mt-0.5">⚠ Overlap</div>}
-                      {hasOverrun && !hasCollision && <div className="text-[8px] text-amber-400 mt-0.5">⏱ Runs over</div>}
+                      {hasCollision && <div className="text-[10.5px] text-red-400 mt-1">Overlaps another booking</div>}
+                      {hasOverrun && !hasCollision && <div className="text-[10.5px] text-amber-400 mt-1">May run over</div>}
                     </div>
                   );
                 }
@@ -424,10 +434,10 @@ export default function Schedule() {
         <div className="mt-4 border border-line bg-bg-elev">
           <div className="px-5 py-3 border-b border-line flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="ovline text-[9px] text-gold-soft">Schedule Intelligence</div>
+              <div className="ovline text-[9px] text-gold-soft">What we know about timings</div>
               {Object.values(durationStats).some((s) => s.count >= 5) && (
-                <span className="text-[9px] text-emerald-400 border border-emerald-800/40 px-2 py-0.5">
-                  Real-case data active
+                <span className="text-[10px] text-emerald-400 border border-emerald-800/40 px-2 py-0.5">
+                  From real visits
                 </span>
               )}
             </div>
@@ -437,14 +447,14 @@ export default function Schedule() {
                   ? "border-red-800 text-red-400"
                   : "border-amber-800 text-amber-400"
               )}>
-                {reflowIssues.length} issue{reflowIssues.length !== 1 ? "s" : ""} detected
+                {reflowIssues.length} to check
               </span>
             )}
           </div>
 
           {Object.entries(durationStats).filter(([, s]) => s.count >= 5).length > 0 && (
             <div className="px-5 py-3 border-b border-line">
-              <div className="ovline text-[9px] text-ink-mute mb-2">Real Duration Averages</div>
+              <div className="ovline text-[9px] text-ink-mute mb-2">How long these actually take</div>
               <div className="flex flex-wrap gap-3">
                 {Object.entries(durationStats)
                   .filter(([, s]) => s.count >= 5)
@@ -455,7 +465,7 @@ export default function Schedule() {
                     const delta = s.avg - cx.estimatedMin;
                     return (
                       <div key={name} className={"border px-3 py-2 " + cx.border}>
-                        <div className={"text-[9px] ovline " + cx.color}>{name}</div>
+                        <div className={"text-[11px] " + cx.color}>{name}</div>
                         <div className="flex items-baseline gap-2 mt-0.5">
                           <span className="text-sm font-light text-ink">{s.avg}m</span>
                           {Math.abs(delta) > 2 && (

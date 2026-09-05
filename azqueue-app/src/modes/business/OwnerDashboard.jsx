@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useBranch } from "../../lib/BranchContext";
 import Card, { CardHeader } from "../../components/Card";
-import Stat from "../../components/Stat";
 
 /**
  * OwnerDashboard — bird's-eye view of the whole branch for the owner / manager.
@@ -187,283 +186,200 @@ export default function OwnerDashboard() {
     off:      { label: "Off",      dot: "#555" },
   };
 
-  const stationStatus = {
-    open:   { label: "Open",   border: "border-[#506b50]/60", bg: "bg-[rgba(80,107,80,0.05)]" },
-    busy:   { label: "Busy",   border: "border-[#c9a86a]/50", bg: "bg-[rgba(201,168,106,0.05)]" },
-    closed: { label: "Closed", border: "border-line",         bg: ""                            },
-  };
-
   if (!branch) {
     return <div className="p-8 text-ink-mute ovline">No branch selected.</div>;
   }
 
+  /* ── LIVE SIGNALS ────────────────────────────────────────────────
+     What the owner should be told, computed only from what is true right
+     now. No baselines, no "longer than usual", no comparisons to a past
+     that has four clean days in it — that is the p90 alert mistake, and
+     this project has already retracted five findings of exactly that shape.
+
+     Everything here is a present-tense fact: this person has waited this
+     long, this counter has nobody on it. Silent when nothing is wrong,
+     which is the point — an insight panel that always has something to say
+     is decoration. */
+  const LONG_WAIT_MIN = 30;
+  const LONG_VISIT_MIN = 45;
+
+  const signals = [];
+  if (!loading) {
+    const now = Date.now();
+
+    const longWaits = queue.filter(
+      (t) => t.status === "waiting" &&
+        (now - new Date(t.created_at).getTime()) / 60000 >= LONG_WAIT_MIN,
+    );
+    if (longWaits.length) {
+      const worst = Math.round(
+        Math.max(...longWaits.map((t) => (now - new Date(t.created_at).getTime()) / 60000)),
+      );
+      signals.push({
+        tone: "warn",
+        text: longWaits.length === 1
+          ? `${longWaits[0].customer_name || longWaits[0].token} has been waiting ${worst} minutes.`
+          : `${longWaits.length} people have been waiting over ${LONG_WAIT_MIN} minutes — longest is ${worst}.`,
+      });
+    }
+
+    const longVisits = queue.filter(
+      (t) => t.status === "serving" && t.called_at &&
+        (now - new Date(t.called_at).getTime()) / 60000 >= LONG_VISIT_MIN,
+    );
+    if (longVisits.length) {
+      signals.push({
+        tone: "info",
+        text: longVisits.length === 1
+          ? `${longVisits[0].customer_name || longVisits[0].token} has been with someone for over ${LONG_VISIT_MIN} minutes.`
+          : `${longVisits.length} visits have been running over ${LONG_VISIT_MIN} minutes.`,
+      });
+    }
+
+    const escalated = queue.filter((t) => t.escalated_at);
+    if (escalated.length) {
+      signals.push({
+        tone: "warn",
+        text: `${escalated.length} ${escalated.length === 1 ? "visit needs" : "visits need"} the manager.`,
+      });
+    }
+  }
+
+  const openStations = stations.filter((s) => s.status !== "closed").length;
+  const nextUp = queue.find((t) => t.status === "waiting");
+
   return (
     <div className="atmosphere-hero p-8 max-w-6xl">
-      <header className="mb-6">
+      {/* ── 1. BRANCH HEALTH ──────────────────────────────────────
+          One line, not four boxes. "How busy are we, are people waiting too
+          long, do we have the counters open" is a single glance, and giving
+          each part its own bordered card made the eye stop three times to
+          answer one question. */}
+      <header className="mb-8">
         <div className="ovline mb-2 text-gold-soft flex items-center gap-2">
           <span className="pip breathe" style={{ background: "#c9a86a" }} />
-          Live · branch overview
-        </div>
-        <h1 className="font-display text-4xl font-light tracking-tightest">
           {branch.name}
-        </h1>
-        <div className="text-xs text-ink-mute mt-1">{branch.city}</div>
+          {branch.city && <span className="text-ink-mute">· {branch.city}</span>}
+        </div>
+        <div className="flex items-baseline gap-x-8 gap-y-2 flex-wrap font-display font-light tracking-tight">
+          <span className="text-4xl">
+            {loading ? "…" : stats?.waitingNow ?? 0}
+            <span className="text-[13px] font-sans tracking-normal text-ink-mute ml-2">waiting</span>
+          </span>
+          <span className="text-4xl">
+            {loading ? "…" : fmtWait(stats?.avgWaitSec)}
+            <span className="text-[13px] font-sans tracking-normal text-ink-mute ml-2">average wait</span>
+          </span>
+          <span className="text-4xl">
+            {loading ? "…" : `${openStations}/${stations.length || 0}`}
+            <span className="text-[13px] font-sans tracking-normal text-ink-mute ml-2">counters open</span>
+          </span>
+          <span className="text-4xl">
+            {loading ? "…" : stats?.servedToday ?? 0}
+            <span className="text-[13px] font-sans tracking-normal text-ink-mute ml-2">served today</span>
+          </span>
+        </div>
       </header>
 
-      {/* ── Who is next, and the one thing to do about it ────────
-          Modelled on the reference dashboard's hero card, with one
-          deliberate difference: it does NOT put a Call Next button here.
+      {/* ── 2. WHAT IS HAPPENING NOW ──────────────────────────────
+          Two columns: the queue, and the room. Borders only where they
+          separate genuinely different things — the previous version had
+          cards inside cards inside a grid, and you started noticing the
+          containers instead of the contents. */}
+      <div className="grid grid-cols-12 gap-8 mb-8">
 
-          Calling and completing happen on the Queue page. Two screens with
-          the same action is how this project already broke station
-          assignment — Overview wrote preparer_id, Stations wrote staff_id,
-          and neither knew about the other for months. So this says who is
-          next and hands you to the place that does the work. */}
-      {!loading && queue.length > 0 && (() => {
-        const next = queue.find((t) => t.status === "waiting");
-        if (!next) return null;
-        const waitedMin = Math.max(
-          0,
-          Math.round((Date.now() - new Date(next.created_at).getTime()) / 60000),
-        );
-        return (
-          <button
-            onClick={() => navigate("..")}
-            className="w-full text-left mb-6 border-2 border-gold-deep bg-[rgba(201,168,106,0.06)] hover:bg-[rgba(201,168,106,0.12)] transition px-6 py-5 flex items-center justify-between gap-6 flex-wrap"
-          >
-            <div className="min-w-0">
+        {/* Left — next up, then the rest of the line */}
+        <div className="col-span-12 lg:col-span-7">
+          {nextUp ? (
+            <button
+              onClick={() => navigate("..")}
+              className="w-full text-left border-2 border-gold-deep bg-[rgba(201,168,106,0.06)] hover:bg-[rgba(201,168,106,0.12)] transition px-6 py-5 mb-4"
+            >
               <div className="text-[10px] font-medium tracking-[0.08em] uppercase text-gold-soft mb-1.5">
                 Next in line
               </div>
               <div className="font-display text-3xl font-light tracking-tight truncate">
-                {next.customer_name || next.token}
+                {nextUp.customer_name || nextUp.token}
               </div>
               <div className="text-[11.5px] text-ink-mute mt-1">
-                {next.token} · waiting {waitedMin} min
-                {next.detail ? ` · ${next.detail}` : ""}
+                {nextUp.token}
+                {" · waiting "}
+                {Math.max(0, Math.round((Date.now() - new Date(nextUp.created_at).getTime()) / 60000))} min
+                {nextUp.detail ? ` · ${nextUp.detail}` : ""}
               </div>
+              <div className="text-[11px] font-medium tracking-[0.08em] uppercase text-gold-soft mt-3">
+                Open the queue →
+              </div>
+            </button>
+          ) : (
+            <div className="border border-line px-6 py-8 mb-4 text-center">
+              <div className="text-[13px] text-ink-soft">Nobody is waiting.</div>
             </div>
-            <div className="text-[11px] font-medium tracking-[0.08em] uppercase text-gold-soft shrink-0">
-              Open the queue →
-            </div>
-          </button>
-        );
-      })()}
+          )}
 
-      {/* ── Stats bar ────────────────────────────────────────────
-          Three, not four. "Serving now" was the weakest of the four — it is
-          already visible in the stations grid below and on the queue page,
-          and a number that repeats something two inches away is a number
-          people stop reading. Wait is a MEDIAN now, and says so: the label
-          used to read "Avg wait" while the hint said "Created → called",
-          which described the calculation but not the statistic. */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        <Stat
-          label="Waiting now"
-          value={loading ? "…" : stats?.waitingNow ?? 0}
-          hint="In queue"
-          accent={stats?.waitingNow > 0}
-        />
-        <Stat
-          label="Served today"
-          value={loading ? "…" : stats?.servedToday ?? 0}
-          hint="Completed"
-        />
-        {/* Says "average", computes a median — on purpose, and do not
-            "fix" it to a mean. "Median" is a word for a statistics class,
-            not for someone glancing at a screen between customers, and in
-            everyday English "average" means "typical", which is exactly
-            what a median is. A mean here would be the wrong number
-            wearing the right word. */}
-        <Stat
-          label="Average wait"
-          value={loading ? "…" : fmtWait(stats?.avgWaitSec)}
-          hint="Today, check-in to called"
-        />
-      </div>
+          {queue.length > 1 && (
+            <>
+              <div className="ovline text-[9px] text-ink-mute mb-2">
+                Also in line · {queue.length - (nextUp ? 1 : 0)}
+              </div>
+              <div className="divide-y divide-line border-y border-line">
+                {queue.filter((t) => t.id !== nextUp?.id).slice(0, 6).map((t) => {
+                  const problem = t.escalated_reason || t.detail || null;
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => navigate(`ticket/${t.id}`)}
+                      className="w-full px-1 py-2.5 flex items-center gap-3 text-left hover:bg-[rgba(201,168,106,0.03)] transition"
+                    >
+                      <span className="pip shrink-0" style={{ background: t.status === "serving" ? "#c9a86a" : "#9bbd9b" }} />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[12.5px] text-ink truncate">{t.customer_name || t.token}</div>
+                        {problem && (
+                          <div className={`text-[11px] mt-0.5 truncate ${t.escalated_reason ? "text-[#d49185]" : "text-ink-mute"}`}>
+                            {problem}
+                          </div>
+                        )}
+                      </div>
+                      <span className="text-ink-mute shrink-0 text-[12px]">›</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
 
-      {/* ── Who's in line right now ───────────────────────────────
-          The stats bar says how many. This says who, and whether anything
-          about their visit needs a look — a ticket with detail or an
-          escalation reason is one the owner would otherwise only discover
-          by asking. Click through for the full picture on that one visit. */}
-      {queue.length > 0 && (
-        <Card luxe className="mb-6">
-          <CardHeader
-            title="In line"
-            subtitle="Tap anyone for the full picture"
-            right={<span className="ovline text-[9px] text-ink-mute">{queue.length}</span>}
-          />
-          <div className="divide-y divide-line">
-            {queue.map((t) => {
-              const problem = t.escalated_reason || t.detail || null;
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => navigate(`ticket/${t.id}`)}
-                  className="w-full px-5 py-3 flex items-center gap-3 text-left hover:bg-[rgba(201,168,106,0.03)] transition"
-                >
-                  <span
-                    className="pip shrink-0"
-                    style={{ background: t.status === "serving" ? "#c9a86a" : "#9bbd9b" }}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm text-ink truncate">
-                      {t.customer_name || t.token}
-                    </div>
-                    {problem && (
-                      <div className={`text-[11px] mt-0.5 truncate ${t.escalated_reason ? "text-[#d49185]" : "text-ink-mute"}`}>
-                        {t.escalated_reason ? `Escalated · ${problem}` : problem}
-                      </div>
-                    )}
-                  </div>
-                  <span className="ovline text-[9px] text-ink-mute shrink-0">
-                    {t.status === "serving" ? "Serving" : "Waiting"}
-                  </span>
-                  <span className="text-ink-mute shrink-0">›</span>
-                </button>
-              );
-            })}
-          </div>
-        </Card>
-      )}
-
-      {/* ── Stations grid ──────────────────────────────────────── */}
-      <Card luxe className="mb-6">
-        <CardHeader
-          title="Stations"
-          subtitle="Live counter status"
-          right={
-            <span className="ovline text-[9px] text-ink-mute">
-              {stations.filter((s) => s.status !== "closed").length} of {stations.length} open
-            </span>
-          }
-        />
-        {stations.length === 0 ? (
-          <div className="px-5 py-10 text-center text-xs text-ink-mute">
-            No stations configured. Add them in Settings → Stations.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-5">
-            {stations.map((st) => {
-              const s = stationStatus[st.status] ?? stationStatus.open;
-              const ticket = st.currentTicket;
-              const staff  = st.staffMember;
-              return (
-                <div
-                  key={st.id}
-                  className={`border ${s.border} ${s.bg} p-4`}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <div className="ovline text-[9px] text-ink-mute">
-                        Counter {st.window_number}
-                      </div>
-                      <div className="text-sm font-medium text-ink mt-0.5">
-                        {st.name || `Window ${st.window_number}`}
-                      </div>
-                    </div>
-                    <span className={`ovline text-[8px] px-2 py-0.5 border ${s.border}`}>
-                      {s.label}
-                    </span>
-                  </div>
-
-                  {/* Current token */}
-                  {ticket ? (
-                    <div className="mb-3">
-                      <div className="font-display text-3xl font-light tracking-tightest gold-text">
-                        {ticket.token}
-                      </div>
-                      <div className="text-xs text-ink-soft mt-0.5 truncate">
-                        {ticket.customer_name}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="mb-3 font-display text-3xl font-light text-ink-mute tracking-tightest">
-                      —
-                    </div>
-                  )}
-
-                  {/* Assigned staff — with dropdown to reassign */}
-                  <div className="border-t border-line pt-2 mt-auto">
-                    {staff ? (
-                      <div className="text-[10px] text-ink-mute mb-1.5">
-                        {staff.display_name} · <span style={{ color: statusLabel[staff.status]?.dot ?? "#888" }}>{statusLabel[staff.status]?.label ?? staff.status}</span>
-                      </div>
-                    ) : (
-                      <div className="text-[10px] text-ink-mute italic mb-1.5">Unassigned</div>
-                    )}
-                    <AssignStaffSelect
-                      stationId={st.id}
-                      currentStaffId={st.staff_id}
-                      roster={roster}
-                      onAssigned={reload}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </Card>
-
-      {/* ── Staff roster ──────────────────────────────────────── */}
-      <Card luxe>
-        <CardHeader
-          title="Staff on shift"
-          subtitle="Toggle availability for today"
-        />
-        {roster.length === 0 ? (
-          <div className="px-5 py-10 text-center text-xs text-ink-mute">
-            No staff records found for this branch.
-          </div>
-        ) : (
-          <div className="divide-y divide-line">
-            {roster.map((s) => {
+        {/* Right — the team */}
+        <div className="col-span-12 lg:col-span-5">
+          <div className="ovline text-[9px] text-ink-mute mb-2">Team</div>
+          <div className="divide-y divide-line border-y border-line">
+            {roster.length === 0 ? (
+              <div className="py-8 text-center text-xs text-ink-mute">No staff yet.</div>
+            ) : roster.map((s) => {
               const st = statusLabel[s.status] ?? { label: s.status, dot: "#888" };
               const isOff = s.status === "off";
               return (
-                <div
-                  key={s.id}
-                  className={`px-5 py-4 flex items-center justify-between transition ${isOff ? "opacity-50" : "hover:bg-[rgba(201,168,106,0.02)]"}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span
-                      className="pip"
-                      style={{ background: st.dot, opacity: isOff ? 0.35 : 1 }}
-                    />
-                    <div>
-                      <div className="text-sm text-ink">{s.display_name}</div>
-                      <div className="ovline text-[8px] text-ink-mute mt-0.5">{s.role}</div>
+                <div key={s.id} className={`py-3 flex items-center justify-between gap-3 ${isOff ? "opacity-45" : ""}`}>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="pip shrink-0" style={{ background: st.dot }} />
+                    <div className="min-w-0">
+                      <div className="text-[12.5px] text-ink truncate">{s.display_name}</div>
+                      <div className="text-[10.5px] text-ink-mute">{st.label}</div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3 shrink-0">
                     {s.currentTicket && (
-                      <span className="text-xs text-gold-soft font-display">
-                        {s.currentTicket.token}
-                      </span>
+                      <span className="text-[11px] text-gold-soft font-display">{s.currentTicket.token}</span>
                     )}
-                    <div className="text-right">
-                      <div className="text-sm text-ink">{s.servedToday}</div>
-                      <div className="ovline text-[8px] text-ink-mute">served today</div>
-                    </div>
-                    <span className="ovline text-[9px]" style={{ color: st.dot }}>{st.label}</span>
-                    {/* Available / Away toggle — only toggle off↔active, never override serving */}
                     {s.status !== "serving" && (
                       <button
                         onClick={async () => {
-                          const next = isOff ? "active" : "off";
-                          await supabase.from("staff").update({ status: next }).eq("id", s.id);
+                          await supabase.from("staff").update({ status: isOff ? "active" : "off" }).eq("id", s.id);
                           reload();
                         }}
-                        className={`text-[8px] ovline border px-2 py-0.5 transition whitespace-nowrap ${
-                          isOff
-                            ? "border-[#506b50]/60 text-[#9bbd9b]/80 hover:border-[#506b50] hover:text-[#9bbd9b]"
-                            : "border-line text-ink-mute hover:border-[#b56b5f]/60 hover:text-[#d49185]"
-                        }`}
-                        title={isOff ? "Mark as available" : "Mark as away today"}
+                        className="text-[10px] font-medium tracking-[0.08em] uppercase text-ink-mute hover:text-ink transition"
                       >
-                        {isOff ? "Mark available" : "Mark away"}
+                        {isOff ? "On" : "Away"}
                       </button>
                     )}
                   </div>
@@ -471,50 +387,53 @@ export default function OwnerDashboard() {
               );
             })}
           </div>
-        )}
-        <div className="px-5 py-3 border-t border-line text-[10px] text-ink-mute italic font-display">
-          Staff counts show completed visits today — not relative comparisons.
+          <div className="text-[10px] text-ink-mute mt-2 italic font-display">
+            Who is here — not who is fastest.
+          </div>
         </div>
-      </Card>
+      </div>
 
-      {/* The one chart, full width along the bottom. See WaitToday. */}
+      {/* ── 3. WHAT NEEDS A LOOK ──────────────────────────────────
+          Silent when nothing is wrong. A panel that always says something is
+          a panel people stop reading, and "all quiet" in a large box is the
+          most expensive way to say nothing. */}
+      {signals.length > 0 && (
+        <div className="mb-8 flex flex-col gap-2">
+          {signals.slice(0, 3).map((sig, i) => (
+            <div
+              key={i}
+              className={`border-l-2 pl-4 py-2 text-[12.5px] ${
+                sig.tone === "warn"
+                  ? "border-l-[#b56b5f] text-[#d49185]"
+                  : "border-l-gold-deep text-gold-soft"
+              }`}
+            >
+              {sig.text}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Deeper, underneath ────────────────────────────────────
+          Answers "why is this happening", not "what should I do now", so it
+          sits below everything operational. */}
+      <WaitToday samples={stats?.waitSamples} loading={loading} />
+
+      {/* Counters live behind a link rather than a grid of cards. Configuring
+          them is a Settings job, and seeing them is already covered by the
+          counters-open figure at the top. */}
       <div className="mt-6">
-        <WaitToday samples={stats?.waitSamples} loading={loading} />
+        <button
+          onClick={() => navigate("../stations")}
+          className="text-[11px] font-medium tracking-[0.08em] uppercase text-ink-mute hover:text-gold-soft transition"
+        >
+          Counters and staffing →
+        </button>
       </div>
     </div>
   );
 }
 
-/* ── Assign staff to a station ──────────────────────────────────────── */
-function AssignStaffSelect({ stationId, currentStaffId, roster, onAssigned }) {
-  const [busy, setBusy] = useState(false);
-
-  async function assign(staffId) {
-    setBusy(true);
-    await supabase
-      .from("stations")
-      .update({ staff_id: staffId || null })
-      .eq("id", stationId);
-    setBusy(false);
-    onAssigned();
-  }
-
-  return (
-    <select
-      value={currentStaffId ?? ""}
-      onChange={(e) => assign(e.target.value)}
-      disabled={busy}
-      className="w-full text-[9px] ovline bg-transparent border border-line text-ink-mute px-2 py-1 hover:border-gold-deep/50 focus:outline-none focus:border-gold-deep transition disabled:opacity-40"
-    >
-      <option value="">Unassigned</option>
-      {roster.map((s) => (
-        <option key={s.id} value={s.id} disabled={s.status === "off"}>
-          {s.display_name}{s.status === "off" ? " (away)" : ""}
-        </option>
-      ))}
-    </select>
-  );
-}
 
 /* ── WaitToday ───────────────────────────────────────────────────────
    The one chart on this page, full width along the bottom.
