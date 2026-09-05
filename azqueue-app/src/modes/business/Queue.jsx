@@ -703,15 +703,46 @@ export default function Queue() {
   }
 
   // Mark current as no-show (skip them). Useful when a customer doesn't show up.
+  /* NO SHOW IS NOT A COMPLETION.
+     This used to write completed_at, which meant every no-show contributed a
+     service time to the averages — the identical bug that made the nightly
+     sweep's numbers meaningless. expired_at is the field that means "we
+     stopped waiting on this", and nothing counts it as a served visit.
+
+     The person is also remembered for the rest of the session, because the
+     common case is somebody who went to the toilet and walks back two
+     minutes later. Losing them permanently on a mis-tap is a worse outcome
+     than a small strip on the screen. */
+  const [recentNoShows, setRecentNoShows] = useState([]);
+
   async function skipServing() {
     if (!serving) return;
+    const person = serving;
     setBusy(true);
     setError(null);
     const { error: e } = await supabase
       .from("tickets")
-      .update({ status: "no_show", completed_at: new Date().toISOString() })
-      .eq("id", serving.id);
+      .update({ status: "no_show", expired_at: new Date().toISOString() })
+      .eq("id", person.id);
     if (e) { setBusy(false); return setError(e.message); }
+    setRecentNoShows((prev) => [person, ...prev].slice(0, 4));
+    await reload();
+    setBusy(false);
+  }
+
+  /* They turned up after all. Back to waiting, at the front — they already
+     waited once, and sending them to the end of the line for being thirty
+     seconds late is how a queue system makes an office look worse than a
+     paper list. */
+  async function bringBack(ticket) {
+    setBusy(true);
+    setError(null);
+    const { error: e } = await supabase
+      .from("tickets")
+      .update({ status: "waiting", expired_at: null, called_at: null, priority: 1 })
+      .eq("id", ticket.id);
+    if (e) { setBusy(false); return setError(e.message); }
+    setRecentNoShows((prev) => prev.filter((t) => t.id !== ticket.id));
     await reload();
     setBusy(false);
   }
@@ -1573,13 +1604,13 @@ export default function Queue() {
               <button
                 onClick={complete}
                 disabled={busy}
-                style={{ background: "#8a7246" }}
-                className="aspect-[4/3] sm:aspect-auto sm:min-h-[132px] border-2 border-[#b8955a] text-[#f5efe2] hover:brightness-110 transition disabled:opacity-40 px-5 py-5 text-left flex flex-col justify-between"
+                style={{ background: "#7a6238", borderColor: "#c9a86a" }}
+                className="aspect-[4/3] sm:aspect-auto sm:min-h-[132px] border-[3px] text-[#f5efe2] hover:brightness-110 transition disabled:opacity-40 px-5 py-5 text-left flex flex-col justify-between"
               >
-                <div className="font-display text-[20px] font-light tracking-tight leading-tight">
+                <div className="font-display text-[23px] font-normal tracking-tight leading-tight">
                   Done with {serving.customer_name ? serving.customer_name.split(" ")[0] : serving.token}
                 </div>
-                <div className="text-[10px] font-medium tracking-[0.08em] uppercase text-[#f5efe2]/70 mt-2 leading-relaxed">
+                <div className="text-[10.5px] font-medium tracking-[0.1em] uppercase text-[#f5efe2]/85 mt-2 leading-relaxed">
                   {waiting.length > 0
                     ? `Finish and call the next person · ${waiting.length} waiting`
                     : "Finish — nobody else is waiting"}
@@ -1589,13 +1620,13 @@ export default function Queue() {
               <button
                 onClick={startNext}
                 disabled={busy || waiting.length === 0}
-                style={{ background: "#8a7246" }}
-                className="aspect-[4/3] sm:aspect-auto sm:min-h-[132px] border-2 border-[#b8955a] text-[#f5efe2] hover:brightness-110 transition disabled:opacity-30 px-5 py-5 text-left flex flex-col justify-between"
+                style={{ background: "#7a6238", borderColor: "#c9a86a" }}
+                className="aspect-[4/3] sm:aspect-auto sm:min-h-[132px] border-[3px] text-[#f5efe2] hover:brightness-110 transition disabled:opacity-30 px-5 py-5 text-left flex flex-col justify-between"
               >
-                <div className="font-display text-[20px] font-light tracking-tight leading-tight">
+                <div className="font-display text-[23px] font-normal tracking-tight leading-tight">
                   {waiting.length > 0 ? "Call the next person" : "Nobody waiting"}
                 </div>
-                <div className="text-[10px] font-medium tracking-[0.08em] uppercase text-[#f5efe2]/70 mt-2 leading-relaxed">
+                <div className="text-[10.5px] font-medium tracking-[0.1em] uppercase text-[#f5efe2]/85 mt-2 leading-relaxed">
                   {waiting.length > 0
                     ? `${waiting.length} ${waiting.length === 1 ? "person" : "people"} in the queue`
                     : "The queue is empty"}
@@ -1607,11 +1638,11 @@ export default function Queue() {
             <button
               onClick={skipServing}
               disabled={busy || !serving}
-              style={{ background: "#8a6a2a" }}
-              className="aspect-[4/3] sm:aspect-auto sm:min-h-[132px] border-2 border-[#c08a34] text-[#f5ead6] hover:brightness-110 transition disabled:opacity-25 px-5 py-5 text-left flex flex-col justify-between"
+              style={{ background: "#7d5c1e", borderColor: "#d19a3c" }}
+              className="aspect-[4/3] sm:aspect-auto sm:min-h-[132px] border-[3px] text-[#f5ead6] hover:brightness-110 transition disabled:opacity-25 px-5 py-5 text-left flex flex-col justify-between"
             >
-              <div className="font-display text-[20px] font-light tracking-tight leading-tight">No show</div>
-              <div className="text-[10px] font-medium tracking-[0.08em] uppercase text-[#f5ead6]/65 mt-2 leading-relaxed">
+              <div className="font-display text-[23px] font-normal tracking-tight leading-tight">No show</div>
+              <div className="text-[10.5px] font-medium tracking-[0.1em] uppercase text-[#f5ead6]/85 mt-2 leading-relaxed">
                 They never came to the counter
               </div>
             </button>
@@ -1650,6 +1681,35 @@ export default function Queue() {
               </button>
             )}
           </div>
+
+          {/* Answers "I pressed no show, now what?". They sit here for the
+              rest of the session, one tap from being back in the queue. */}
+          {recentNoShows.length > 0 && (
+            <div className="mt-4 border border-amber-800/40 bg-amber-950/10 px-4 py-3">
+              <div className="text-[10px] font-medium tracking-[0.08em] uppercase text-amber-300/80 mb-2">
+                Marked as no show
+              </div>
+              <div className="flex flex-col gap-1.5">
+                {recentNoShows.map((t) => (
+                  <div key={t.id} className="flex items-center justify-between gap-3">
+                    <span className="text-[12.5px] text-ink truncate">
+                      {t.customer_name || t.token}
+                    </span>
+                    <button
+                      onClick={() => bringBack(t)}
+                      disabled={busy}
+                      className="text-[11px] font-medium tracking-[0.08em] uppercase border border-amber-700/70 text-amber-300 px-3 py-1.5 hover:bg-amber-900/25 transition disabled:opacity-40 shrink-0"
+                    >
+                      They're here
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="text-[10.5px] text-ink-mute mt-2.5 leading-relaxed">
+                They keep their original place if you bring them back.
+              </div>
+            </div>
+          )}
 
           {/* The old "Didn't show up" / "Back to the queue" text links were
               removed here — No show is now one of the three tiles, and
@@ -2388,11 +2448,11 @@ function ReassignMenu({ ticket, staffList, onReassign, onBackToQueue, disabled }
       <button
         onClick={() => setOpen((x) => !x)}
         disabled={disabled}
-        style={{ background: "#3d5a3d" }}
-        className="w-full aspect-[4/3] sm:aspect-auto sm:min-h-[132px] border-2 border-[#6b8f6b] text-[#e8f0e8] hover:brightness-110 transition disabled:opacity-25 px-5 py-5 text-left flex flex-col justify-between"
+        style={{ background: "#2f4a2f", borderColor: "#7fa37f" }}
+        className="w-full aspect-[4/3] sm:aspect-auto sm:min-h-[132px] border-[3px] text-[#e8f0e8] hover:brightness-110 transition disabled:opacity-25 px-5 py-5 text-left flex flex-col justify-between"
       >
-        <div className="font-display text-[20px] font-light tracking-tight leading-tight">Hand over</div>
-        <div className="text-[10px] font-medium tracking-[0.08em] uppercase text-[#e8f0e8]/65 mt-2 leading-relaxed">
+        <div className="font-display text-[23px] font-normal tracking-tight leading-tight">Hand over</div>
+        <div className="text-[10.5px] font-medium tracking-[0.1em] uppercase text-[#e8f0e8]/85 mt-2 leading-relaxed">
           Someone else takes this, or back to the line
         </div>
       </button>

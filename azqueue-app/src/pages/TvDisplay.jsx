@@ -1010,7 +1010,7 @@ function TvUpNext({ waiting, services, branded, branchSlug }) {
           Use the tablet at the desk or scan the code — we can only call names that are on this list.
         </div>
         <div style={{ color: "#4a4840", fontSize: "0.8vw", letterSpacing: "0.05em", marginTop: "0.6vh", lineHeight: 1.5 }}>
-          We'll email you when it's your turn. Text message updates coming soon.
+          We'll message you when it's your turn.
         </div>
 
         {branded && (

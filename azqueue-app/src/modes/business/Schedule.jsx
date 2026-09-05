@@ -39,6 +39,7 @@ export default function Schedule() {
   const [services, setServices] = useState([]);
   const [prayerTimes, setPrayerTimes] = useState(null);
   const [date, setDate] = useState(() => new Date());
+  const [copied, setCopied] = useState(false);
   const [slotMinutes, setSlotMinutes] = useState(30);
   const SLOTS = buildSlots(slotMinutes);
 
@@ -307,6 +308,35 @@ export default function Schedule() {
           <Button variant="ghost" size="sm" onClick={() => setDate(addDays(date,  1))}>Next ›</Button>
         </div>
       </header>
+
+      {/* The link customers use to book themselves. Sitting on the Schedule
+          page because this is where someone is thinking about appointments —
+          it was only on the Display Setup page, which nobody visits twice. */}
+      {branch?.slug && (
+        <div className="mb-3 flex items-center gap-3 flex-wrap border border-line px-4 py-2.5">
+          <span className="text-[11px] text-ink-mute shrink-0">Booking link</span>
+          <a
+            href={`/b/${branch.slug}`}
+            target="_blank"
+            rel="noreferrer"
+            className="font-mono text-[11px] text-gold-soft hover:text-gold underline-offset-2 hover:underline break-all"
+          >
+            {typeof window !== "undefined" ? window.location.origin : ""}/b/{branch.slug}
+          </a>
+          <button
+            onClick={() => {
+              try {
+                navigator.clipboard.writeText(`${window.location.origin}/b/${branch.slug}`);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              } catch { /* clipboard blocked — the link is selectable anyway */ }
+            }}
+            className="text-[10px] font-medium tracking-[0.08em] uppercase border border-line px-2.5 py-1 text-ink-mute hover:text-ink hover:border-gold-deep transition ml-auto shrink-0"
+          >
+            {copied ? "Copied" : "Copy"}
+          </button>
+        </div>
+      )}
 
       {/* How long a slot is. Three choices, not a free-text field — an
           office that types 37 minutes has a grid nobody can read. */}

@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { sendConfirmationSms } from "../lib/notifications";
 import { sendCheckinEmail } from "../lib/notifyEmail";
-import { SMS_ENABLED, SMS_PENDING } from "../lib/features";
+import { SMS_ENABLED } from "../lib/features";
 import { estimateWaitFor, formatWait } from "../lib/waitEstimator";
 import QuietSlotNudge from "../components/QuietSlotNudge";
 import ServiceChecklist from "../components/ServiceChecklist";
@@ -529,17 +529,12 @@ export default function CustomerCheckIn() {
             a product being built. It also pre-empts the reasonable question of
             why an office with a screen and a queue is emailing rather than
             texting. */}
-        {(!SMS_ENABLED || SMS_PENDING) && (
-          <div className={`border border-line px-3 py-2.5 ${isKiosk ? "text-[13px]" : "text-[11px]"}`}>
-            <span className="text-ink-soft">Text message updates</span>
-            <span className="text-gold-soft"> · coming soon</span>
-            <div className="text-ink-mute mt-0.5 leading-relaxed">
-              {SMS_ENABLED
-                ? "Texts start shortly — we're waiting on carrier approval. Until then we'll email your ticket and let you know when it's your turn."
-                : "For now we'll email your ticket and let you know when it's your turn."}
-            </div>
-          </div>
-        )}
+        {/* The "text updates · coming soon" notice lived here. It is gone:
+            the A2P campaign was approved on 4 September and texts now send,
+            so promising them as a future feature is simply false. When SMS is
+            switched off entirely, the consent box and phone field disappear
+            and the footer already says we will email — no separate notice is
+            needed to explain an absence nobody can see. */}
 
         {/* SMS consent — separate optional checkbox, unchecked by default (A2P 10DLC requirement).
             Hidden entirely while SMS is unavailable; flip VITE_SMS_ENABLED=true to restore. */}
