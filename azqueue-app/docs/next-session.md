@@ -1,5 +1,26 @@
 # Picking up — written 5 September 2026, ~4:35am Malaysia
 
+## Tomorrow's order — set by Ahmed, 5 September
+
+**Customer and staff first. Schema changes last.**
+
+The reason is the 4 September outage: a migration added a column the deployed
+code already read and took check-in down during office hours. Anything that
+only moves UI can go out safely; anything that touches the database waits
+until the visible work is done and the office is closed.
+
+1. **No-show recovery survives a refresh.** Today's strip lives in React state
+   only, so closing the tab loses everyone marked no-show. Fix by loading
+   today's `status = 'no_show'` tickets on mount instead of remembering them.
+   Read-only query, no migration.
+2. **Page split** — move things onto the page whose question they answer, per
+   the division in `CLAUDE.md`. Thirty-day numbers off Overview. Sort out the
+   overlap between `Insights.jsx` and `ClientIntelligence.jsx`, and decide
+   whether `Manager.jsx` still has a reason to exist now Overview replaced it.
+3. **Then, and only then, schema.** The customer `language` column for
+   translated emails, and anything else needing a migration. Migration first,
+   deploy second — never the reverse.
+
 Everything below is **built locally and not deployed**. Nothing is broken in
 production; nothing here is urgent.
 

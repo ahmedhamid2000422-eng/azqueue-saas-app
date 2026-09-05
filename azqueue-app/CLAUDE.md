@@ -39,6 +39,24 @@ quick walk-ins.
 Docs, migrations that only add nullable columns nothing reads yet, feature
 flags defaulting to off, and anything behind a flag that is off.
 
+## What each page is for
+
+Ahmed's division, 5 September. Anything new goes on the page whose question it
+answers — not wherever it happens to fit.
+
+- **Overview** (`OwnerDashboard.jsx`) — **what is going on right now.** Present
+  tense only. Who is waiting, who is being served, which counters are open.
+  Nothing historical, nothing speculative.
+- **Insights** (`Insights.jsx`) — **what we could do better.** Patterns worth
+  acting on, phrased as something to change. Subject to the data rules below:
+  no advice the measured data cannot support.
+- **Client Intelligence** (`ClientIntelligence.jsx`) — **past history, customer
+  data, and suggestions.** Who has been in before, what they came for, what
+  that implies about the next visit.
+
+A number that describes the last thirty days does not belong on Overview. A
+live count does not belong on Insights.
+
 ## Data rules
 
 **Only use real data from the business. No invented figures, no
