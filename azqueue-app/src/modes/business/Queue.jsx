@@ -1764,10 +1764,10 @@ export default function Queue() {
                 style={{ background: "#7a6238", borderColor: "#c9a86a" }}
                 className="aspect-[4/3] sm:aspect-auto sm:min-h-[132px] border-[3px] text-[#f5efe2] hover:brightness-110 transition disabled:opacity-40 px-5 py-5 text-left flex flex-col justify-between"
               >
-                <div className="font-display text-[23px] font-normal tracking-tight leading-tight">
+                <div className="font-display text-[27px] font-semibold tracking-tightest leading-[1.08]">
                   Done with {serving.customer_name ? serving.customer_name.split(" ")[0] : serving.token}
                 </div>
-                <div className="text-[10.5px] font-medium tracking-[0.1em] uppercase text-[#f5efe2]/85 mt-2 leading-relaxed">
+                <div className="text-[12.5px] font-medium tracking-normal text-[#f5efe2]/80 mt-2.5 leading-snug">
                   {waiting.length > 0
                     ? `Finish and call the next person · ${waiting.length} waiting`
                     : "Finish — nobody else is waiting"}
@@ -1780,10 +1780,10 @@ export default function Queue() {
                 style={{ background: "#7a6238", borderColor: "#c9a86a" }}
                 className="aspect-[4/3] sm:aspect-auto sm:min-h-[132px] border-[3px] text-[#f5efe2] hover:brightness-110 transition disabled:opacity-30 px-5 py-5 text-left flex flex-col justify-between"
               >
-                <div className="font-display text-[23px] font-normal tracking-tight leading-tight">
+                <div className="font-display text-[27px] font-semibold tracking-tightest leading-[1.08]">
                   {waiting.length > 0 ? "Call the next person" : "Nobody waiting"}
                 </div>
-                <div className="text-[10.5px] font-medium tracking-[0.1em] uppercase text-[#f5efe2]/85 mt-2 leading-relaxed">
+                <div className="text-[12.5px] font-medium tracking-normal text-[#f5efe2]/80 mt-2.5 leading-snug">
                   {waiting.length > 0
                     ? `${waiting.length} ${waiting.length === 1 ? "person" : "people"} in the queue`
                     : "The queue is empty"}
@@ -1806,8 +1806,8 @@ export default function Queue() {
               style={{ background: "rgba(125,92,30,0.12)", borderColor: "#d19a3c" }}
               className="aspect-[4/3] sm:aspect-auto sm:min-h-[132px] border-2 text-[#e8c07a] hover:bg-[rgba(125,92,30,0.22)] transition disabled:opacity-25 px-5 py-5 text-left flex flex-col justify-between"
             >
-              <div className="font-display text-[23px] font-normal tracking-tight leading-tight">No show</div>
-              <div className="text-[10.5px] font-medium tracking-[0.1em] uppercase text-[#e8c07a]/75 mt-2 leading-relaxed">
+              <div className="font-display text-[27px] font-semibold tracking-tightest leading-[1.08]">No show</div>
+              <div className="text-[12.5px] font-medium tracking-normal text-[#e8c07a]/70 mt-2.5 leading-snug">
                 They never came to the counter
               </div>
             </button>
@@ -2674,8 +2674,8 @@ function ReassignMenu({ ticket, staffList, onReassign, onBackToQueue, disabled }
         style={{ background: "rgba(47,74,47,0.16)", borderColor: "#7fa37f" }}
         className="w-full aspect-[4/3] sm:aspect-auto sm:min-h-[132px] border-2 text-[#a8c9a8] hover:bg-[rgba(47,74,47,0.28)] transition disabled:opacity-25 px-5 py-5 text-left flex flex-col justify-between"
       >
-        <div className="font-display text-[23px] font-normal tracking-tight leading-tight">Hand over</div>
-        <div className="text-[10.5px] font-medium tracking-[0.1em] uppercase text-[#a8c9a8]/75 mt-2 leading-relaxed">
+        <div className="font-display text-[27px] font-semibold tracking-tightest leading-[1.08]">Hand over</div>
+        <div className="text-[12.5px] font-medium tracking-normal text-[#a8c9a8]/70 mt-2.5 leading-snug">
           Someone else takes this, or back to the line
         </div>
       </button>
