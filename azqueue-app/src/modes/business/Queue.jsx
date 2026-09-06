@@ -19,7 +19,8 @@ import { sendWaitUpdate } from "../../lib/notify";
 import { sendCalledEmail } from "../../lib/notifyEmail";
 import { postBranchAlert, broadcastToQueue, loadActiveAlert, clearBranchAlert } from "../../lib/alerts";
 import { SMS_ENABLED, TURN_TIMEOUT_MINUTES, NEAR_FRONT_POSITION, INTERCEPT_AFTER_MINUTES } from "../../lib/features";
-import { sendWaitEmail } from "../../lib/notifyEmail";
+import { sendWaitEmail, sendChecklistEmail } from "../../lib/notifyEmail";
+import { getEffectiveChecklist } from "../../lib/checklists";
 import { announceTicket } from "../../lib/tts";
 import { arrivalState, formatEta } from "../../lib/arrival";
 import { loadOpenEscalations, resolveEscalation } from "../../lib/sla";
@@ -911,6 +912,90 @@ export default function Queue() {
   // ── "Your turn" nudge ──────────────────────────────────────────────
   // Re-sends the "come to the counter" notice on every channel we have for
   // this customer: email always, SMS as well once it's re-enabled.
+  /* Nudge somebody who is still WAITING — not the person at the counter.
+     Email only, and deliberately so.
+
+     The old button reused sendYourTurn, which sends approved sample 2:
+     "You're up - please come to the counter now." Sent to a waiting customer
+     that is a false statement — they are not up — and if they act on it they
+     walk to the desk and get told to sit down again. Then they receive the
+     identical text a second time when they really are called.
+
+     It matched the declared sample, so it was never a campaign violation.
+     It was just untrue. Email carries no sample constraint, so here we can
+     say the thing that is actually the case: you are near the front. There
+     is already a template for exactly this — queue-email's "wait" case,
+     "You're almost up" — it simply was not wired to this button.
+
+     No SMS path. Saying this by text would need a sixth sample on an
+     approved campaign, and the campaign is not being reopened. */
+  /* Email a customer the document list for their service, from the counter.
+     Email only — a checklist has no approved A2P sample, and sendChecklistSms
+     throws by design rather than sending something undeclared.
+
+     `getEffectiveChecklist` returns the branch's custom list if one has been
+     saved and the built-in otherwise. Note the known limitation: custom lists
+     live in localStorage, so a list edited on the office desktop is not the
+     one this device will send. The built-ins are in the code and are the same
+     everywhere. */
+  const [checklistSent, setChecklistSent] = useState({});
+
+  async function emailChecklist(ticket) {
+    if (!ticket?.customer_email) return;
+    const serviceName = serviceNameMap[ticket.service_id];
+    const checklist = serviceName ? getEffectiveChecklist(branch?.id, serviceName) : null;
+    if (!checklist?.items?.length) {
+      setChecklistSent((p) => ({ ...p, [ticket.id]: "error" }));
+      setError(
+        `No document list exists for ${serviceName || "this service"}. Add one in Settings → Checklists.`
+      );
+      return;
+    }
+    setChecklistSent((p) => ({ ...p, [ticket.id]: "sending" }));
+    try {
+      await sendChecklistEmail({
+        email:       ticket.customer_email,
+        serviceName,
+        items:       checklist.items,
+        reminder:    checklist.reminder ?? null,
+        branchName:  branch?.name ?? "AzQueue",
+        quietPhrase: null,
+      });
+      setChecklistSent((p) => ({ ...p, [ticket.id]: "sent" }));
+      setTimeout(() => setChecklistSent((p) => {
+        const next = { ...p };
+        delete next[ticket.id];
+        return next;
+      }), 4000);
+    } catch (err) {
+      console.error("[Queue] checklist email failed", err);
+      setChecklistSent((p) => ({ ...p, [ticket.id]: "error" }));
+    }
+  }
+
+  async function nudgeWaiting(ticket, position) {
+    if (!ticket.customer_email) return;
+    setSmsSent((prev) => ({ ...prev, [ticket.id]: "sending" }));
+    try {
+      await sendWaitEmail({
+        email:      ticket.customer_email,
+        name:       ticket.customer_name ?? "there",
+        position,
+        branchName: branch?.name ?? "AzQueue",
+        ticketId:   ticket.id,
+      });
+      setSmsSent((prev) => ({ ...prev, [ticket.id]: "sent" }));
+      setTimeout(() => setSmsSent((prev) => {
+        const next = { ...prev };
+        delete next[ticket.id];
+        return next;
+      }), 4000);
+    } catch (err) {
+      console.error("[Queue] waiting nudge failed", err);
+      setSmsSent((prev) => ({ ...prev, [ticket.id]: "error" }));
+    }
+  }
+
   async function sendYourTurn(ticket) {
     if (!ticket.customer_email && !ticket.customer_phone) return;
     setSmsSent((prev) => ({ ...prev, [ticket.id]: "sending" }));
@@ -1659,15 +1744,23 @@ export default function Queue() {
               </button>
             )}
 
-            {/* Amber, not red. A no-show is an ordinary outcome. */}
+            {/* Outlined, not filled. Three solid tiles at equal weight is the
+                same as none — the eye has nowhere to land and every action
+                looks equally like the thing to press next.
+
+                Only the action required on every visit is filled. No show
+                and Hand over are real but occasional, so they keep the amber
+                and green as an outline and a tint. Amber, not red: a no-show
+                is an ordinary outcome, and red would make normal days look
+                like bad ones. */}
             <button
               onClick={skipServing}
               disabled={busy || !serving}
-              style={{ background: "#7d5c1e", borderColor: "#d19a3c" }}
-              className="aspect-[4/3] sm:aspect-auto sm:min-h-[132px] border-[3px] text-[#f5ead6] hover:brightness-110 transition disabled:opacity-25 px-5 py-5 text-left flex flex-col justify-between"
+              style={{ background: "rgba(125,92,30,0.12)", borderColor: "#d19a3c" }}
+              className="aspect-[4/3] sm:aspect-auto sm:min-h-[132px] border-2 text-[#e8c07a] hover:bg-[rgba(125,92,30,0.22)] transition disabled:opacity-25 px-5 py-5 text-left flex flex-col justify-between"
             >
               <div className="font-display text-[23px] font-normal tracking-tight leading-tight">No show</div>
-              <div className="text-[10.5px] font-medium tracking-[0.1em] uppercase text-[#f5ead6]/85 mt-2 leading-relaxed">
+              <div className="text-[10.5px] font-medium tracking-[0.1em] uppercase text-[#e8c07a]/75 mt-2 leading-relaxed">
                 They never came to the counter
               </div>
             </button>
@@ -1681,30 +1774,16 @@ export default function Queue() {
                 disabled={busy}
               />
             )}
-            {(serving?.customer_email || serving?.customer_phone) && (
-              <button
-                onClick={() => sendYourTurn(serving)}
-                disabled={smsSent[serving.id] === "sending"}
-                title="Re-send the 'Your turn' notice on every channel we have"
-                className={`text-[11px] px-3 py-1.5 border leading-none transition-colors ${
-                  smsSent[serving.id] === "sent"
-                    ? "border-[#506b50] text-[#9bbd9b]"
-                    : smsSent[serving.id] === "error"
-                    ? "border-red-800 text-red-400"
-                    : smsSent[serving.id] === "sending"
-                    ? "border-line text-ink-mute cursor-wait"
-                    : "border-line text-ink-mute hover:border-[#74b9e8] hover:text-[#74b9e8]"
-                }`}
-              >
-                {smsSent[serving.id] === "sent"
-                  ? "Nudge sent ✓"
-                  : smsSent[serving.id] === "error"
-                  ? "Nudge failed ✗"
-                  : smsSent[serving.id] === "sending"
-                  ? "Sending…"
-                  : SMS_ENABLED ? "📣 Nudge customer" : "✉ Nudge by email"}
-              </button>
-            )}
+            {/* The manual "Nudge customer" re-send was removed on 5 September.
+                Calling someone already sends the "it's your turn" email, and
+                the SMS too when a number is on the ticket — startNext() fires
+                both before this tile row even re-renders. So the button
+                re-sent a notice the customer had just received, and it was
+                the only non-tile control in a row of tiles, which is exactly
+                the extra weight the counter screen does not need.
+
+                Nudging still exists where it is actually useful: on a waiting
+                row, for somebody who has not been called yet. */}
           </div>
 
           {/* Answers "I pressed no show, now what?". They sit here for the
@@ -1930,12 +2009,14 @@ export default function Queue() {
                       </span>
                     )}
                   </div>
-                  {/* "Your turn" nudge — sends on every channel we have for them */}
-                  {(t.customer_email || t.customer_phone) && (
+                  {/* "Almost your turn" — email only. See nudgeWaiting: the
+                      SMS wording approved for this campaign says the customer
+                      is up now, which is not true of anyone in this list. */}
+                  {t.customer_email && (
                     <button
-                      onClick={() => sendYourTurn(t)}
+                      onClick={() => nudgeWaiting(t, i + 1)}
                       disabled={smsSent[t.id] === "sending"}
-                      title={SMS_ENABLED ? "Send 'Your turn' by email and SMS" : "Send 'Your turn' by email"}
+                      title="Email this customer that they're near the front"
                       className={`text-[10px] px-2 py-1 border leading-none transition-colors ${
                         smsSent[t.id] === "sent"
                           ? "border-[#506b50] text-[#9bbd9b]"
@@ -1952,7 +2033,7 @@ export default function Queue() {
                         ? "Failed ✗"
                         : smsSent[t.id] === "sending"
                         ? "…"
-                        : SMS_ENABLED ? "📣 Nudge" : "✉ Email"}
+                        : "✉ Almost up"}
                     </button>
                   )}
                   <TicketActionsMenu
@@ -1962,6 +2043,8 @@ export default function Queue() {
                     onEscalate={() => escalateTicket(t.id)}
                     onReassign={(staffId) => reassignTicket(t.id, staffId)}
                     onCancel={() => cancelTicket(t.id)}
+                    onSendChecklist={() => emailChecklist(t)}
+                    checklistState={checklistSent[t.id]}
                     disabled={busy}
                   />
                 </div>
@@ -2438,7 +2521,7 @@ export default function Queue() {
 }
 
 /* ── TicketActionsMenu ───────────────────────────────────────────────── */
-function TicketActionsMenu({ ticket, staffList, isPriority, onEscalate, onReassign, onCancel, disabled }) {
+function TicketActionsMenu({ ticket, staffList, isPriority, onEscalate, onReassign, onCancel, onSendChecklist, checklistState, disabled }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="relative">
@@ -2460,6 +2543,30 @@ function TicketActionsMenu({ ticket, staffList, isPriority, onEscalate, onReassi
                 className="w-full text-left px-4 py-2 text-[11px] text-ink-soft hover:text-ink hover:bg-white/[0.03] transition"
               >
                 Escalate to front
+              </button>
+            )}
+            {/* Staff-side "what to bring". The kiosk has offered this to
+                customers since it was built, but only they could trigger it —
+                so the common case, a person already in the line who turns out
+                to be missing a document, had no path at all and staff read
+                the list aloud.
+
+                Disabled rather than hidden when there is no email on the
+                ticket: an absent option leaves you wondering, a greyed one
+                with a reason tells you to go and ask for an address. */}
+            {onSendChecklist && (
+              <button
+                onClick={() => { if (ticket.customer_email) { setOpen(false); onSendChecklist(); } }}
+                disabled={!ticket.customer_email || checklistState === "sending"}
+                title={ticket.customer_email
+                  ? "Email this customer the document list for their service"
+                  : "No email address on this ticket"}
+                className="w-full text-left px-4 py-2 text-[11px] text-ink-soft hover:text-ink hover:bg-white/[0.03] transition disabled:opacity-35 disabled:hover:text-ink-soft disabled:hover:bg-transparent"
+              >
+                {checklistState === "sending" ? "Sending…"
+                  : checklistState === "sent"  ? "List sent ✓"
+                  : checklistState === "error" ? "Send failed — try again"
+                  : "Email what to bring"}
               </button>
             )}
             {staffList.length > 1 && staffList.map((s) => (
@@ -2505,11 +2612,11 @@ function ReassignMenu({ ticket, staffList, onReassign, onBackToQueue, disabled }
       <button
         onClick={() => setOpen((x) => !x)}
         disabled={disabled}
-        style={{ background: "#2f4a2f", borderColor: "#7fa37f" }}
-        className="w-full aspect-[4/3] sm:aspect-auto sm:min-h-[132px] border-[3px] text-[#e8f0e8] hover:brightness-110 transition disabled:opacity-25 px-5 py-5 text-left flex flex-col justify-between"
+        style={{ background: "rgba(47,74,47,0.16)", borderColor: "#7fa37f" }}
+        className="w-full aspect-[4/3] sm:aspect-auto sm:min-h-[132px] border-2 text-[#a8c9a8] hover:bg-[rgba(47,74,47,0.28)] transition disabled:opacity-25 px-5 py-5 text-left flex flex-col justify-between"
       >
         <div className="font-display text-[23px] font-normal tracking-tight leading-tight">Hand over</div>
-        <div className="text-[10.5px] font-medium tracking-[0.1em] uppercase text-[#e8f0e8]/85 mt-2 leading-relaxed">
+        <div className="text-[10.5px] font-medium tracking-[0.1em] uppercase text-[#a8c9a8]/75 mt-2 leading-relaxed">
           Someone else takes this, or back to the line
         </div>
       </button>
