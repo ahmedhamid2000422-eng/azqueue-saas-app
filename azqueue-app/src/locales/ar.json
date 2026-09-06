@@ -5,7 +5,8 @@
     "cancel": "إلغاء",
     "loading": "جارٍ التحميل…",
     "error": "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
-    "powered_by": "بدعم من AzQueue"
+    "powered_by": "بدعم من AzQueue",
+    "next": "التالي"
   },
   "checkin": {
     "title": "تسجيل الوصول",

@@ -5,7 +5,8 @@
     "cancel": "ሰርዝ",
     "loading": "ይጽዕን ኣሎ…",
     "error": "ጸገም ኣጋጢሙ። በጃኹም እንደገና ፈትኑ።",
-    "powered_by": "ብAzQueue ዝሰርሕ"
+    "powered_by": "ብAzQueue ዝሰርሕ",
+    "next": "ቀጻሊ"
   },
   "checkin": {
     "title": "ተመዝገቡ",

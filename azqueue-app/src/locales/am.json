@@ -5,7 +5,8 @@
     "cancel": "ሰርዝ",
     "loading": "በመጫን ላይ…",
     "error": "የሆነ ችግር ተፈጥሯል። እባክዎ እንደገና ይሞክሩ።",
-    "powered_by": "በAzQueue የተጎላበተ"
+    "powered_by": "በAzQueue የተጎላበተ",
+    "next": "ቀጣይ"
   },
   "checkin": {
     "title": "ይመዝገቡ",

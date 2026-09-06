@@ -5,7 +5,8 @@
     "cancel": "Cancel",
     "loading": "Loading…",
     "error": "Something went wrong. Please try again.",
-    "powered_by": "Powered by AzQueue"
+    "powered_by": "Powered by AzQueue",
+    "next": "Next"
   },
   "checkin": {
     "title": "Check in",

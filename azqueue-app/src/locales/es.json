@@ -5,7 +5,8 @@
     "cancel": "Cancelar",
     "loading": "Cargando…",
     "error": "Algo salió mal. Inténtelo de nuevo.",
-    "powered_by": "Con tecnología de AzQueue"
+    "powered_by": "Con tecnología de AzQueue",
+    "next": "Siguiente"
   },
   "checkin": {
     "title": "Registrarse",

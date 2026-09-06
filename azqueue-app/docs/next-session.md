@@ -17,6 +17,40 @@ until the visible work is done and the office is closed.
    the division in `CLAUDE.md`. Thirty-day numbers off Overview. Sort out the
    overlap between `Insights.jsx` and `ClientIntelligence.jsx`, and decide
    whether `Manager.jsx` still has a reason to exist now Overview replaced it.
+### Language bugs Ahmed hit, 5 September — diagnosed, mostly not fixed
+
+**1. Picking Arabic flips the staff screens too, and it sticks.**
+`i18n.js` `applyDir()` sets `document.documentElement.dir = "rtl"` on the
+whole document, and the detector caches the choice in `localStorage` under
+`azq.lang`. So a customer choosing Arabic on the kiosk flips the entire app
+on that device — Queue page included — and it stays flipped after they walk
+away, because nothing resets it.
+
+Two things to decide, and they are separate:
+- Should the *staff* UI ever go RTL? Almost certainly not: one shared login,
+  and the people using it read the interface in English.
+- The kiosk should reset to English after a check-in completes. Right now
+  the next customer inherits the last one's language.
+
+Likely fix: scope `dir` to the customer-facing subtree instead of `<html>`,
+and clear `azq.lang` when the kiosk returns to its idle screen.
+
+**2. Some screens still render English in every language.**
+Not an i18n wiring fault — `i18n.js` loads all six locales correctly and each
+file has all 75 keys. The cause is that only 31 strings on the check-in page
+go through `t()` at all; the rest are literal English in the JSX, so they can
+never translate. The step flow added on 5 September is the main offender.
+
+Fixed already: `common.next` was used by the new step buttons and did not
+exist in any of the six locales. Added to all six.
+
+Still to do: audit the check-in and booking pages for hardcoded strings and
+move them into the locale files. Tedious, no risk, no schema.
+
+**3. Nobody has checked the Amharic or Tigrinya wording.** Machine-produced
+and unreviewed. A native speaker should read both before this is treated as
+shipped.
+
 3. **Then, and only then, schema.** The customer `language` column for
    translated emails, and anything else needing a migration. Migration first,
    deploy second — never the reverse.
