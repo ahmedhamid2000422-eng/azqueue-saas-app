@@ -28,6 +28,14 @@ export function prettyTime(hhmm) {
  */
 export function hoursForToday(hours, now = new Date()) {
   if (!hours || typeof hours !== "object") return null;
+  if (hours.always_open) {
+    return {
+      closed: false,
+      open: "00:00", close: "23:59",
+      openPretty: "12:00 AM", closePretty: "11:59 PM",
+      override: true,
+    };
+  }
   const key = DAYS[now.getDay()];
   const entry = hours[key];
 
@@ -57,10 +65,24 @@ export function minutesUntilClose(hours, now = new Date()) {
   return diff > 0 ? diff : null;
 }
 
-/** True when the current time falls inside today's trading hours. */
+/**
+ * True when the current time falls inside today's trading hours.
+ *
+ * KNOWN LIMITATION — reads the *device's* clock, not the branch's timezone.
+ * On the kiosk in the waiting room those are the same thing, so check-in
+ * behaves correctly for customers. They are not the same for anyone testing
+ * from another country: Ahmed in Malaysia is ~14 hours ahead of Denver, so
+ * the office reads as closed through most of his working day. That is what
+ * the `always_open` override exists for.
+ *
+ * The real fix is to compare against the branch timezone rather than the
+ * device — which needs the branch passed in here, and a change at every
+ * caller. Worth doing; not worth doing at the same time as everything else.
+ */
 export function isOpenNow(hours, now = new Date()) {
   const t = hoursForToday(hours, now);
   if (!t || t.closed) return false;
+  if (t.override) return true;
   const mins = now.getHours() * 60 + now.getMinutes();
   const toMin = (s) => { const [h, m] = s.split(":").map(Number); return h * 60 + m; };
   return mins >= toMin(t.open) && mins < toMin(t.close);

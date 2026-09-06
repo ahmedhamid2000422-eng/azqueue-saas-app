@@ -78,7 +78,8 @@ export default function Settings() {
     { id: "services", label: "Services" },
     { id: "staff",    label: "Staff" },
     ...(WHATSAPP_ENABLED ? [{ id: "support", label: "Support Inbox" }] : []),
-    { id: "modes",    label: "Modes" },
+    { id: "hours",    label: "Hours" },
+    { id: "modes",    label: "Options" },
     { id: "checklists",   label: "Checklists" },
     { id: "loyalty",      label: "Loyalty" },
     ...(INTEGRATIONS_ENABLED ? [{ id: "integrations", label: "Integrations" }] : []),
@@ -122,6 +123,7 @@ export default function Settings() {
       {activeTab === "services" && <ServicesTab branch={branch} />}
       {activeTab === "staff"    && <StaffTab branch={branch} reload={reload} />}
       {activeTab === "support"  && <SupportInboxTab branch={branch} />}
+      {activeTab === "hours"    && <HoursTab branch={branch} reload={reload} />}
       {activeTab === "modes"    && <ModesTab branch={branch} reload={reload} />}
       {activeTab === "checklists"   && <ChecklistsTab branch={branch} />}
       {activeTab === "loyalty"      && <LoyaltyTab branch={branch} />}
@@ -1755,6 +1757,156 @@ function RoleField({ value, onChange }) {
   );
 }
 
+/* ── HOURS ─────────────────────────────────────────────────────────────
+   `branches.hours` already existed and already gated check-in — there was
+   just never a screen to edit it. So the only way to change trading hours
+   was a SQL update, and the only way to test the closed state was to wait
+   for the office to close.
+
+   Shape, unchanged:  {"mon":["09:00","18:00"], "sun":null}
+   A null or missing day means closed.
+
+   `always_open` is an extra key on the same JSON rather than a new column,
+   deliberately: no migration, and migrations are what took check-in down on
+   4 September. `hoursForToday` reads by weekday name, so an extra key is
+   inert to every existing caller. */
+const HOURS_DAYS = [
+  { key: "mon", label: "Monday" },
+  { key: "tue", label: "Tuesday" },
+  { key: "wed", label: "Wednesday" },
+  { key: "thu", label: "Thursday" },
+  { key: "fri", label: "Friday" },
+  { key: "sat", label: "Saturday" },
+  { key: "sun", label: "Sunday" },
+];
+
+function HoursTab({ branch, reload }) {
+  const [draft, setDraft]   = useState(() => branch?.hours ?? {});
+  const [saving, setSaving] = useState(false);
+  const [err, setErr]       = useState(null);
+  const [saved, setSaved]   = useState(false);
+
+  useEffect(() => { setDraft(branch?.hours ?? {}); setSaved(false); }, [branch?.id, branch?.hours]);
+
+  if (!branch) return <Empty hint="Select or create a branch first." />;
+
+  const alwaysOpen = !!draft.always_open;
+
+  function setDay(key, value) {
+    setDraft((d) => ({ ...d, [key]: value }));
+    setSaved(false);
+  }
+
+  function setTime(key, index, value) {
+    const current = Array.isArray(draft[key]) ? [...draft[key]] : ["09:00", "17:00"];
+    current[index] = value;
+    setDay(key, current);
+  }
+
+  async function save() {
+    setSaving(true);
+    setErr(null);
+    const { error } = await supabase
+      .from("branches")
+      .update({ hours: draft })
+      .eq("id", branch.id);
+    setSaving(false);
+    if (error) return setErr(error.message);
+    setSaved(true);
+    await reload();
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* The testing override. Ahmed works from Malaysia, roughly 14 hours
+          ahead of Denver, so the office is almost always closed while he is
+          building — and a closed branch refuses check-ins, which makes the
+          kiosk untestable for most of his working day. */}
+      <Card luxe className="p-7">
+        <Toggle
+          label="Ignore opening hours"
+          desc="Accept check-ins at any time, whatever the hours below say. Use this to test the kiosk out of hours — turn it off before a working day."
+          on={alwaysOpen}
+          setOn={(v) => setDay("always_open", v)}
+        />
+        {alwaysOpen && (
+          <div className="mt-4 border-l border-gold-deep/50 pl-3 text-[11px] text-ink-mute leading-relaxed">
+            While this is on, customers can join the queue at 3am and nothing
+            will stop them. It is for testing, not for a real trading day.
+          </div>
+        )}
+      </Card>
+
+      <Card luxe className="p-7 space-y-4">
+        <div>
+          <div className="text-sm">Opening hours</div>
+          <div className="text-[10px] text-ink-mute mt-0.5">
+            Times are the branch's own local time. Outside these hours the
+            check-in page tells customers you're closed instead of taking a ticket.
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          {HOURS_DAYS.map(({ key, label }) => {
+            const entry  = draft[key];
+            const closed = entry === null || entry === false || entry === undefined;
+            const [open, close] = Array.isArray(entry) ? entry : ["09:00", "17:00"];
+            return (
+              <div key={key} className="grid grid-cols-[110px_1fr] gap-3 items-center py-1.5 border-b border-line last:border-b-0">
+                <button
+                  onClick={() => setDay(key, closed ? ["09:00", "17:00"] : null)}
+                  className="text-left"
+                >
+                  <div className="text-[13px] text-ink">{label}</div>
+                  <div className={`text-[10px] ${closed ? "text-ink-mute" : "text-[#9bbd9b]"}`}>
+                    {closed ? "Closed — tap to open" : "Open"}
+                  </div>
+                </button>
+                {closed ? (
+                  <div className="text-[11px] text-ink-mute">No check-ins accepted</div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="time"
+                      value={open}
+                      onChange={(e) => setTime(key, 0, e.target.value)}
+                      className="bg-transparent border border-line px-2 py-1.5 text-[12px] text-ink"
+                    />
+                    <span className="text-[11px] text-ink-mute">to</span>
+                    <input
+                      type="time"
+                      value={close}
+                      onChange={(e) => setTime(key, 1, e.target.value)}
+                      className="bg-transparent border border-line px-2 py-1.5 text-[12px] text-ink"
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {err && (
+          <div className="text-[11px] text-[#d49185] bg-[#b56b5f]/10 border border-[#b56b5f]/30 px-3 py-2">
+            {err}
+          </div>
+        )}
+
+        <div className="flex items-center gap-3 pt-1">
+          <button
+            onClick={save}
+            disabled={saving}
+            className="bg-gold-deep text-[#141410] px-6 py-2.5 text-[11px] font-semibold tracking-[0.14em] uppercase disabled:opacity-40"
+          >
+            {saving ? "Saving…" : "Save hours"}
+          </button>
+          {saved && <span className="text-[11px] text-[#9bbd9b]">Saved.</span>}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 /* ── MODES (toggles) ───────────────────────────────────────────────── */
 function ModesTab({ branch, reload }) {
   const [ttsOn,      setTtsOn]      = useState(() => isTtsEnabled(branch?.id));
@@ -1785,92 +1937,22 @@ function ModesTab({ branch, reload }) {
     setTtsOn(v);
   }
 
-  async function setBusinessType(type) {
-    if (type === branch.business_type) return;
-    await supabase.from("branches").update({ business_type: type }).eq("id", branch.id);
-    await reload();
-  }
+  /* The business-type picker (Walk-in queue / Gym / Design studio /
+     Architecture firm) was removed on 5 September at Ahmed's request.
 
-  const businessType = branch.business_type ?? "queue";
+     It let anyone re-point a live branch at a different product — picking
+     "Gym" on Az Tax Services would swap the dashboard for class bookings and
+     attendance tracking, mid-trading-day, with no confirmation step. That is
+     a destructive control sitting one tap away from Islamic Mode, and there
+     is exactly one branch that has ever needed it.
+
+     `branches.business_type` is untouched and still read everywhere it was.
+     If a genuinely different kind of business signs up, this belongs in
+     onboarding — chosen once when the branch is created — not in a settings
+     tab the owner opens to change the prayer setting. */
 
   return (
     <div className="space-y-5">
-      <Card luxe className="p-7 space-y-4">
-        <div>
-          <div className="text-sm">Business type</div>
-          <div className="text-[10px] text-ink-mute mt-0.5">
-            Changes which tools show up in your dashboard — pick the one that matches how this branch runs.
-          </div>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <button
-            onClick={() => setBusinessType("queue")}
-            className={`p-4 border text-left transition ${
-              businessType === "queue"
-                ? "border-gold bg-[rgba(201,168,106,0.08)]"
-                : "border-line hover:border-[#3a3a3f]"
-            }`}
-          >
-            <div className={`font-display text-sm font-light mb-1 ${businessType === "queue" ? "text-gold-soft" : "text-ink"}`}>
-              Walk-in queue
-            </div>
-            <div className="text-[10px] text-ink-mute leading-relaxed">
-              Customers take a ticket, wait their turn, and get called — e.g. a tax office or clinic.
-            </div>
-          </button>
-          <button
-            onClick={() => setBusinessType("gym")}
-            className={`p-4 border text-left transition ${
-              businessType === "gym"
-                ? "border-gold bg-[rgba(201,168,106,0.08)]"
-                : "border-line hover:border-[#3a3a3f]"
-            }`}
-          >
-            <div className={`font-display text-sm font-light mb-1 ${businessType === "gym" ? "text-gold-soft" : "text-ink"}`}>
-              Gym / class studio
-            </div>
-            <div className="text-[10px] text-ink-mute leading-relaxed">
-              Students book recurring classes by level, confirm attendance, and build a session history — e.g. a gym or dojo.
-            </div>
-          </button>
-          {/* QA bug C2 — wa-bot/flows.ts has shipped full "design" and
-              "architecture" WhatsApp flows since 0019/0029, but this list
-              only ever offered "queue" and "gym", so those branches could
-              never actually be created. Added here + widened the DB check
-              constraint in migration 0036. */}
-          <button
-            onClick={() => setBusinessType("design")}
-            className={`p-4 border text-left transition ${
-              businessType === "design"
-                ? "border-gold bg-[rgba(201,168,106,0.08)]"
-                : "border-line hover:border-[#3a3a3f]"
-            }`}
-          >
-            <div className={`font-display text-sm font-light mb-1 ${businessType === "design" ? "text-gold-soft" : "text-ink"}`}>
-              Design studio
-            </div>
-            <div className="text-[10px] text-ink-mute leading-relaxed">
-              Leads come in for kitchen, bathroom, or full home renovation projects — e.g. an interior design studio.
-            </div>
-          </button>
-          <button
-            onClick={() => setBusinessType("architecture")}
-            className={`p-4 border text-left transition ${
-              businessType === "architecture"
-                ? "border-gold bg-[rgba(201,168,106,0.08)]"
-                : "border-line hover:border-[#3a3a3f]"
-            }`}
-          >
-            <div className={`font-display text-sm font-light mb-1 ${businessType === "architecture" ? "text-gold-soft" : "text-ink"}`}>
-              Architecture firm
-            </div>
-            <div className="text-[10px] text-ink-mute leading-relaxed">
-              Leads come in for design consultations, site assessments, and permits — e.g. an architecture practice.
-            </div>
-          </button>
-        </div>
-      </Card>
-
       <Card luxe className="p-7 space-y-5">
         {toggleErr && (
           <div className="text-[11px] text-[#d49185] bg-[#b56b5f]/10 border border-[#b56b5f]/30 px-3 py-2">
