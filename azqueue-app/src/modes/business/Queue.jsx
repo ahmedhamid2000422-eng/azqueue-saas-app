@@ -1541,49 +1541,110 @@ export default function Queue() {
             <span className="ovline text-[10px]">Now Serving</span>
             <div className="flex items-center gap-4">
               <span className="ovline text-[10px] text-[#9bbd9b] flex items-center">
-                <span className="pip breathe mr-1.5" /> Counter 1 · Live
+                {/* Was hardcoded "Counter 1 · Live" — on a screen whose whole
+                    job is telling staff what is true right now, and in an
+                    office that has more than one counter. It now names the
+                    station this ticket is actually assigned to, falling back
+                    to the person chosen on this device. */}
+                <span className="pip breathe mr-1.5" />
+                {(serving?.assigned_station_id && stationMap[serving.assigned_station_id])
+                  || (servingStaffId && staffList.find((s) => s.id === servingStaffId)?.display_name)
+                  || "This device"} · Live
               </span>
             </div>
           </div>
 
-          <div
-            key={serving?.token || "empty"}
-            className="drift-up gold-text font-display text-[96px] sm:text-[128px] font-light tracking-tightest leading-none"
-          >
-            {serving?.token || "—"}
-          </div>
-          <div className="text-sm text-ink-soft mt-4 mb-2 tracking-wide">
-            {serving
-              ? <>{serving.customer_name || <span className="text-ink-mute italic">Guest</span>} <span className="text-ink-mute">· {serving.customer_phone}</span></>
-              : <span className="text-ink-mute">No customer in service</span>}
-          </div>
-          {serving && (() => {
-            const svcName = serviceNameMap[serving.service_id] ?? "";
-            const cx = getComplexity(svcName);
-            const waitMin = serving.wait_minutes ?? 0;
-            return (
-              <div className="flex flex-wrap items-center gap-2 mb-1">
-                {svcName && (
-                  <div className={"inline-flex items-center gap-2 text-[9px] border px-2.5 py-1 " + cx.color + " " + cx.border}>
-                    <span>{cx.label}</span>
-                    <span className="opacity-70">{svcName}</span>
-                    <span className="opacity-50">·</span>
-                    <span>~{durationStats[svcName]?.avg ?? cx.estimatedMin}m</span>
-                    {durationStats[svcName] && (
-                      <span className="opacity-50">({durationStats[svcName].count} actual samples)</span>
-                    )}
-                  </div>
-                )}
-                <span className="text-[9px] text-ink-mute border border-line px-2 py-0.5">
-                  Waiting {waitMin} min
-                </span>
-              </div>
-            );
-          })()}
+          {/* LABELLED PAIRS, NOT A WALL OF TEXT.
 
-          {/* Bounce alert — shown when customer has been parked back multiple times */}
+              Every value carries a small-caps label above it — TICKET,
+              SERVICE, STARTED. Staff read this screen while a customer is
+              mid-sentence, and an unlabelled string forces them to work out
+              what they are looking at first. The gold rule down the left is
+              the one mark that says "this is the live one".
+
+              The elapsed timer moved up here from the bottom of the card. It
+              was rendered as small grey overline text below three other
+              blocks, which is where you put something nobody needs — and
+              "how long have I been on this one" is the question the counter
+              actually asks. */}
+          <div className="border-l-[3px] border-gold pl-6 py-1">
+            <div className="flex flex-wrap items-start justify-between gap-6">
+
+              <div className="min-w-[180px]">
+                <div className="text-[10px] font-semibold tracking-[0.22em] uppercase text-ink-mute mb-1">
+                  Ticket
+                </div>
+                <div
+                  key={serving?.token || "empty"}
+                  className="drift-up gold-text font-display text-[84px] sm:text-[104px] font-light tracking-tightest leading-[0.9]"
+                >
+                  {serving?.token || "—"}
+                </div>
+                <div className="text-[13px] text-ink-soft mt-2">
+                  {serving
+                    ? <>{serving.customer_name || <span className="text-ink-mute italic">Guest</span>}
+                        {serving.customer_phone && <span className="text-ink-mute"> · {serving.customer_phone}</span>}</>
+                    : <span className="text-ink-mute">No customer in service</span>}
+                </div>
+              </div>
+
+              {serving && (() => {
+                const svcName = serviceNameMap[serving.service_id] ?? "";
+                const cx = getComplexity(svcName);
+                const stats = durationStats[svcName];
+                return (
+                  <div className="flex-1 min-w-[160px] sm:border-l sm:border-line sm:pl-6 pt-1">
+                    <div className="text-[10px] font-semibold tracking-[0.22em] uppercase text-ink-mute mb-1.5">
+                      Service
+                    </div>
+                    <div className="font-display text-[26px] font-light tracking-tight leading-tight text-ink">
+                      {svcName || "Not set"}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 mt-3">
+                      <span className={"text-[9px] tracking-[0.12em] uppercase border px-2 py-0.5 " + cx.color + " " + cx.border}>
+                        {cx.label}
+                      </span>
+                      {/* Only quote a typical duration when it was measured
+                          here. `cx.estimatedMin` is a built-in guess, and a
+                          guess printed beside real figures reads as fact. */}
+                      {stats && stats.count >= 5 && (
+                        <span className="text-[9px] text-ink-mute border border-line px-2 py-0.5">
+                          Usually ~{stats.avg}m · n={stats.count}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {serving && (
+                <div className="text-right pt-1 shrink-0">
+                  <div className="text-[10px] font-semibold tracking-[0.22em] uppercase text-[#141410] bg-gold px-3 py-1.5 inline-block mb-3">
+                    In service
+                  </div>
+                  <div className="font-display text-[34px] font-light tracking-tight leading-none text-ink tabular-nums">
+                    {String(Math.floor(elapsedSec / 60)).padStart(2, "0")}:{String(elapsedSec % 60).padStart(2, "0")}
+                  </div>
+                  <div className="text-[11px] text-ink-mute mt-1.5">
+                    {serving.started_at
+                      ? `Started ${new Date(serving.started_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
+                      : `Waiting ${serving.wait_minutes ?? 0} min before this`}
+                  </div>
+                  {elapsedSec >= 1800 && (
+                    <div className="text-[10px] text-gold-soft border border-gold-deep/40 px-2 py-0.5 mt-2 inline-block">
+                      Need help? Hand over.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Bounce alert — shown when a customer has been parked back
+              multiple times. Kept below the main block: it is important when
+              it appears and absent on almost every visit. */}
           {serving && (serving.bounce_count ?? 0) >= 2 && (
-            <div className={`text-[11px] px-3 py-2 border flex items-center gap-2 mb-1 ${
+            <div className={`text-[11px] px-3 py-2 border flex items-center gap-2 mt-4 ${
               serving.bounce_count >= 3
                 ? "border-red-900/40 bg-red-950/10 text-red-400"
                 : "border-gold-deep/60 bg-[rgba(201,168,106,0.06)] text-gold-soft"
@@ -1593,20 +1654,6 @@ export default function Queue() {
                 Returned to queue <strong>{serving.bounce_count}×</strong> — this customer may need
                 {serving.bounce_count >= 3 ? " direct manager attention." : " a dedicated counter."}
               </span>
-            </div>
-          )}
-
-          {/* Elapsed time + soft warning */}
-          {serving && (
-            <div className="flex items-center gap-3 mt-3">
-              <span className="ovline text-[9px] text-ink-mute">
-                Time: {String(Math.floor(elapsedSec / 60)).padStart(2, "0")}:{String(elapsedSec % 60).padStart(2, "0")}
-              </span>
-              {elapsedSec >= 1800 && (
-                <span className="text-[10px] text-gold-soft border border-gold-deep/40 px-2 py-0.5">
-                  Need help? Reassign or call backup.
-                </span>
-              )}
             </div>
           )}
 
@@ -1996,10 +2043,22 @@ export default function Queue() {
                       {t.source === "book" ? "Booking" : "Walk-in"}
                     </Badge>
                     {(() => {
-                      const cx = getComplexity(serviceNameMap[t.service_id] ?? "");
+                      /* Complexity tier always; a duration only when this
+                         branch has actually measured one. This used to fall
+                         back to `cx.estimatedMin` — a constant written into
+                         complexity.js, shown in the same badge, in the same
+                         style, as a measured average. Nobody reading the row
+                         could tell which they were looking at.
+
+                         Threshold matches loadStationTimings: below five
+                         visits a mean is noise, not an average. */
+                      const svc = serviceNameMap[t.service_id] ?? "";
+                      const cx = getComplexity(svc);
+                      const d = durationStats[svc];
+                      const measured = d && d.count >= 5 ? d.avg : null;
                       return (
                         <span className={"text-[8px] border px-1.5 py-0.5 leading-none ovline " + cx.color + " " + cx.border}>
-                          {cx.label} · ~{durationStats[serviceNameMap[t.service_id]]?.avg ?? cx.estimatedMin}m
+                          {cx.label}{measured != null ? ` · ~${measured}m` : ""}
                         </span>
                       );
                     })()}
