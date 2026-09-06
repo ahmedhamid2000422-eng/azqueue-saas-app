@@ -379,6 +379,30 @@ export default function Queue() {
     catch { /* private mode */ }
   }
 
+  /* Which physical counter this browser is. Same reasoning as the staff
+     selector above — chosen once per device and remembered.
+
+     This did not exist, and its absence was a silent bug rather than a
+     missing feature. `assigned_station_id` is READ in six places on this
+     page: the "· Live" header, the counter named in the "it's your turn"
+     email and SMS, the green station badge on waiting rows, the TV. But
+     startNext() never wrote it, so it was null on every ticket and all six
+     readers rendered nothing or fell back to a hardcoded "Counter 1".
+
+     The only writer was the manager override on the Stations page. So a
+     customer was told to go to "Counter 1" whichever desk called them. */
+  const STATION_KEY = `azq.servingStation.${branch?.id ?? "none"}`;
+  const [servingStationId, setServingStationId] = useState("");
+  useEffect(() => {
+    if (!branch?.id) return;
+    try { setServingStationId(localStorage.getItem(STATION_KEY) || ""); } catch { /* private mode */ }
+  }, [branch?.id, STATION_KEY]);
+  function chooseServingStation(id) {
+    setServingStationId(id);
+    try { id ? localStorage.setItem(STATION_KEY, id) : localStorage.removeItem(STATION_KEY); }
+    catch { /* private mode */ }
+  }
+
   // Queue analysis — runs whenever waiting list changes
   const queueAnalysis = useMemo(
     () => analyzeQueue({ waiting, serving, staffList, serviceMap: serviceNameMap, durationStats }),
@@ -483,14 +507,22 @@ export default function Queue() {
         /* Who took this one. Null when nobody has been chosen on this device —
            better an honest gap than every visit credited to one person. */
         ...(servingStaffId ? { staff_id: servingStaffId } : {}),
+        /* And WHICH COUNTER. Same rule: only written when this device has
+           been told which one it is. Left null otherwise, so the screens
+           that read it stay silent rather than naming the wrong desk. */
+        ...(servingStationId ? { assigned_station_id: servingStationId } : {}),
       })
       .eq("id", next.id);
     if (e) { setBusy(false); return setError(e.message); }
     sendCallNotice(next.id);
     // Voice announcement (C3) — announce ticket + counter via Web Speech API
-    const counterLabel = (next.assigned_station_id && stationMap[next.assigned_station_id])
-      ? stationMap[next.assigned_station_id]
-      : null;
+    /* `next` is the pre-update row, so it never carries the station we just
+       wrote — read the device's own choice first. Getting this wrong is how
+       the notification says one counter and the screen says another. */
+    const counterLabel =
+      (servingStationId && stationMap[servingStationId]) ||
+      (next.assigned_station_id && stationMap[next.assigned_station_id]) ||
+      null;
     announceTicket({
       token:        next.token,
       customerName: next.customer_name,
@@ -1710,12 +1742,39 @@ export default function Queue() {
               With someone at the counter, finishing them is the next action
               and Complete is the large button. With nobody being served,
               calling the next person is, and it takes the emphasis back. */}
-          {/* Who is at this counter. Sits with the buttons because it is part
-              of the same action, and it only appears when there is more than
-              one person to choose between. */}
+          {/* WHO is at this device, and WHICH COUNTER it is. Two different
+              facts that were previously one control labelled "Serving from
+              this device: Counter 1" — a counter-sounding label over a list
+              of people's names. So it read as the counter picker while
+              setting the staff member, and the actual counter was never set
+              at all.
+
+              Both sit with the buttons because both are part of the same
+              action, and both persist per browser. */}
+          {Object.keys(stationMap).length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <span className="text-[11.5px] text-ink-mute">This device is:</span>
+              <select
+                value={servingStationId}
+                onChange={(e) => chooseServingStation(e.target.value)}
+                className="bg-bg-elev border border-line focus:border-gold-deep outline-none px-2.5 py-1.5 text-[12px] text-ink"
+              >
+                <option value="">Not set</option>
+                {Object.entries(stationMap).map(([id, name]) => (
+                  <option key={id} value={id}>{name}</option>
+                ))}
+              </select>
+              {!servingStationId && (
+                <span className="text-[11px] text-ink-mute">
+                  — pick a counter so customers are told where to go
+                </span>
+              )}
+            </div>
+          )}
+
           {staffList.length > 1 && (
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-[11.5px] text-ink-mute">Serving from this device:</span>
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <span className="text-[11.5px] text-ink-mute">Served by:</span>
               <select
                 value={servingStaffId}
                 onChange={(e) => chooseServingStaff(e.target.value)}
