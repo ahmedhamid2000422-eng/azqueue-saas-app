@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/AuthContext";
 import { useBranch } from "../../lib/BranchContext";
@@ -440,8 +440,20 @@ const DEFAULT_SUBTYPE = {
 
 export default function Onboarding() {
   const { user } = useAuth();
-  const { reload } = useBranch();
+  const { reload, branches, loading: branchLoading } = useBranch();
   const navigate = useNavigate();
+
+  /* This wizard CREATES a branch. Anyone who already has one does not belong
+     here, and reaching it by accident is not harmless: it inserts a second
+     branch and asks for a business type, which is the control that decides
+     whether the dashboard shows a queue or a class timetable.
+
+     Ahmed hit exactly this on 5 September — a refresh where the branch query
+     failed emptied the branch list, Queue read that as "first run", and the
+     live owner of Az Tax Services was dropped into setup. The guard in
+     Queue.jsx stops it at the source; this is the second lock, because a
+     wizard that can duplicate a live branch should refuse on its own rather
+     than trust every caller. */
 
   const [step, setStep] = useState(1);
   const [busy, setBusy] = useState(false);
@@ -568,6 +580,13 @@ export default function Onboarding() {
   }
 
   // ── Render ────────────────────────────────────────────────────────
+  if (branchLoading) {
+    return <div className="p-8 text-ink-mute ovline">Loading…</div>;
+  }
+  if (branches.length > 0) {
+    return <Navigate to="/business/queue" replace />;
+  }
+
   return (
     <div className="atmosphere-hero min-h-[calc(100vh-44px)] p-8">
       <div className="max-w-2xl mx-auto">

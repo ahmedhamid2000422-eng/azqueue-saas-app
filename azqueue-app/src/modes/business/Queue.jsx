@@ -46,7 +46,7 @@ import SetupChecklist from "../../components/SetupChecklist";
 
 export default function Queue() {
   const { user } = useAuth();
-  const { branch, branches, loading: branchLoading, dbReady, reload: reloadBranches } = useBranch();
+  const { branch, branches, loading: branchLoading, dbReady, loadError: branchLoadError, reload: reloadBranches } = useBranch();
 
   // Queue state
   const [tickets, setTickets] = useState([]);
@@ -1272,7 +1272,33 @@ export default function Queue() {
     );
   }
 
-  // First-run user with no branches → kick them through the onboarding wizard
+  /* Could not reach the branch list. NOT the same as having no branches, and
+     it must never send anyone to onboarding — that wizard asks an existing
+     owner to pick a business type, which would re-point a live branch at a
+     different product. Show the failure and offer a retry instead. */
+  if (branchLoadError) {
+    return (
+      <div className="p-8 max-w-lg atmosphere-hero">
+        <div className="ovline mb-2 text-gold-soft">Connection problem</div>
+        <h1 className="font-display text-3xl font-light tracking-tightest mb-3">
+          Couldn't load your branch
+        </h1>
+        <p className="text-ink-soft text-sm leading-relaxed mb-1">
+          The queue is fine — this device just couldn't reach it. Nothing has
+          been changed.
+        </p>
+        <p className="text-[11px] text-ink-mute mb-5">{branchLoadError}</p>
+        <button
+          onClick={reloadBranches}
+          className="bg-gold-deep text-[#141410] px-6 py-2.5 text-[11px] font-semibold tracking-[0.14em] uppercase"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  /* Genuinely a first-run user: the load succeeded and returned nothing. */
   if (!branch) {
     return <Navigate to="/business/onboarding" replace />;
   }
@@ -1772,7 +1798,18 @@ export default function Queue() {
             </div>
           )}
 
-          {staffList.length > 1 && (
+          {/* Always rendered, not gated on staffList.length > 1.
+
+              It was hidden whenever the branch had one staff row, which is
+              also the state a branch is in when its staff records are broken
+              or half-created — so the control that fixes attribution
+              disappeared exactly when it was needed. Every visit then
+              recorded with staff_id null, which is why `with_staff` was 0
+              across the entire history.
+
+              It now also gates the "Waiting for you" panel, so an unset
+              device cannot tell your dad that anyone is waiting for him. */}
+          {staffList.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 mb-4">
               <span className="text-[11.5px] text-ink-mute">Served by:</span>
               <select
@@ -1788,8 +1825,9 @@ export default function Queue() {
                 ))}
               </select>
               {!servingStaffId && (
-                <span className="text-[11px] text-ink-mute">
-                  — pick a name so visits are recorded against the right person
+                <span className="text-[11px] text-[#e8c07a] border border-gold-deep/50 px-2 py-1">
+                  Pick a name — until you do, visits record against nobody and
+                  handovers to this desk stay invisible
                 </span>
               )}
             </div>
@@ -1823,13 +1861,18 @@ export default function Queue() {
                 style={{ background: "#7a6238", borderColor: "#c9a86a" }}
                 className="aspect-[4/3] sm:aspect-auto sm:min-h-[132px] border-[3px] text-[#f5efe2] hover:brightness-110 transition disabled:opacity-40 px-5 py-5 text-left flex flex-col justify-between"
               >
+                {/* One word, then the detail underneath. The name belongs in
+                    the small line: at 27px "Done with Abdirahman" wraps to
+                    two lines and the tile stops matching its neighbours,
+                    and the word that matters is Done. */}
                 <div className="font-display text-[27px] font-semibold tracking-tightest leading-[1.08]">
-                  Done with {serving.customer_name ? serving.customer_name.split(" ")[0] : serving.token}
+                  Done
                 </div>
                 <div className="text-[12.5px] font-medium tracking-normal text-[#f5efe2]/80 mt-2.5 leading-snug">
+                  {serving.customer_name || serving.token}
                   {waiting.length > 0
-                    ? `Finish and call the next person · ${waiting.length} waiting`
-                    : "Finish — nobody else is waiting"}
+                    ? ` · then call the next · ${waiting.length} waiting`
+                    : " · nobody else is waiting"}
                 </div>
               </button>
             ) : (
@@ -1938,6 +1981,43 @@ export default function Queue() {
             title="Up next"
             right={<span className="ovline text-[9px]">{waiting.length} waiting</span>}
           />
+          {/* WAITING FOR YOU.
+
+              When Benyamin hands a customer to Mohamed, Mohamed is at another
+              desk looking at another screen, and until now nothing told him.
+              The handover wrote staff_id and then went quiet.
+
+              No push notification, no sound: this is the screen he already
+              has open while he works, so the answer is to put it where he is
+              looking rather than to interrupt him. Shows only when this
+              device has been told who is sitting at it. */}
+          {servingStaffId && (() => {
+            const mine = waiting.filter((t) => t.staff_id === servingStaffId);
+            if (mine.length === 0) return null;
+            const me = staffList.find((s) => s.id === servingStaffId);
+            return (
+              <div className="mx-5 mt-3 border border-gold-deep/60 bg-[rgba(201,168,106,0.06)] px-4 py-3">
+                <div className="text-[10px] font-semibold tracking-[0.18em] uppercase text-gold-soft mb-2">
+                  Waiting for {me?.display_name ? me.display_name.split(" ")[0] : "you"} · {mine.length}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  {mine.slice(0, 5).map((t) => (
+                    <div key={t.id} className="flex items-center justify-between gap-3">
+                      <span className="text-[12.5px] text-ink truncate">
+                        <span className="font-display text-gold-soft mr-2">{t.token}</span>
+                        {t.customer_name}
+                        <span className="text-ink-mute"> · {serviceNameMap[t.service_id] || "No service set"}</span>
+                      </span>
+                      <span className="text-[11px] text-ink-mute shrink-0">
+                        {t.wait_minutes ?? 0} min
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Who the line is actually waiting for. Answers the question you
               have at the moment of handing someone over: sending them to
               Mohamed means nothing until you know four people are already
@@ -2646,10 +2726,15 @@ function TicketActionsMenu({ ticket, staffList, isPriority, onEscalate, onReassi
       <button
         onClick={() => setOpen((x) => !x)}
         disabled={disabled}
-        className="text-ink-mute hover:text-ink text-xs px-2 py-1 border border-transparent hover:border-line transition disabled:opacity-40"
-        title="Actions"
+        /* Was `text-xs px-2 py-1` — a 12px ellipsis with almost no padding,
+           which is a tap target of roughly 24px on a touch screen. Apple and
+           Google both put the minimum around 44px, and this is the control
+           that holds Escalate, Cancel and Email what to bring. Anything the
+           counter needs mid-visit should not require aiming. */
+        className="text-ink-soft hover:text-ink text-[11px] font-medium tracking-[0.1em] uppercase leading-none px-3 py-2.5 min-h-[40px] border border-line/60 hover:border-line hover:bg-white/[0.04] transition disabled:opacity-40"
+        title="More actions"
       >
-        ···
+        More
       </button>
       {open && (
         <>
@@ -2733,9 +2818,9 @@ function ReassignMenu({ ticket, staffList, onReassign, onBackToQueue, disabled }
         style={{ background: "rgba(47,74,47,0.16)", borderColor: "#7fa37f" }}
         className="w-full aspect-[4/3] sm:aspect-auto sm:min-h-[132px] border-2 text-[#a8c9a8] hover:bg-[rgba(47,74,47,0.28)] transition disabled:opacity-25 px-5 py-5 text-left flex flex-col justify-between"
       >
-        <div className="font-display text-[27px] font-semibold tracking-tightest leading-[1.08]">Hand over</div>
+        <div className="font-display text-[27px] font-semibold tracking-tightest leading-[1.08]">More</div>
         <div className="text-[12.5px] font-medium tracking-normal text-[#a8c9a8]/70 mt-2.5 leading-snug">
-          Someone else takes this, or back to the line
+          Hand to someone else, or put back in the line
         </div>
       </button>
 

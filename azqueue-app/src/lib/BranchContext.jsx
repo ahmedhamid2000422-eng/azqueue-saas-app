@@ -26,6 +26,15 @@ export function BranchProvider({ children }) {
   });
   const [loading, setLoading]     = useState(true);
   const [dbReady, setDbReady]     = useState(true);
+  /* Did the last load actually SUCCEED? Without this, "the query failed" and
+     "this user has no branches" are the same state — an empty array — and
+     callers cannot tell them apart.
+
+     That is not academic. Queue.jsx redirects to the onboarding wizard when
+     it sees no branch, so on any refresh where the auth token had not been
+     restored before this query ran, the owner of a live branch was sent into
+     first-run setup and asked to choose a business type. */
+  const [loadError, setLoadError] = useState(null);
 
   // Load all branches this user can see (owned + staff-linked, via RLS)
   const reload = useCallback(async () => {
@@ -40,11 +49,24 @@ export function BranchProvider({ children }) {
     if (error && /relation .* does not exist|table .* not found/i.test(error.message || "")) {
       setDbReady(false);
       setBranches([]);
+      setLoadError(null);
+      setLoading(false);
+      return;
+    }
+
+    /* Any other error: keep whatever branches we already had and record the
+       failure. Emptying the list here is what produced the false first-run
+       redirect. A stale branch is recoverable; being walked through setup on
+       a live account is not. */
+    if (error) {
+      console.error("[BranchContext] branch load failed", error);
+      setLoadError(error.message || "Could not load branches");
       setLoading(false);
       return;
     }
 
     setDbReady(true);
+    setLoadError(null);
     setBranches(data ?? []);
     setLoading(false);
 
@@ -92,6 +114,7 @@ export function BranchProvider({ children }) {
       select,
       loading,
       dbReady,
+      loadError,
       reload,
     }}>
       {children}
@@ -108,6 +131,7 @@ export function useBranch() {
     select: ctx.select,
     loading: ctx.loading,
     dbReady: ctx.dbReady,
+    loadError: ctx.loadError,
     reload: ctx.reload,
   };
 }
