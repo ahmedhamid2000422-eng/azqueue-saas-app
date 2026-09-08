@@ -20,7 +20,7 @@ import { sendCalledEmail } from "../../lib/notifyEmail";
 import { postBranchAlert, broadcastToQueue, loadActiveAlert, clearBranchAlert } from "../../lib/alerts";
 import { SMS_ENABLED, TURN_TIMEOUT_MINUTES, NEAR_FRONT_POSITION, INTERCEPT_AFTER_MINUTES } from "../../lib/features";
 import { sendWaitEmail, sendChecklistEmail } from "../../lib/notifyEmail";
-import { getEffectiveChecklist } from "../../lib/checklists";
+import { getEffectiveChecklist, primeChecklists } from "../../lib/checklists";
 import { announceTicket } from "../../lib/tts";
 import { arrivalState, formatEta } from "../../lib/arrival";
 import { loadOpenEscalations, resolveEscalation } from "../../lib/sla";
@@ -391,6 +391,14 @@ export default function Queue() {
 
      The only writer was the manager override on the Stations page. So a
      customer was told to go to "Counter 1" whichever desk called them. */
+  /* Branch checklist overrides (0062), so "Email what to bring" sends the
+     list this office actually edited rather than the built-in one. Was
+     localStorage, which meant the counter iPad and the office desktop could
+     send two different lists for the same service. */
+  useEffect(() => {
+    if (branch?.id) primeChecklists(branch.id);
+  }, [branch?.id]);
+
   const STATION_KEY = `azq.servingStation.${branch?.id ?? "none"}`;
   const [servingStationId, setServingStationId] = useState("");
   useEffect(() => {

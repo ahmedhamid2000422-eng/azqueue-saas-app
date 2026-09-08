@@ -19,6 +19,7 @@ import SmsPolicy from "./pages/SmsPolicy";
 import BusinessHome, { businessForHost } from "./pages/BusinessHome";
 import CustomerTicket from "./pages/CustomerTicket";
 import TvDisplay from "./pages/TvDisplay";
+import WhatToBring from "./pages/WhatToBring";
 import BookingPage from "./pages/BookingPage";
 import SurveyPage from "./pages/SurveyPage";
 import MarketSurveyPage from "./pages/MarketSurveyPage";
@@ -68,6 +69,7 @@ export default function App() {
       {/* Public customer-side flow — no auth */}
       <Route path="/q/:slug"           element={<CustomerCheckIn />} />
       <Route path="/q/:slug/pickup"    element={<PickupKiosk />} />
+      <Route path="/q/:slug/what-to-bring" element={<WhatToBring />} />
       <Route path="/t/:ticketId"       element={<CustomerTicket />} />
       <Route path="/display/:slug"     element={<TvDisplay />} />
       <Route path="/b/:slug"           element={<BookingPage />} />

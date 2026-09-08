@@ -20,9 +20,10 @@ import {
   getChecklist,
   buildChecklistMessage,
   loadCustomChecklists,
-  saveCustomChecklist,
-  resetCustomChecklist,
   getEffectiveChecklist,
+  primeChecklists,
+  saveBranchChecklist,
+  resetBranchChecklist,
 } from "../../lib/checklists";
 import {
   getFreshdeskConfig,
@@ -2122,10 +2123,14 @@ function ChecklistsTab({ branch }) {
       .eq("branch_id", branch.id)
       .eq("active", true)
       .order("name")
-      .then(({ data }) => {
+      .then(async ({ data }) => {
         const svcs = data ?? [];
         setServices(svcs);
-        if (svcs.length && !selected) pickService(svcs[0].name, branch.id);
+        /* Overrides come from the database now (0062). Prime before the first
+           pickService, or the editor opens showing the built-in list and
+           silently overwrites a saved one when you press Save. */
+        await primeChecklists(branch.id);
+        if (svcs.length) pickService(svcs[0].name, branch.id);
       });
   }, [branch?.id]);
 
@@ -2139,23 +2144,40 @@ function ChecklistsTab({ branch }) {
     setReminder(effective?.reminder ?? "");
   }
 
-  function handleSave() {
+  /* Saves to the database, not this browser. Before 0062 an edit made here
+     existed only on the machine that made it — the kiosk two metres away kept
+     handing out the old list, and nothing said so. */
+  const [saveErr, setSaveErr] = useState(null);
+
+  async function handleSave() {
     if (!branch?.id || !selected) return;
     const base = getChecklist(selected);
-    saveCustomChecklist(branch.id, base?.key ?? selected.toLowerCase(), {
-      items: customItems,
-      reminder: reminder.trim() || undefined,
-    });
-    setDirty(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setSaveErr(null);
+    try {
+      await saveBranchChecklist(branch.id, base?.key ?? selected.toLowerCase(), {
+        items: customItems,
+        reminder: reminder.trim() || undefined,
+      });
+      setDirty(false);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      console.error("[Checklists] save failed", err);
+      setSaveErr(err.message || "Could not save. Nothing was changed.");
+    }
   }
 
-  function handleReset() {
+  async function handleReset() {
     if (!branch?.id || !selected) return;
     const base = getChecklist(selected);
-    resetCustomChecklist(branch.id, base?.key ?? selected.toLowerCase());
-    pickService(selected, branch.id);
+    setSaveErr(null);
+    try {
+      await resetBranchChecklist(branch.id, base?.key ?? selected.toLowerCase());
+      pickService(selected, branch.id);
+    } catch (err) {
+      console.error("[Checklists] reset failed", err);
+      setSaveErr(err.message || "Could not reset.");
+    }
   }
 
   function addItem(e) {
@@ -2285,6 +2307,15 @@ function ChecklistsTab({ branch }) {
                   </Button>
                 </div>
               </div>
+
+              {/* A failed save must say so. Silence here is worse than an
+                  error: staff would walk away believing the list was updated
+                  and the kiosk would keep sending the old one. */}
+              {saveErr && (
+                <div className="text-[11px] text-[#d49185] bg-[#b56b5f]/10 border border-[#b56b5f]/30 px-3 py-2 mb-3">
+                  {saveErr}
+                </div>
+              )}
 
               {preview ? (
                 /* Message preview */

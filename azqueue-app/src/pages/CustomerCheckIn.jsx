@@ -12,7 +12,7 @@ import { loadHourShape, findQuietHour, quietPhrase } from "../lib/quietHours";
 import { isOpenNow, minutesUntilClose, hoursForToday } from "../lib/openingHours";
 import { findOrCreateCustomer, logQueueEvent, generatePersona } from "../lib/customers";
 import { getCustomerCard, punchDots, hasUnclaimedReward } from "../lib/loyalty";
-import { getEffectiveChecklist, buildChecklistMessage } from "../lib/checklists";
+import { getEffectiveChecklist, buildChecklistMessage, primeChecklists } from "../lib/checklists";
 import { sendMessage } from "../lib/messaging";
 import Button from "../components/Button";
 import LanguagePicker from "../components/LanguagePicker";
@@ -151,6 +151,10 @@ export default function CustomerCheckIn() {
 
       if (!cancelled) {
         setBranch(branchRow);
+        /* Branch checklist overrides (0062). Cached, so this costs one query
+           per branch — and it must land before ServiceChecklist renders, or
+           the kiosk shows the built-in list and swaps it a moment later. */
+        primeChecklists(branchRow.id);
         setServices(svcRows || []);
         // No auto-selection — let the customer choose
         setLoading(false);

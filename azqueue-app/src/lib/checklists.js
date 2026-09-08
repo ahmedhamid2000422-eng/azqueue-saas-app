@@ -1,3 +1,5 @@
+import { supabase } from "./supabase";
+
 /**
  * checklists.js — Document & item checklists per service type.
  *
@@ -809,6 +811,114 @@ export function buildChecklistMessage({ customerName, businessName, serviceName,
   return lines.join("\n");
 }
 
+
+// ── Which lists belong to which kind of business ──────────────────────────
+/*
+   The library carries 52 checklists because it ships with the product. One
+   branch should never see all of them: a tax office offering "Oil Change" and
+   "Vaccination" as case types looks like a demo, and it buries the six lists
+   that matter behind forty-six that do not.
+   Keys match the section headings in DEFAULT_CHECKLISTS above. Anything not
+   listed here is available to every business type — the general fallbacks.
+*/
+export const CHECKLISTS_BY_BUSINESS_TYPE = {
+  queue: [
+    "n-400", "i-485", "i-130", "daca", "asylum", "immigration",
+    "tax preparation", "business tax", "corporate tax", "llc tax",
+    "tax consult", "bookkeeping", "tax",
+    "notary", "legal consult", "contract", "legal",
+  ],
+  gym: ["enrollment", "tutoring", "education"],
+  design: [
+    "design consultation", "interior design", "project meeting",
+    "site assessment", "permit consultation",
+  ],
+  architecture: [
+    "architectural review", "permit consultation", "site assessment",
+    "zoning consultation", "project meeting", "architecture",
+  ],
+};
+
+/** Built-in checklist keys a given business type should be offered. */
+export function checklistKeysForBusinessType(businessType) {
+  const keys = CHECKLISTS_BY_BUSINESS_TYPE[businessType ?? "queue"];
+  if (!keys) return Object.keys(DEFAULT_CHECKLISTS);
+  return keys.filter((k) => DEFAULT_CHECKLISTS[k]);
+}
+
+// ── Branch overrides, loaded from the database ───────────────────────────
+/*
+   getEffectiveChecklist() is called from render paths in five files and is
+   synchronous. Making it async would mean touching every caller, so instead
+   the branch's overrides are fetched once into this cache and read
+   synchronously afterwards.
+
+   Callers prime it with primeChecklists(branchId) on mount. If they forget,
+   nothing breaks — the cache misses and the built-in list is used, which is
+   the same behaviour as before this existed.
+*/
+const overrideCache = new Map();   // branchId -> { [serviceKey]: {items, reminder} }
+
+export async function primeChecklists(branchId) {
+  if (!branchId || overrideCache.has(branchId)) return;
+  try {
+    const { data, error } = await supabase
+      .from("service_checklists")
+      .select("service_key, items, reminder")
+      .eq("branch_id", branchId);
+    if (error) throw error;
+    const map = {};
+    for (const row of data ?? []) {
+      map[row.service_key] = {
+        items: row.items ?? [],
+        reminder: row.reminder || undefined,
+      };
+    }
+    overrideCache.set(branchId, map);
+  } catch (err) {
+    /* A failed load must not blank the checklists — falling back to the
+       built-ins is always safe, and showing nothing is not. */
+    console.error("[checklists] could not load branch overrides", err);
+    overrideCache.set(branchId, {});
+  }
+}
+
+/** Force a refetch — call after saving so the editor shows what it wrote. */
+export function invalidateChecklists(branchId) {
+  overrideCache.delete(branchId);
+}
+
+/** Save an override for this branch. Visible on every device, unlike before. */
+export async function saveBranchChecklist(branchId, serviceKey, { items, reminder }) {
+  const { error } = await supabase
+    .from("service_checklists")
+    .upsert(
+      {
+        branch_id: branchId,
+        service_key: serviceKey,
+        items,
+        reminder: reminder || null,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "branch_id,service_key" }
+    );
+  if (error) throw error;
+  invalidateChecklists(branchId);
+  await primeChecklists(branchId);
+}
+
+/** Drop an override, returning the service to the built-in list. */
+export async function resetBranchChecklist(branchId, serviceKey) {
+  const { error } = await supabase
+    .from("service_checklists")
+    .delete()
+    .eq("branch_id", branchId)
+    .eq("service_key", serviceKey);
+  if (error) throw error;
+  invalidateChecklists(branchId);
+  await primeChecklists(branchId);
+}
+
 // ── Branch-level customization (localStorage) ────────────────────────────
 
 const storageKey = (branchId) => `azqueue_checklists_${branchId}`;
@@ -862,8 +972,12 @@ export function getEffectiveChecklist(branchId, serviceName) {
   const base = getChecklist(serviceName);
   if (!base || !base.needsChecklist) return base;
 
-  const customs = loadCustomChecklists(branchId);
-  const override = customs[base.key];
+  /* Database first. localStorage second, and only as a migration path for
+     branches that customised a list before 0062 — those edits still exist in
+     one browser and should keep working there until someone re-saves them,
+     which writes to the table and makes them visible everywhere. */
+  const fromDb = overrideCache.get(branchId)?.[base.key];
+  const override = fromDb ?? loadCustomChecklists(branchId)[base.key];
   if (!override) return base;
 
   return { ...base, ...override };
