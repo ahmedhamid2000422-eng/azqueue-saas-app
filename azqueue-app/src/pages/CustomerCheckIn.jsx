@@ -19,6 +19,19 @@ import LanguagePicker from "../components/LanguagePicker";
 import { LANGUAGES } from "../lib/i18n";
 import { loadStationServices, stationsForService } from "../lib/stations";
 
+/* ENGLISH ONLY, 15 October — Ahmed's call.
+   The language step is skipped and the header picker hidden; neither is
+   deleted. The six locales still load and still work.
+
+   Module scope rather than inside the component because Shell (bottom of this
+   file) needs it too.
+
+   Why skipped rather than removed: the translations are finished, but the
+   Amharic and Tigrinya wording has still never been read by a native speaker,
+   and an unverified language step in front of every customer is worse than
+   none. Flip this to true to bring it back. */
+const LANGUAGE_STEP_ENABLED = false;
+
 /**
  * Public customer check-in page — the "scan QR → enter the queue" surface.
  * Route: /q/:slug
@@ -40,7 +53,34 @@ export default function CustomerCheckIn() {
      Anything else is someone on their own phone, whether they scanned the
      door code or typed the address. */
 
-  const isKiosk = params.get("kiosk") === "1";
+  /* THE FLAG IS STICKY PER DEVICE, NOT PER URL.
+     ?kiosk=1 alone was too fragile. The moment the iPad lost the query string
+     — someone retyped the address, tapped a link, restored a tab, or the
+     bookmark was replaced — the device silently stopped being a kiosk. That
+     is not a cosmetic downgrade. Three things break at once, and none of them
+     announce themselves:
+
+       1. No auto-reset after check-in, so the ticket screen stays up and
+          somebody has to walk over and send it back by hand.
+       2. The GPS permission prompt appears, because tracking is suppressed
+          on kiosks and nowhere else. A shared counter iPad should never ask
+          a customer for their location.
+       3. Visits record as `own_device`, quietly corrupting the arrival
+          channel split that 0054 exists to measure.
+
+     So once a browser has been told it is the kiosk, it remembers. Clearing
+     it is deliberate: ?kiosk=0. */
+  const KIOSK_KEY = "azq.isKiosk";
+  const kioskParam = params.get("kiosk");
+  const isKiosk = (() => {
+    try {
+      if (kioskParam === "1") { localStorage.setItem(KIOSK_KEY, "1"); return true; }
+      if (kioskParam === "0") { localStorage.removeItem(KIOSK_KEY); return false; }
+      return localStorage.getItem(KIOSK_KEY) === "1";
+    } catch {
+      return kioskParam === "1";   // private mode — fall back to the URL
+    }
+  })();
   const arrivalSource = isKiosk ? "kiosk" : "own_device";
 
   /* ?test=1 marks the ticket so it never reaches a statistic. The owner tests
@@ -65,7 +105,23 @@ export default function CustomerCheckIn() {
 
      Now: language, then what you need, then how to reach you. Each step
      fits without scrolling and asks for exactly one thing. */
-  const [step, setStep] = useState("lang");
+  const [step, setStep] = useState(LANGUAGE_STEP_ENABLED ? "lang" : "service");
+
+  /* Hiding the picker is not enough on its own. Two things would still change
+     the language without anyone choosing it here:
+
+       - i18next's detector reads the browser's own language, so a customer
+         whose phone is set to Spanish gets a Spanish page.
+       - A previous choice is cached in localStorage under azq.lang. Any
+         device where Arabic was ever selected — including during testing —
+         stays Arabic, and Arabic sets dir="rtl" on <html> for the whole app.
+
+     Forcing English on mount clears both, and repairs a kiosk already stuck
+     in the wrong language without anyone having to find the setting. */
+  useEffect(() => {
+    if (!LANGUAGE_STEP_ENABLED && i18n.language !== "en") i18n.changeLanguage("en");
+  }, []);
+
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -358,7 +414,7 @@ export default function CustomerCheckIn() {
           get past it. The picker existed only in the header, which is the
           last place someone looks when they are trying to work out what the
           machine wants. */}
-      {step === "lang" && (
+      {LANGUAGE_STEP_ENABLED && step === "lang" && (
         <div className="mt-6">
           <div className={`text-ink-soft mb-4 ${isKiosk ? "text-lg" : "text-sm"}`}>
             {t("common.language")}
@@ -643,7 +699,12 @@ function Shell({ children, isKiosk }) {
             AzQueue
           </span>
         </div>
-        <LanguagePicker />
+        {/* Hidden while the flow is English-only. Leaving the picker in the
+            header would let a customer switch the page — including into
+            Arabic, which flips `dir` on <html> for the whole app and persists
+            in localStorage, so the next person (and the staff screen on a
+            shared device) inherits a right-to-left layout nobody chose. */}
+        {LANGUAGE_STEP_ENABLED && <LanguagePicker />}
       </header>
       <main className="relative flex-1 overflow-y-auto">
         <div className={"mx-auto px-6 " + (isKiosk ? "py-4 max-w-2xl" : "py-8 max-w-md")}>

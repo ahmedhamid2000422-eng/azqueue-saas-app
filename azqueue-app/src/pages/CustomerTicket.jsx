@@ -25,7 +25,15 @@ export default function CustomerTicket() {
   // Same flag CustomerCheckIn.jsx uses — the iPad kiosk lands here right after
   // a walk-in submits, and needs to show a confirmation then reset itself for
   // the next person rather than sit on one customer's personal ticket forever.
-  const isKiosk = searchParams.get("kiosk") === "1";
+  /* Sticky per device, matching CustomerCheckIn. The URL flag alone meant a
+     kiosk that lost its query string stopped resetting between customers AND
+     started asking for GPS permission — see the long note in
+     CustomerCheckIn.jsx. This page is where both symptoms actually appeared. */
+  const isKiosk = (() => {
+    if (searchParams.get("kiosk") === "1") return true;
+    if (searchParams.get("kiosk") === "0") return false;
+    try { return localStorage.getItem("azq.isKiosk") === "1"; } catch { return false; }
+  })();
   const KIOSK_RESET_SECONDS = 12;
   const [kioskResetIn, setKioskResetIn] = useState(KIOSK_RESET_SECONDS);
 
