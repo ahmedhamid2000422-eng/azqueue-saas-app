@@ -112,16 +112,24 @@ Deno.serve(async (req) => {
 
   for (const b of branches) {
     const [today, trend, bookings, surveys] = await Promise.all([
-      q(`tickets?select=id,status,created_at,called_at,started_at,completed_at&branch_id=eq.${b.id}&created_at=gte.${from}&created_at=lte.${until}`),
-      q(`tickets?select=id,status,created_at,called_at,started_at,completed_at&branch_id=eq.${b.id}&created_at=gte.${since}&limit=3000`),
+      /* `expired_at` and `is_test` are selected because without them this
+         report cannot tell a customer who gave up from a ticket the nightly
+         sweep closed, or a real visit from one of Ahmed's test check-ins.
+         Both were previously counted as abandonment. */
+      q(`tickets?select=id,status,created_at,called_at,started_at,completed_at,expired_at&branch_id=eq.${b.id}&is_test=eq.false&created_at=gte.${from}&created_at=lte.${until}`),
+      q(`tickets?select=id,status,created_at,called_at,started_at,completed_at,expired_at&branch_id=eq.${b.id}&is_test=eq.false&created_at=gte.${since}&limit=3000`),
       q(`bookings?select=id,status&branch_id=eq.${b.id}&scheduled_at=gte.${from}&scheduled_at=lte.${until}`),
       q(`surveys?select=rating&branch_id=eq.${b.id}&created_at=gte.${from}&created_at=lte.${until}`),
     ]);
 
     /* ── Today's headline counts ─────────────────────────────────── */
-    const served    = today.filter((t) => t.status === "completed");
-    const cancelled = today.filter((t) => t.status === "cancelled");
-    const noShow    = today.filter((t) => t.status === "no_show");
+    /* Same sweep rule as the trend block below. Today's report runs in the
+       evening, so yesterday's swept tickets can still fall inside the window
+       and would otherwise be counted as customers who gave up today. */
+    const sweptToday = (t: Record<string, unknown>) => t.expired_at != null;
+    const served    = today.filter((t) => t.status === "completed" && !sweptToday(t));
+    const cancelled = today.filter((t) => t.status === "cancelled" && !sweptToday(t));
+    const noShow    = today.filter((t) => t.status === "no_show"   && !sweptToday(t));
     const open      = today.filter((t) => t.status === "waiting" || t.status === "serving");
 
     const waitsToday = today.map((t) => mins(t.created_at, t.called_at)).filter((m): m is number => m != null);
@@ -152,8 +160,25 @@ Deno.serve(async (req) => {
       const durs  = trend.filter((t) => t.status === "completed")
                          .map((t) => mins(t.started_at, t.completed_at))
                          .filter((m): m is number => m != null);
-      const lost  = trend.filter((t) => t.status === "cancelled" || t.status === "no_show").length;
-      const canc  = trend.filter((t) => t.status === "cancelled").length;
+      /* THE BUG THIS FIXES.
+         Abandonment was `cancelled + no_show`, with no exclusion for
+         expired_at. expire_stale_tickets() runs nightly and closes every
+         ticket nobody finished, writing exactly those statuses. So every
+         ticket left open at close became an abandoned customer, the rate sat
+         permanently high, and the figure never moved no matter what the
+         office did — which is what made Ahmed stop believing the email.
+
+         A ticket with expired_at set was swept, not abandoned. Same rule
+         CLAUDE.md already states for completions; it was never applied here.
+
+         What remains is a real walkout: someone who cancelled or was marked
+         no-show by a person, during the day. */
+      const swept = (t: Record<string, unknown>) => t.expired_at != null;
+      const lost  = trend.filter((t) =>
+        !swept(t) && (t.status === "cancelled" || t.status === "no_show")).length;
+      const canc  = trend.filter((t) =>
+        !swept(t) && t.status === "cancelled").length;
+      const sweptCount = trend.filter(swept).length;
 
       const hours = new Set(trend.map((t) => {
         const d = new Date(t.created_at);
@@ -187,7 +212,19 @@ Deno.serve(async (req) => {
                 : "Comfortable slack."));
       }
       f.push(`CANCELLATION RATE: ${Math.round((canc / trend.length) * 100)}%. ` +
-             `ABANDONMENT (cancelled + no-show): ${Math.round((lost / trend.length) * 100)}%.`);
+             `ABANDONMENT (cancelled or no-show by staff, excluding tickets ` +
+             `closed by the nightly sweep): ${Math.round((lost / trend.length) * 100)}% ` +
+             `(n=${trend.length}).`);
+
+      /* Reported separately rather than hidden. A high swept count is a real
+         signal — it means visits are not being closed as they finish — but it
+         is about staff habit, not customers leaving. Conflating the two is
+         what produced a year of identical emails. */
+      if (sweptCount > 0) {
+        f.push(`TICKETS CLOSED BY THE NIGHTLY SWEEP: ${sweptCount} of ${trend.length} ` +
+               `(${Math.round((sweptCount / trend.length) * 100)}%). These were never ` +
+               `marked complete during the day. Not customers leaving.`);
+      }
 
       allFacts.push(...f);
     }
@@ -213,9 +250,13 @@ Deno.serve(async (req) => {
                 "Rules: never invent, estimate or extrapolate a number; only quote figures given. " +
                 "Never use industry averages or example data. If something is not in the statistics, " +
                 "do not mention it. No correlation-as-causation.\n" +
-                "Write 2-4 sentences of plain prose. Lead with whatever most needs attention " +
-                "(queue pressure at or above 1.0, or a high abandonment rate, usually wins). " +
-                "End with one concrete suggestion tied to a specific number. No markdown, no lists.",
+                "Write 2-4 sentences of plain prose. Lead with whatever genuinely stands out " +
+                "in today's figures compared with the trend. Do NOT lead with the same metric " +
+                "every day: if nothing is unusual, say so plainly and keep it to one sentence. " +
+                "A quiet, ordinary day is a valid report and is more useful than a manufactured " +
+                "concern. Quote the sample size when you quote a rate. " +
+                "End with one concrete suggestion only if the data supports one. " +
+                "No markdown, no lists.",
             },
             { role: "user", content: "VERIFIED STATISTICS:\n" + allFacts.join("\n") },
           ],
