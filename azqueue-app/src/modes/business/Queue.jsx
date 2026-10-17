@@ -605,7 +605,13 @@ export default function Queue() {
 
   // directComplete — completes the current ticket without opening the
   // satisfaction survey. Used by the intercept modal ("Complete" option).
-  async function directComplete(ticket, outcome = null) {
+  /* Under two minutes between Call and Done is the signature of catching up
+     rather than serving. Chosen from the October data: the median gap for a
+     Consultation was 1.5 minutes, against a p90 of nearly 20. */
+  const QUICK_CLOSE_SECONDS = 120;
+  const [justCompleted, setJustCompleted] = useState(null);
+
+  async function directComplete(ticket, outcome = null, timingSource = null) {
     setBusy(true);
     setError(null);
     const now = new Date().toISOString();
@@ -615,6 +621,9 @@ export default function Queue() {
         status: "completed",
         completed_at: now,
         ...(outcome ? { outcome } : {}),
+        /* 0066. Left null unless we actually know — an unanswered prompt must
+           not masquerade as a live measurement. */
+        ...(timingSource ? { timing_source: timingSource } : {}),
       })
       .eq("id", ticket.id);
     if (e) { setBusy(false); return setError(e.message); }
@@ -691,9 +700,63 @@ export default function Queue() {
      Now finishing someone IS how you get the next person. The bookkeeping
      is no longer a separate act of discipline; it happens because it is on
      the path to the thing staff actually want. */
-  function complete() {
+  /* ONE TAP, NOT TWO.
+     Done used to open the outcome panel every time, so an ordinary visit cost
+     two taps and a decision at the exact moment a customer is standing there
+     and the next one is watching. Four in five visits are just "done", and
+     making the common case pay for the rare one is how bookkeeping gets
+     deferred to the end of the day — which is what the October data shows
+     happening.
+
+     Now: Done completes immediately. The other three outcomes live behind a
+     smaller control beside it, and an undo strip makes the single tap safe. */
+  async function complete() {
+    if (!serving) return;
+    const ticket = serving;
+    const calledAt = ticket.called_at ? new Date(ticket.called_at).getTime() : null;
+    const secondsOpen = calledAt ? (Date.now() - calledAt) / 1000 : null;
+
+    await directComplete(ticket, "done", null);
+    await reload();
+    await callNextInner();
+
+    /* The toast does two jobs. Always an undo, because one tap needs a way
+       back. And when the visit was open for under two minutes, it asks the
+       question the data cannot answer on its own: was that really a
+       two-minute visit, or are you catching up? */
+    setJustCompleted({
+      ticket,
+      needsTiming: secondsOpen != null && secondsOpen < QUICK_CLOSE_SECONDS,
+    });
+  }
+
+  /* Opens the full outcome panel — needs documents, drop-off, passed on. */
+  function completeWithOutcome() {
     if (!serving) return;
     setCompleting({ ticket: serving, andCallNext: true });
+  }
+
+  /* Undo. Puts the person back at the counter exactly as they were. */
+  async function undoComplete(ticket) {
+    setJustCompleted(null);
+    setBusy(true);
+    const { error: e } = await supabase
+      .from("tickets")
+      .update({ status: "serving", completed_at: null, outcome: null, timing_source: null })
+      .eq("id", ticket.id);
+    if (e) setError(e.message);
+    await reload();
+    setBusy(false);
+  }
+
+  /* Answer to "was that live, or catching up?" — recorded, never inferred. */
+  async function setTiming(ticket, value) {
+    setJustCompleted(null);
+    const { error: e } = await supabase
+      .from("tickets")
+      .update({ timing_source: value })
+      .eq("id", ticket.id);
+    if (e) setError(e.message);
   }
 
   /* Nobody is at the counter yet — the only thing to do is start. */
@@ -1861,6 +1924,57 @@ export default function Queue() {
               Equal-sized squares in a row, matching the card grids used
               everywhere else in the product, rather than one giant button
               and a scatter of text links underneath. */}
+          {/* JUST COMPLETED — undo, and the timing question.
+              Sits above the buttons rather than in a corner: it is about the
+              action just taken, and a toast nobody notices is a toast that
+              lets a mis-tap stand. */}
+          {justCompleted && (
+            <div className="mb-3 border border-gold-deep/60 bg-[rgba(201,168,106,0.07)] px-4 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span className="text-[13px] text-ink">
+                  <span className="font-display text-gold-soft mr-2">
+                    {justCompleted.ticket.token}
+                  </span>
+                  {justCompleted.ticket.customer_name || "Customer"} marked done
+                </span>
+                <button
+                  onClick={() => undoComplete(justCompleted.ticket)}
+                  disabled={busy}
+                  className="text-[11px] font-medium tracking-[0.1em] uppercase border border-line hover:border-gold-deep text-ink-soft hover:text-ink px-3 py-1.5 transition disabled:opacity-40"
+                >
+                  Undo
+                </button>
+              </div>
+
+              {justCompleted.needsTiming && (
+                <div className="mt-3 pt-3 border-t border-gold-deep/30">
+                  <div className="text-[12.5px] text-ink-soft leading-snug mb-2.5">
+                    That was quick — were you with them just now, or catching up
+                    on earlier visits?
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setTiming(justCompleted.ticket, "live")}
+                      className="text-[11px] font-medium tracking-[0.08em] uppercase border border-[#7fa37f] text-[#a8c9a8] hover:bg-[rgba(47,74,47,0.25)] px-3.5 py-1.5 transition"
+                    >
+                      With them just now
+                    </button>
+                    <button
+                      onClick={() => setTiming(justCompleted.ticket, "catch_up")}
+                      className="text-[11px] font-medium tracking-[0.08em] uppercase border border-line text-ink-soft hover:text-ink px-3.5 py-1.5 transition"
+                    >
+                      Catching up
+                    </button>
+                  </div>
+                  <div className="text-[10.5px] text-ink-mute mt-2 leading-relaxed">
+                    Either is fine. It only decides whether this visit counts
+                    towards the timing figures.
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {serving ? (
               <button
@@ -1942,6 +2056,20 @@ export default function Queue() {
                 Nudging still exists where it is actually useful: on a waiting
                 row, for somebody who has not been called yet. */}
           </div>
+
+          {/* The other three outcomes. Deliberately small and deliberately
+              text: "needs documents" and "drop-off" are real and matter, but
+              they are the minority, and giving them equal weight to Done is
+              what made every visit cost a decision. */}
+          {serving && (
+            <button
+              onClick={completeWithOutcome}
+              disabled={busy}
+              className="mt-3 text-[11.5px] text-ink-mute hover:text-ink underline underline-offset-4 decoration-line transition disabled:opacity-40"
+            >
+              Finish differently — needs documents, drop-off, passed to someone else
+            </button>
+          )}
 
           {/* Answers "I pressed no show, now what?". They sit here for the
               rest of the session, one tap from being back in the queue. */}

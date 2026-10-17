@@ -65,8 +65,19 @@ cannot answer a question, say so.
 
 This project has retracted five confident conclusions that were stories
 fitted to data that did not support them. See `docs/statistics-lessons.md`
-for what went wrong each time, and `docs/baseline-2026-09.md` for the
-measured baseline.
+for what went wrong each time.
+
+**The current baseline is `docs/baseline-2026-10.md`.** `baseline-2026-09.md`
+is kept for history and should not be cited — it describes a quieter, less
+instrumented business.
+
+The headline from October: **arrival data is trustworthy, duration data is
+not.** `created_at` is written by the customer at the kiosk. `called_at`,
+`started_at` and `completed_at` are written when a staff member taps a
+button, and those taps do not happen at the moments they describe — median
+"service time" for a consultation reads as 1.5 minutes. Plan staffing from
+arrivals. Do not quote a wait or service time until Call and Done are being
+pressed as things happen.
 
 Practical rules that follow from those mistakes:
 
@@ -75,8 +86,13 @@ Practical rules that follow from those mistakes:
 - Report day by day, never pooled. The pooled median (62.1 min) matches no
   individual clean day (18–47 min).
 - Always filter `is_test = false`.
-- A ticket with `expired_at` set was swept by the nightly job, not served.
-  Never count it as a completion.
+- A ticket with `expired_at` set was swept by a cron job, not served.
+  Never count it as a completion, and never as an abandonment either.
+- **Also filter `status = 'completed'` when measuring durations.** Excluding
+  `expired_at` alone is not enough: until migration 0065 the 30-minute turn
+  timeout wrote `completed_at` on tickets nobody served while leaving
+  `expired_at` null, which forged a month of 30-minute visits. See
+  `docs/baseline-2026-10.md`.
 
 ## Secrets
 

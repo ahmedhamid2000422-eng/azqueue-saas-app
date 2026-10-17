@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Az Tax Services — arrivals, October 2026</title>
+<style>
+  :root{
+    --void:#0b0b0c; --bg:#111112; --elev:#17171a; --line:#2a2a2e;
+    --ink:#e8e4dc; --soft:#b8b3a8; --mute:#75716a;
+    --gold:#c9a86a; --gold-soft:#e4cb95; --gold-deep:#7a6238;
+    --sage:#9bbd9b;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--void); color:var(--ink);
+    font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:860px;margin:0 auto;padding:40px 28px 64px}
+  .ovline{font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);}
+  h1{font-family:Georgia,"Times New Roman",serif;font-weight:400;font-size:40px;
+     letter-spacing:-.02em;line-height:1.05;margin:10px 0 6px}
+  .sub{color:var(--soft);font-size:13.5px;line-height:1.65;max-width:62ch}
+  .card{background:var(--bg);border:1px solid var(--line);padding:26px 28px;margin-top:22px}
+  .card h2{font-family:Georgia,serif;font-weight:400;font-size:21px;letter-spacing:-.01em;margin:0 0 4px}
+  .card .why{color:var(--mute);font-size:12px;line-height:1.6;margin:0 0 20px}
+  .lbl{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--mute)}
+
+  /* bar rows */
+  .row{display:grid;grid-template-columns:46px 1fr 62px;align-items:center;gap:12px;margin-bottom:9px}
+  .row .name{font-size:12.5px;color:var(--soft)}
+  .track{height:22px;background:var(--elev);border:1px solid var(--line);position:relative}
+  .fill{height:100%;background:var(--gold-deep);border-right:2px solid var(--gold)}
+  .fill.peak{background:var(--gold);border-right-color:var(--gold-soft)}
+  .fill.low{background:#24242a;border-right-color:var(--line)}
+  .val{font-size:12.5px;color:var(--ink);text-align:right;font-variant-numeric:tabular-nums}
+  .val span{color:var(--mute);font-size:10.5px}
+
+  /* grouped hour chart */
+  .hours{display:grid;grid-template-columns:40px 1fr;gap:12px;align-items:center;margin-bottom:7px}
+  .pair{display:flex;flex-direction:column;gap:3px}
+  .bar{height:11px;display:flex;align-items:center;gap:7px}
+  .bar i{display:block;height:100%}
+  .bar.mon i{background:var(--gold)}
+  .bar.oth i{background:#4a5a4a}
+  .bar b{font-weight:400;font-size:10.5px;color:var(--mute);font-variant-numeric:tabular-nums}
+  .key{display:flex;gap:18px;margin:0 0 18px;font-size:11px;color:var(--soft)}
+  .key span{display:inline-flex;align-items:center;gap:7px}
+  .key i{width:12px;height:10px;display:block}
+
+  .note{border-left:2px solid var(--gold-deep);padding:2px 0 2px 14px;margin-top:18px;
+        color:var(--soft);font-size:12.5px;line-height:1.7}
+  .warn{border-left-color:#b56b5f}
+  .foot{margin-top:34px;padding-top:18px;border-top:1px solid var(--line);
+        color:var(--mute);font-size:11px;line-height:1.8}
+  strong{color:var(--ink);font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="ovline">Az Tax Services · Aurora, Colorado</div>
+  <h1>Who arrives, and when</h1>
+  <p class="sub">
+    Measured 17 October 2026, over the 30 days prior. Only arrivals are shown.
+    Arrival times are written when a customer enters their details at the kiosk,
+    so they record something that actually happened — which is not true of the
+    other timestamps yet. See the note at the bottom.
+  </p>
+
+  <!-- ── 1. Weekday ─────────────────────────────────────────────── -->
+  <div class="card">
+    <h2>Monday is a different kind of day</h2>
+    <p class="why">Average arrivals per day, so a weekday that appeared more often in the window doesn't look busier than it is.</p>
+
+    <div class="row"><span class="name">Mon</span><div class="track"><div class="fill peak" style="width:100%"></div></div><span class="val">24.0 <span>· 4d</span></span></div>
+    <div class="row"><span class="name">Tue</span><div class="track"><div class="fill" style="width:42.9%"></div></div><span class="val">10.3 <span>· 4d</span></span></div>
+    <div class="row"><span class="name">Wed</span><div class="track"><div class="fill" style="width:35.4%"></div></div><span class="val">8.5 <span>· 4d</span></span></div>
+    <div class="row"><span class="name">Thu</span><div class="track"><div class="fill" style="width:38.3%"></div></div><span class="val">9.2 <span>· 5d</span></span></div>
+    <div class="row"><span class="name">Fri</span><div class="track"><div class="fill low" style="width:4.2%"></div></div><span class="val">1.0 <span>· 2d</span></span></div>
+    <div class="row"><span class="name">Sat</span><div class="track"><div class="fill low" style="width:6.3%"></div></div><span class="val">1.5 <span>· 2d</span></span></div>
+    <div class="row"><span class="name">Sun</span><div class="track"><div class="fill low" style="width:4.2%"></div></div><span class="val">1.0 <span>· 1d</span></span></div>
+
+    <div class="note">
+      Monday carries <strong>2.3–2.8×</strong> any other working day, and Tuesday
+      to Thursday are almost identical. The week is really "Monday, then three
+      the same". Friday is <strong>effectively closed</strong> — two arrivals
+      across two Fridays.
+    </div>
+  </div>
+
+  <!-- ── 2. Hour of day ─────────────────────────────────────────── -->
+  <div class="card">
+    <h2>The 9–11 peak is structural, not a Monday effect</h2>
+    <p class="why">Arrivals per day by hour, Denver time. Splitting Monday from the rest shows the same shape at different heights.</p>
+
+    <div class="key">
+      <span><i style="background:var(--gold)"></i> Monday</span>
+      <span><i style="background:#4a5a4a"></i> Tue–Thu</span>
+    </div>
+
+    <div class="hours"><span class="lbl">9am</span><div class="pair">
+      <div class="bar mon"><i style="width:57.7%"></i><b>3.8</b></div>
+      <div class="bar oth"><i style="width:27.2%"></i><b>1.8</b></div></div></div>
+
+    <div class="hours"><span class="lbl">10am</span><div class="pair">
+      <div class="bar mon"><i style="width:100%"></i><b>6.5</b></div>
+      <div class="bar oth"><i style="width:39.1%"></i><b>2.5</b></div></div></div>
+
+    <div class="hours"><span class="lbl">11am</span><div class="pair">
+      <div class="bar mon"><i style="width:50%"></i><b>3.3</b></div>
+      <div class="bar oth"><i style="width:26%"></i><b>1.7</b></div></div></div>
+
+    <div class="hours"><span class="lbl">12pm</span><div class="pair">
+      <div class="bar mon"><i style="width:61.5%"></i><b>4.0</b></div>
+      <div class="bar oth"><i style="width:14.2%"></i><b>0.9</b></div></div></div>
+
+    <div class="hours"><span class="lbl">1pm</span><div class="pair">
+      <div class="bar mon"><i style="width:23.1%"></i><b>1.5</b></div>
+      <div class="bar oth"><i style="width:17.7%"></i><b>1.2</b></div></div></div>
+
+    <div class="hours"><span class="lbl">2pm</span><div class="pair">
+      <div class="bar mon"><i style="width:11.5%"></i><b>0.8</b></div>
+      <div class="bar oth"><i style="width:11.8%"></i><b>0.8</b></div></div></div>
+
+    <div class="hours"><span class="lbl">3pm</span><div class="pair">
+      <div class="bar mon"><i style="width:34.6%"></i><b>2.3</b></div>
+      <div class="bar oth"><i style="width:5.9%"></i><b>0.4</b></div></div></div>
+
+    <div class="hours"><span class="lbl">4pm</span><div class="pair">
+      <div class="bar mon"><i style="width:23.1%"></i><b>1.5</b></div>
+      <div class="bar oth"><i style="width:1.2%"></i><b>0.1</b></div></div></div>
+
+    <div class="note">
+      Both peak at <strong>10am</strong>. Tuesday–Thursday is proportionally the
+      more front-loaded day — <strong>64%</strong> of its arrivals come before
+      noon, against Monday's <strong>56%</strong>. Monday spreads further into
+      the afternoon, with a second bump at noon and again at 3pm.
+    </div>
+    <div class="note">
+      So the pressure point is <strong>Monday 9–11</strong>, and extra help at
+      10am is worth more than the same help at 1pm on any day of the week.
+    </div>
+  </div>
+
+  <!-- ── 3. What is not here ───────────────────────────────────── -->
+  <div class="card">
+    <h2>What isn't charted, and why</h2>
+    <p class="why">Three obvious charts are missing on purpose.</p>
+
+    <div class="note warn">
+      <strong>Wait time, service time and total visit time.</strong> These depend
+      on Call and Done being pressed when they happen. Median "service time" for
+      a consultation currently reads as <strong>1.5 minutes</strong>, so the
+      timestamps are recording when someone tapped, not when a customer was
+      served. Charting them would make a presentable picture of nothing.
+    </div>
+    <div class="note warn">
+      <strong>Arrivals against completions.</strong> Worth drawing, but the
+      completion times measured before migration 0065 included tickets the
+      30-minute timeout closed automatically with a forged completion stamp.
+      Re-run it now the fix is in.
+    </div>
+    <div class="note warn">
+      <strong>Anything per staff member.</strong> Staff were recorded on
+      <strong>9 of 272</strong> tickets, and none in the last two weeks.
+    </div>
+  </div>
+
+  <div class="foot">
+    Source: <strong>docs/analysis-october-2026.sql</strong> · full findings in
+    <strong>docs/baseline-2026-10.md</strong><br />
+    166 arrivals across 16 trading days. 4 Mondays — enough to plan against, not
+    enough to be certain, and tax season will reshape all of it.
+  </div>
+
+</div>
+</body>
+</html>
