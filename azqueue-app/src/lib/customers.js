@@ -181,11 +181,18 @@ export async function findOrCreateCustomer(branchId, identity = {}) {
  * List all customers for a branch, most recently seen first.
  */
 export async function loadCustomers(branchId, { limit = 50, offset = 0, search = "" } = {}) {
-  if (!branchId) return [];
+  if (!branchId) return { rows: [], total: 0 };
 
   let query = supabase
     .from("customers")
-    .select("id, display_name, email, phone, tags, vip, last_seen_at, created_at, freshdesk_id, student_track, sessions_attended, no_show_strikes")
+    /* `count: "exact"` so the caller can say "50 of 312" rather than showing
+       a truncated list with no indication it is truncated. The page had no
+       pagination and no total, so everyone past the fiftieth most recent
+       customer was invisible — and nothing on screen suggested they existed. */
+    .select(
+      "id, display_name, email, phone, tags, vip, last_seen_at, created_at, freshdesk_id, student_track, sessions_attended, no_show_strikes",
+      { count: "exact" }
+    )
     .eq("branch_id", branchId)
     .order("last_seen_at", { ascending: false, nullsFirst: false })
     .range(offset, offset + limit - 1);
@@ -196,8 +203,12 @@ export async function loadCustomers(branchId, { limit = 50, offset = 0, search =
     );
   }
 
-  const { data } = await query;
-  return data ?? [];
+  const { data, count, error } = await query;
+  if (error) {
+    console.error("[customers] load failed", error);
+    return { rows: [], total: 0, error: error.message };
+  }
+  return { rows: data ?? [], total: count ?? 0 };
 }
 
 /**

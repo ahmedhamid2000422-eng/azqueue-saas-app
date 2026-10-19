@@ -349,16 +349,50 @@ function CustomersInner() {
 
   // ── Load list ───────────────────────────────────────────────────────
 
+  /* PAGE SIZE, AND WHY THERE IS A TOTAL.
+     The list was capped at 50 with no pagination and no count, so every
+     customer past the fiftieth most recently seen simply did not appear and
+     nothing on screen said so. For an office that has been open for years
+     that is most of the list. */
+  const PAGE_SIZE = 50;
+  const [total, setTotal]   = useState(0);
+  const [loadedTo, setLoadedTo] = useState(PAGE_SIZE);
+  const [loadingMore, setLoadingMore] = useState(false);
+
   const reloadList = useCallback(async () => {
     if (!branch?.id) return;
     setListLoading(true);
     try {
-      const data = await loadCustomers(branch.id, { search });
-      setCustomers(data);
+      const { rows, total: n } = await loadCustomers(branch.id, {
+        search, limit: PAGE_SIZE, offset: 0,
+      });
+      setCustomers(rows);
+      setTotal(n);
+      setLoadedTo(rows.length);
     } finally {
       setListLoading(false);
     }
   }, [branch?.id, search]);
+
+  async function loadMore() {
+    if (!branch?.id || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const { rows } = await loadCustomers(branch.id, {
+        search, limit: PAGE_SIZE, offset: loadedTo,
+      });
+      /* Append rather than replace, and de-duplicate by id: last_seen_at can
+         change between pages as customers come in, which would otherwise
+         show somebody twice. */
+      setCustomers((prev) => {
+        const seen = new Set(prev.map((c) => c.id));
+        return [...prev, ...rows.filter((c) => !seen.has(c.id))];
+      });
+      setLoadedTo((n) => n + rows.length);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   useEffect(() => { reloadList(); }, [reloadList]);
 
@@ -744,6 +778,28 @@ function CustomersInner() {
                 </div>
               </button>
             ))
+          )}
+
+          {/* HOW MANY THERE ARE, AND HOW TO SEE THEM.
+              Without this the list simply stopped at 50 and looked complete.
+              The count is the important half: a "Load more" button nobody
+              knows to press is only slightly better than no button. */}
+          {!listLoading && total > 0 && (
+            <div className="px-4 py-4 border-t border-line/50 text-center">
+              <div className="text-[11px] text-ink-mute mb-2">
+                Showing {customers.length} of {total}
+                {search.trim() ? " matching" : ""}
+              </div>
+              {customers.length < total && (
+                <button
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  className="text-[11px] font-medium tracking-[0.1em] uppercase border border-line hover:border-gold-deep text-ink-soft hover:text-ink px-4 py-2 transition disabled:opacity-40"
+                >
+                  {loadingMore ? "Loading…" : `Load ${Math.min(PAGE_SIZE, total - customers.length)} more`}
+                </button>
+              )}
+            </div>
           )}
         </div>
       </aside>
