@@ -67,10 +67,15 @@ comment on function public.expire_called_tickets() is
 
 -- ── Repair the rows already written ──────────────────────────────────
 --
--- Identified by their signature rather than by guesswork: cancelled, never
--- attributed to staff, and completed within two minutes of turn_expires_at.
--- A real visit that a person closed would not land inside that window by
--- accident, and would normally carry a staff_id.
+-- Identified by their signature: cancelled, with completed_at landing inside
+-- the minute after turn_expires_at — the cron tick. A person closing a real
+-- visit would not land in that window by accident.
+--
+-- NOTE, 19 October: an earlier draft of this also required staff_id to be
+-- null, on the assumption that an attributed ticket must have been closed by
+-- a human. Wrong — three rows (A101-A103) carried a staff_id from
+-- auto-assignment while showing the identical fingerprint: exactly 31
+-- minutes, cancelled, 36-59 seconds after expiry. The condition was dropped.
 --
 -- completed_at is cleared because it was never true. expired_at is set to the
 -- value it should have had. The rows are kept — they are evidence that a
@@ -83,7 +88,6 @@ set expired_at   = coalesce(expired_at, completed_at),
 where status = 'cancelled'
   and completed_at is not null
   and turn_expires_at is not null
-  and staff_id is null
   and completed_at >= turn_expires_at
   and completed_at <  turn_expires_at + interval '2 minutes';
 
