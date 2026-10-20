@@ -7,6 +7,7 @@ import { logServiceTime } from "../../lib/autopilot";
 import { loadServiceStats } from "../../lib/waitEstimator";
 import QueueNudge from "../../components/QueueNudge";
 import CompletePanel from "../../components/CompletePanel";
+import CloseOutPanel from "../../components/CloseOutPanel";
 import QueueHygiene from "../../components/QueueHygiene";
 import InReviewList from "../../components/InReviewList";
 import CompleteReminder from "../../components/CompleteReminder";
@@ -1226,7 +1227,14 @@ export default function Queue() {
     setError(null);
     const { error: e } = await supabase
       .from("tickets")
-      .update({ status: "cancelled", completed_at: new Date().toISOString() })
+      /* completed_at is RESERVED FOR ACTUAL SERVICE COMPLETION.
+         Writing it here invented a service duration for somebody who was
+         never served. Three separate code paths did this, plus two cron
+         functions (fixed in 0056 and 0065) — it is the most repeated bug in
+         this codebase, because `completed_at` reads like "the row is
+         finished" rather than "the visit ended". It is not a generic
+         closed-at. Use expired_at. See 0067. */
+      .update({ status: "cancelled", expired_at: new Date().toISOString() })
       .eq("id", ticketId);
     if (e) { setBusy(false); return setError(e.message); }
     await reload();
@@ -1788,6 +1796,11 @@ export default function Queue() {
 
           {/* A paused queue is the single most important fact on this screen, so
           it goes above the hygiene nudge and the header. */}
+      {/* Unclosed tickets from earlier. Sits at the very top because it is
+          about customers nobody has accounted for, and because the nightly
+          sweep will erase the question if it is not answered today. */}
+      <CloseOutPanel branchId={branch?.id} onDone={reload} />
+
       <div className="mb-5">
         <QueuePauseControl branch={branch} onChange={reloadBranches} waiting={waiting} />
       </div>

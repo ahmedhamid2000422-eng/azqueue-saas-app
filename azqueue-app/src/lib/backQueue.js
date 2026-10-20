@@ -56,7 +56,11 @@ export async function assignWork({ ticketId, category, assignedTo = null, takenI
       assigned_to:      assignedTo,
       taken_in_by:      takenInBy,
       handed_off_at:    new Date().toISOString(),
-      // The counter interaction is over even though the work isn't.
+      /* LEGITIMATE use of completed_at, unlike the three paths fixed in
+         0067. The customer WAS served: documents were taken, the counter
+         interaction genuinely ended here, and the remaining work happens
+         without them. handed_off_at is what keeps this out of the waiting
+         list and out of wait calculations. */
       completed_at:     new Date().toISOString(),
       status:           "completed",
     })

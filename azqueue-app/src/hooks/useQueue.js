@@ -280,8 +280,11 @@ export function useQueue({ staff, branch, station }) {
     const { error: mutErr } = await supabase
       .from("tickets")
       .update({
-        status:       "cancelled",
-        completed_at: new Date().toISOString(),
+        status:       "no_show",
+        /* expired_at, not completed_at — see 0067. Also corrects the status:
+           this path wrote 'cancelled' with notes='no_show', so a no-show was
+           indistinguishable from a customer who chose to leave. */
+        expired_at:   new Date().toISOString(),
         notes:        "no_show",
       })
       .eq("id", serving.id);

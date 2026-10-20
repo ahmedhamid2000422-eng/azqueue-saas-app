@@ -162,7 +162,9 @@ export default function StaffQueue() {
     if (!myCurrent) return;
     setBusy(true);
     const { error: e } = await supabase.from("tickets")
-      .update({ status: "no_show", completed_at: new Date().toISOString() }).eq("id", myCurrent.id);
+      /* expired_at, not completed_at — see 0067. A no-show was never served,
+         so it has no service duration and must not acquire one. */
+      .update({ status: "no_show", expired_at: new Date().toISOString() }).eq("id", myCurrent.id);
     if (e) { setBusy(false); return setError(e.message); }
     await setStatus("active");
     await reload();
