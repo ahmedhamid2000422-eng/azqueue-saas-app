@@ -4,6 +4,7 @@ import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../lib/AuthContext";
 import { useBranch } from "../../lib/BranchContext";
 import { logServiceTime } from "../../lib/autopilot";
+import { useHeartbeat } from "../../lib/heartbeat";
 import { loadServiceStats } from "../../lib/waitEstimator";
 import QueueNudge from "../../components/QueueNudge";
 import CompletePanel from "../../components/CompletePanel";
@@ -609,6 +610,11 @@ export default function Queue() {
   /* Under two minutes between Call and Done is the signature of catching up
      rather than serving. Chosen from the October data: the median gap for a
      Consultation was 1.5 minutes, against a p90 of nearly 20. */
+  /* Records that this screen was open, once a minute. See heartbeat.js —
+     it is what separates "office closed" from "system not used", which no
+     other table can distinguish. */
+  useHeartbeat(branch?.id, "queue");
+
   const QUICK_CLOSE_SECONDS = 120;
   const [justCompleted, setJustCompleted] = useState(null);
 

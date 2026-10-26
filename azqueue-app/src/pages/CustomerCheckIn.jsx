@@ -18,6 +18,7 @@ import Button from "../components/Button";
 import LanguagePicker from "../components/LanguagePicker";
 import { LANGUAGES } from "../lib/i18n";
 import { loadStationServices, stationsForService } from "../lib/stations";
+import { useHeartbeat } from "../lib/heartbeat";
 
 /* ENGLISH ONLY, 15 October — Ahmed's call.
    The language step is skipped and the header picker hidden; neither is
@@ -105,6 +106,10 @@ export default function CustomerCheckIn() {
 
      Now: language, then what you need, then how to reach you. Each step
      fits without scrolling and asks for exactly one thing. */
+  /* Only the kiosk beats — a customer's own phone opening the page for 40
+     seconds says nothing about whether the office was running. */
+  useHeartbeat(isKiosk ? branch?.id : null, "kiosk");
+
   const [step, setStep] = useState(LANGUAGE_STEP_ENABLED ? "lang" : "service");
 
   /* Hiding the picker is not enough on its own. Two things would still change

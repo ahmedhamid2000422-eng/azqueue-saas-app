@@ -6,9 +6,13 @@ import { supabase } from "../lib/supabase";
  *
  * WHY THIS EXISTS
  * Over 90 days, 237 of 502 tickets — 47% — were closed by a cron job because
- * nobody closed them by hand. Half of those were never even called. The
- * office has no idea those customers are unaccounted for, because the sweep
- * tidies up silently overnight.
+ * nobody closed them by hand. Those are UNKNOWN OUTCOMES, not abandonments:
+ * about half have no call recorded, which means no call was logged, NOT that
+ * nobody helped the customer. The office cannot see any of this, because the
+ * sweep tidies up silently overnight.
+ *
+ * Record age is not waiting time. A ticket sitting 27 hours before the sweep
+ * says nothing about how long its customer was in the room.
  *
  * The pattern is not explained by how busy the day was. 15 October: ten
  * tickets, all swept. 17 October: ten tickets, none swept. Same volume, two
@@ -157,7 +161,7 @@ export default function CloseOutPanel({ branchId, onDone }) {
               {t.customer_name || "Customer"}
               <span className="text-ink-mute text-[11.5px]">
                 {" · "}{new Date(t.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
-                {!t.called_at && " · never called"}
+                {!t.called_at && " · no call recorded"}
               </span>
             </span>
             <div className="flex gap-1.5 shrink-0">

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { useHeartbeat } from "../lib/heartbeat";
 import { fetchPrayerTimes, getPauseStatus, getNextPrayer } from "../lib/prayerTimes";
 import { announceTicketWithVoice, unlockAudio, isAudioReady, getAudioDiagnostics, testSpeak, playChime, playServerSpeech } from "../lib/tts";
 import { announcePrayerPause, announceAlert } from "../lib/tts";
@@ -39,6 +40,11 @@ export default function TvDisplay() {
   const [staff, setStaff]     = useState([]);
   const [services, setServices] = useState({});
   const [loading, setLoading] = useState(true);
+
+  /* A TV running all day with no queue page open is a waiting room nobody is
+     serving — which is exactly the kind of day the ticket data cannot
+     describe. See heartbeat.js. */
+  useHeartbeat(branch?.id, "tv");
   const [error, setError]     = useState(null);
 
   const [now, setNow] = useState(new Date());
