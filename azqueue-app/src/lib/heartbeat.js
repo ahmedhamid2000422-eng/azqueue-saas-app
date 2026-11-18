@@ -41,17 +41,20 @@ function deviceKey() {
 
 async function beat(branchId, surface) {
   if (!branchId) return;
-  /* Failure is silent and harmless. A missed heartbeat makes the record
-     slightly incomplete; an error banner over the queue during a busy
-     Monday would be worse than the gap. */
+  /* NEVER interrupt the user — a failed heartbeat must not put a banner over
+     the queue on a busy Monday. But it must not be invisible either: the
+     first version swallowed errors entirely, and when no rows appeared there
+     was no way to tell "not deployed" from "failing on every call". Logging
+     to the console costs nothing and makes the difference diagnosable. */
   try {
-    await supabase.from("screen_heartbeats").insert({
+    const { error } = await supabase.from("screen_heartbeats").insert({
       branch_id: branchId,
       surface,
       device_key: deviceKey(),
     });
-  } catch {
-    /* ignore */
+    if (error) console.warn("[heartbeat] insert rejected:", error.message, error.code);
+  } catch (err) {
+    console.warn("[heartbeat] insert threw:", err?.message ?? err);
   }
 }
 

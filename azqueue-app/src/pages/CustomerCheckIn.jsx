@@ -268,9 +268,23 @@ export default function CustomerCheckIn() {
       return setFormError(t("checkin.errors.could_not_token"));
     }
 
-    const { data: ticket, error: insErr } = await supabase
+    /* THE ID IS GENERATED HERE, NOT BY THE DATABASE.
+       `.insert().select()` adds a RETURNING clause, and RETURNING needs SELECT
+       permission. Migration 0060 removed anonymous read access to tickets to
+       close a PII leak — correctly — which meant every anonymous check-in
+       inserted the row fine and then failed reading it back, showing
+       "Could not complete check-in" for a ticket that had in fact been
+       created. Staff never saw it because they are authenticated.
+
+       Generating the uuid client-side removes the read entirely. Nothing is
+       exposed, no policy is relaxed, and the row still gets written by the
+       restricted insert policy from 0064. */
+    const ticketId = (crypto?.randomUUID?.() ?? null);
+
+    const { error: insErr } = await supabase
       .from("tickets")
       .insert({
+        ...(ticketId ? { id: ticketId } : {}),
         branch_id: branch.id,
         service_id: serviceId,
         token: tokenData,
@@ -286,9 +300,11 @@ export default function CustomerCheckIn() {
         customer_name: name.trim(),
         customer_phone: phone.trim(),
         ...(email.trim() ? { customer_email: email.trim() } : {}),
-      })
-      .select("id")
-      .single();
+      });
+
+    /* No `ticket` object comes back now — there is nothing to read. The id we
+       generated is the id that was written. */
+    const ticket = ticketId ? { id: ticketId } : null;
 
     if (insErr || !ticket) {
       setSubmitting(false);

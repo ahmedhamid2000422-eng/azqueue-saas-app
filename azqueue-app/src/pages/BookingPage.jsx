@@ -142,9 +142,16 @@ export default function BookingPage() {
   async function confirmBooking() {
     setError(null);
     setSubmitting(true);
-    const { data, error: insErr } = await supabase
+    /* Same fix as the check-in page: 0060 removed anonymous SELECT on
+       bookings to close a PII leak, and `.select()` after an insert adds a
+       RETURNING clause that needs it. Generating the id here removes the
+       read-back entirely rather than relaxing the policy. */
+    const bookingId = (crypto?.randomUUID?.() ?? null);
+
+    const { error: insErr } = await supabase
       .from("bookings")
       .insert({
+        ...(bookingId ? { id: bookingId } : {}),
         branch_id: branch.id,
         service_id: serviceId,
         customer_name: name.trim(),
@@ -152,9 +159,9 @@ export default function BookingPage() {
         ...(email.trim() ? { customer_email: email.trim() } : {}),
         scheduled_at: slot,
         status: "confirmed",
-      })
-      .select("*")
-      .single();
+      });
+
+    const data = bookingId ? { id: bookingId } : null;
     setSubmitting(false);
     if (insErr || !data) return setError(insErr?.message ?? t("common.error"));
 
