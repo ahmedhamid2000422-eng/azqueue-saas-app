@@ -57,6 +57,43 @@ answers — not wherever it happens to fit.
 A number that describes the last thirty days does not belong on Overview. A
 live count does not belong on Insights.
 
+## Check-in must be tested as an anonymous visitor
+
+**After any change to RLS, to the check-in code path, or to a public page,
+open the check-in page in a private window and complete a check-in.**
+
+Customer check-in has broken in production twice, and both times the first
+people to notice were customers standing in the office. Mohamed heard about
+it from them, in front of clients. That is worse than either bug.
+
+Both were invisible to anyone signed in:
+
+- **September** — `tickets.source` gained `kiosk` / `own_device` (0054) but
+  the anonymous INSERT policy still demanded `source = 'walk'`. Staff
+  unaffected, every customer blocked.
+- **November** — 0060 removed anonymous SELECT to close a PII leak, and the
+  check-in code used `.insert().select()`, whose RETURNING clause needs
+  SELECT. The row was written and the read-back refused, so customers were
+  told it failed for a ticket that existed.
+
+Testing while authenticated cannot see this class of bug. That is the whole
+reason it reached the office twice.
+
+### The health-check function and the app must stay in step
+
+`supabase/functions/health-check` runs every five minutes and checks the
+site, the bundle, and an anonymous ticket insert. It protects against this
+happening a third time — but only while it mirrors what the app actually
+does.
+
+It deliberately inserts **without** a read-back, because `CustomerCheckIn.jsx`
+no longer uses one. **If the check-in code ever changes shape — a read-back,
+a new column, a new RPC — the health check must change with it.** A monitor
+that tests a path the app no longer takes is worse than no monitor, because
+it reports green while customers fail.
+
+As written today it would have caught September's outage and NOT November's.
+
 ## Data rules
 
 **Only use real data from the business. No invented figures, no
